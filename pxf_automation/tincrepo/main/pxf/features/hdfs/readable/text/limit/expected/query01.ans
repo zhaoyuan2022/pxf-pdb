@@ -1,0 +1,13 @@
+-- @description query01 for PXF HDFS Readable test limit
+
+SELECT COUNT(*) FROM (SELECT * FROM text_limit LIMIT 1000) AS a;
+ count 
+-------
+  1000
+(1 row)
+
+SELECT COUNT(*) FROM (SELECT * FROM text_limit) AS b;
+ count 
+-------
+ 10000
+(1 row)

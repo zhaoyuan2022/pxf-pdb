@@ -1,0 +1,3 @@
+{"type_int":100000001,"type_double":1.1,"type_string":"testing all supported types in AvroResolver 1","type_float":1.1,"type_long":100000000001,"type_bytes":"1","type_boolean":true}
+{"type_int":-200000002,"type_double":-2.2,"type_string":"testing all supported types in AvroResolver 2","type_float":-2.2,"type_long":-200000000002,"type_bytes":"1","type_boolean":false}
+

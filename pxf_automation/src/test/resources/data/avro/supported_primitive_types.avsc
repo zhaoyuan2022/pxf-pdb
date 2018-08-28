@@ -1,0 +1,13 @@
+{"namespace": "supported_types.avro",
+ "type": "record",
+ "name": "SupportedTypes",
+ "fields": [
+     {"name": "type_int", "type": "int"},
+     {"name": "type_double",  "type": "double"},
+     {"name": "type_string",  "type": "string"},
+     {"name": "type_float",  "type": "float"},
+     {"name": "type_long",  "type": "long"},
+     {"name": "type_bytes",  "type": "bytes"},
+     {"name": "type_boolean",  "type": "boolean"}
+ ]
+}

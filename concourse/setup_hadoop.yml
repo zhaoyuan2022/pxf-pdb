@@ -1,0 +1,16 @@
+platform: linux
+image_resource:
+  type: docker-image
+inputs:
+  - name: terraform_hdp
+  - name: ccp_src
+  - name: pxf_infra_src
+  - name: singlecluster
+outputs:
+  - name: cluster_env_files
+  - name: pxf_artifacts
+run:
+  path: pxf_infra_src/concourse/setup_hadoop.bash
+params:
+  PLATFORM: centos7
+  CLOUD_PROVIDER: google

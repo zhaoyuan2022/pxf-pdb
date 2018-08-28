@@ -1,0 +1,81 @@
+-- @description query01 for PXF Hive filter pushdown case
+
+SELECT * FROM hive_partition_filter_pushdown_rc ORDER BY fmt, t1;
+  t1   |  t2  | num1 | dub1 | fmt 
+-------+------+------+------+-----
+ row1  | s_6  |    1 |    6 | rc
+ row10 | s_15 |   10 |   15 | rc
+ row2  | s_7  |    2 |    7 | rc
+ row3  | s_8  |    3 |    8 | rc
+ row4  | s_9  |    4 |    9 | rc
+ row5  | s_10 |    5 |   10 | rc
+ row6  | s_11 |    6 |   11 | rc
+ row7  | s_12 |    7 |   12 | rc
+ row8  | s_13 |    8 |   13 | rc
+ row9  | s_14 |    9 |   14 | rc
+(10 rows)
+
+SELECT * FROM hive_partition_filter_pushdown_seq ORDER BY fmt, t1;
+  t1   |  t2  | num1 | dub1 | fmt 
+-------+------+------+------+-----
+ row1  | s_6  |    1 |    6 | seq
+ row10 | s_15 |   10 |   15 | seq
+ row2  | s_7  |    2 |    7 | seq
+ row3  | s_8  |    3 |    8 | seq
+ row4  | s_9  |    4 |    9 | seq
+ row5  | s_10 |    5 |   10 | seq
+ row6  | s_11 |    6 |   11 | seq
+ row7  | s_12 |    7 |   12 | seq
+ row8  | s_13 |    8 |   13 | seq
+ row9  | s_14 |    9 |   14 | seq
+(10 rows)
+
+SELECT * FROM hive_partition_filter_pushdown_txt ORDER BY fmt, t1;
+  t1   |  t2  | num1 | dub1 | fmt 
+-------+------+------+------+-----
+ row1  | s_6  |    1 |    6 | txt
+ row10 | s_15 |   10 |   15 | txt
+ row2  | s_7  |    2 |    7 | txt
+ row3  | s_8  |    3 |    8 | txt
+ row4  | s_9  |    4 |    9 | txt
+ row5  | s_10 |    5 |   10 | txt
+ row6  | s_11 |    6 |   11 | txt
+ row7  | s_12 |    7 |   12 | txt
+ row8  | s_13 |    8 |   13 | txt
+ row9  | s_14 |    9 |   14 | txt
+(10 rows)
+
+SELECT * FROM hive_partition_filter_pushdown_orc ORDER BY fmt, t1;
+  t1   |  t2  | num1 | dub1 | fmt 
+-------+------+------+------+-----
+ row1  | s_6  |    1 |    6 | orc
+ row10 | s_15 |   10 |   15 | orc
+ row2  | s_7  |    2 |    7 | orc
+ row3  | s_8  |    3 |    8 | orc
+ row4  | s_9  |    4 |    9 | orc
+ row5  | s_10 |    5 |   10 | orc
+ row6  | s_11 |    6 |   11 | orc
+ row7  | s_12 |    7 |   12 | orc
+ row8  | s_13 |    8 |   13 | orc
+ row9  | s_14 |    9 |   14 | orc
+(10 rows)
+
+SELECT * FROM hive_partition_filter_pushdown_none ORDER BY fmt, t1;
+ t1 | t2 | num1 | dub1 | fmt 
+----+----+------+------+-----
+(0 rows)
+
+SELECT * FROM hive_partition_filter_pushdown_complex ORDER BY fmt, t1;
+  t1   |  t2  | num1 | dub1 | fmt 
+-------+------+------+------+-----
+ row1  | s_6  |    1 |    6 | seq
+ row10 | s_15 |   10 |   15 | seq
+ row2  | s_7  |    2 |    7 | seq
+ row3  | s_8  |    3 |    8 | seq
+ row4  | s_9  |    4 |    9 | seq
+ row5  | s_10 |    5 |   10 | seq
+ row6  | s_11 |    6 |   11 | seq
+ row7  | s_12 |    7 |   12 | seq
+ row8  | s_13 |    8 |   13 | seq
+ row9  | s_14 |    9 |   14 | seq
+(10 rows)

@@ -1,0 +1,16 @@
+-- @description query01 for PXF Hive RC filter partitions
+
+SELECT * FROM pxf_hive_heterogen_using_filter WHERE fmt = 'rc1' AND prt = 'a' ORDER BY fmt, t1;
+  t1   |  t2  | num1 | dub1 | fmt | prt
+-------+------+------+------+-----+-----
+ row1  | s_6  |    1 |    6 | rc1 | a
+ row10 | s_15 |   10 |   15 | rc1 | a
+ row2  | s_7  |    2 |    7 | rc1 | a
+ row3  | s_8  |    3 |    8 | rc1 | a
+ row4  | s_9  |    4 |    9 | rc1 | a
+ row5  | s_10 |    5 |   10 | rc1 | a
+ row6  | s_11 |    6 |   11 | rc1 | a
+ row7  | s_12 |    7 |   12 | rc1 | a
+ row8  | s_13 |    8 |   13 | rc1 | a
+ row9  | s_14 |    9 |   14 | rc1 | a
+(10 rows)

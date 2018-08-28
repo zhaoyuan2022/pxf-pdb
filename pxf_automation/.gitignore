@@ -1,0 +1,8 @@
+.testdir.tmp
+jsystem.properties.bu
+runnerState.properties
+log/
+target/
+tempClusterConfDirectory/
+output/
+automation_logs/

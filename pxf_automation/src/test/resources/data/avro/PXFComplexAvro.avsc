@@ -1,0 +1,46 @@
+{
+  "type": "record",
+  "name": "ComplexAvro",
+  "doc": "ComplexAvro record",
+  "fields" : [ {
+    "name" : "lng",
+    "type" : "long",
+  }, {
+    "name" : "str",
+    "type" : "string",
+  }, {
+    "name" : "arr",
+    "type" : {"type": "array", "items": "string"},
+  }, {
+    "name": "union",
+    "type": ["null", "string"],
+    "default": null
+  }, {
+    "name": "map",
+    "type": {"type": "map", "values": "long"}
+  }, {
+    "name": "record",
+    "type": {
+        "type": "record",
+        "name": "addressRecord",
+        "fields": [
+            {"name":"number", "type":"int"},
+            {"name":"street", "type":"string"},
+            {"name":"city", "type":"string"}]
+    }
+  }, {
+   "name": "enumstr",
+    "type": {
+        "type": "enum",
+        "name": "relationshipenum",
+        "symbols": ["MARRIED","LOVE","FRIEND","COLLEAGUE","STRANGER","ENEMY"]
+    }
+  }, {
+    "name" : "md5",
+    "type": {
+        "type" : "fixed",
+        "name" : "md5Fixed",
+        "size" : 4
+    }
+  } ]
+}

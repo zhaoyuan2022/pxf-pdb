@@ -1,0 +1,16 @@
+platform: linux
+image_resource:
+  type: docker-image
+inputs:
+  - name: gpdb_src
+  - name: pxf_infra_src
+  - name: bin_gpdb
+  - name: pxf_tarball
+params:
+  CLUSTER_NAME: hdp
+  NODE: c6401.ambari.apache.org
+  REALM: AMBARI.APACHE.ORG
+  TARGET_OS: centos
+  TARGET_OS_VERSION: 6
+run:
+  path: pxf_infra_src/concourse/test_pxf_secure.bash

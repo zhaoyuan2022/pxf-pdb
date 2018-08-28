@@ -1,0 +1,17 @@
+-- @description query01 for PXF Hive filter pushdown case
+SET optimizer = off;
+SET
+SET gp_external_enable_filter_pushdown = on;
+SET
+
+SELECT * FROM test_filter WHERE  t0 = 'A' and a1 = 0 ORDER BY t0, a1;
+ t0 | a1 |       filtervalue
+----+----+--------------------------
+ A  |  0 | a0c25s1dAo5a1c23s1d0o5l0
+(1 row)
+
+SELECT * FROM test_filter WHERE  t0 = 'B' AND a1 <= 1 ORDER BY t0, a1
+ t0 | a1 |       filtervalue
+----+----+--------------------------
+ B  |  1 | a1c23s1d1o3a0c25s1dBo5l0
+(1 row)

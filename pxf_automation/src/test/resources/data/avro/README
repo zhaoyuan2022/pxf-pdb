@@ -1,0 +1,15 @@
+Data for avro testing is generated given the following inputs:
+- a .avsc avro schema file (describing the record structure).
+- a .json file with the actual data values.
+
+These are the inputs for generating the actual avro file to be tested. This is
+done by manually invoking the avro compiler, giving the 2 as inputs.
+
+For example, from this current directory, invoke as follows:
+
+  java -jar <path to>/avro-tools-1.7.4.jar fromjson simple.json --schema-file simple.avsc > simple.avro
+  
+Creating an avro file with compression can be done by adding --codec <snappy|deflate|bzip2> to the command line:
+
+  java -jar <path to>/avro-tools-1.7.4.jar fromjson --codec snappy simple.json --schema-file simple.avsc > simple.snappy.avro
+

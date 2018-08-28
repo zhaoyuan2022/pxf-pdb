@@ -1,0 +1,20 @@
+{"namespace": "array.avro",
+ "type": "record",
+ "name": "Array",
+ "fields": [
+     {"name": "type_int", "type": "int"},
+     {"name": "type_int_array", "type": {"type": "array", "items": "int"}},
+     {"name": "type_double",  "type": "double"},
+     {"name": "type_double_array", "type": {"type": "array", "items": "double"}},    
+     {"name": "type_string",  "type": "string"},
+     {"name": "type_string_array", "type": {"type": "array", "items": "string"}},
+     {"name": "type_float",  "type": "float"},
+     {"name": "type_float_array", "type": {"type": "array", "items": "float"}},
+     {"name": "type_long",  "type": "long"},
+     {"name": "type_long_array", "type": {"type": "array", "items": "long"}},
+     {"name": "type_bytes",  "type": "bytes"},
+     {"name": "type_bytes_array", "type": {"type": "array", "items": "bytes"}},
+     {"name": "type_boolean",  "type": "boolean"},
+     {"name": "type_boolean_array", "type": {"type": "array", "items": "boolean"}}
+ ]
+}

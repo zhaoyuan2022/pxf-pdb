@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+
+if [ "$#" -lt "2" ]; then
+    echo "USAGE: deploy [ prod [master|5x] ] | [ dev [master|5x] [config] ]"
+    exit 1
+fi
+
+DEPLOY_ENV=${1}
+# Only valid values for the first argument are dev and prod
+if ! [[ "${DEPLOY_ENV}" == "dev" || "${DEPLOY_ENV}" == "prod" ]]; then
+    echo "USAGE: deploy [ prod master|5x ] | [ dev master|5x [config] ]"
+    exit 1
+fi
+BRANCH_ALIAS=${2}
+# Only valid values for the second argument are master and 5x
+if ! [[ "${BRANCH_ALIAS}" == "master" || "${BRANCH_ALIAS}" == "5x" ]]; then
+    echo "USAGE: deploy [ prod master|5x ] | [ dev master|5x [config] ]"
+    exit 1
+fi
+
+if [ "${BRANCH_ALIAS}" == "5x" ]; then
+    BRANCH="5X_STABLE"
+    ICW_GREEN_BUCKET="gpdb5-stable-concourse-builds"
+else
+    BRANCH="master"
+    ICW_GREEN_BUCKET="gpdb5-assert-concourse-builds"
+fi
+
+# dev pipeline
+if [[ "${DEPLOY_ENV}" == "dev" ]]; then
+    CONFIG=${3:-${USER}}
+    if [ "${CONFIG}" == "pivotal" ]; then
+        echo "ERROR: User pivotal must provide config"
+        exit 1
+    fi
+    if [ ! "${CONFIG}" == "${USER}" ]; then
+        CONFIG="${USER}-${CONFIG}"
+    fi
+    YML_FILE=".${CONFIG}.yml"
+    # Copy default.yml if config file does not exist
+    if [ ! -f ./${YML_FILE} ]; then
+        cp ./default.yml ./${YML_FILE}
+    fi
+    TEST_ENV="dev"
+    PREFIX="dev/${CONFIG}"
+    PIPELINE_NAME="dev:pxf_${CONFIG}_${BRANCH_ALIAS}"
+    TARGET="ud"
+
+# prod pipeline
+else
+    YML_FILE="default.yml"
+    PREFIX="prod/gpdb_branch"
+    PIPELINE_NAME="gpdb_pxf_${BRANCH}"
+    TARGET="ud"
+fi
+
+echo "Deploying ${PIPELINE_NAME} pipeline with custom values from ${YML_FILE} ..."
+
+cmd="fly -t ${TARGET} set-pipeline -p ${PIPELINE_NAME} -c ./pxf_pipeline.yml \
+  -l ~/workspace/continuous-integration/secrets/gpdb_common-ci-secrets.yml \
+  -l ~/workspace/continuous-integration/secrets/gpdb_${BRANCH}-ci-secrets.yml \
+  -l ${YML_FILE} -v folder-prefix=${PREFIX} -v test-env=${TEST_ENV} \
+  -l pxf-multinode-params.yml \
+  -l ~/workspace/continuous-integration/secrets/ccp_ci_secrets_ud.yml \
+  -v gpdb-branch=${BRANCH} -v icw_green_bucket=${ICW_GREEN_BUCKET}"
+
+
+echo "${cmd}"
+
+# Execute cmd string (deploy pipeline)
+eval ${cmd}

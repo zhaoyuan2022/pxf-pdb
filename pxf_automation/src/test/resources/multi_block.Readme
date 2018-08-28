@@ -1,0 +1,34 @@
+This Document describe the multi_block_tables.json format
+
+The purpose of this file is to contain a list of meta information for table and data 
+that can be tested by automation multi block feature tests.
+The data meta information is defined under the name "dataPattern" 
+
+The list can be modified and extended with new entries 
+
+Each entry has the following format 
+
+  {
+      "tableName":  Name of created external table and hdfs file
+      "dataPattern": {
+	      "coulmnsTypeList":  A comma separated list of types, that define the external table columns order and types
+	        The value can be 
+				         "BOOLEAN", 
+				         "SMALLINT",
+				         "INTEGER",
+				         "BIGINT",
+				         "DOUBLE PRECISION",
+				         "REAL",
+				         "NUMERIC",
+				         "TEXT",
+				         "TIMESTAMP" 
+	      "delimiter": The column delimiter to be used in table and data 
+	      "recordValues": If this parameter is omitted then generate the values dynamicly according to "coulmnsTypeList"
+	                      else this include a fixed line of column values (with type as defined in "coulmnsTypeList" that will be 
+	                      repeated  to the size of "dataSizeInMegaBytes"
+	      "dataSizeInMegaBytes":  Size in megabytes of data to be generated and loaded to HDFS
+	      "randomValues" : in case of dynamic generated values, define if to generate random values of fixed/incremental values
+	      "columnMaxSize" : max size of each column (relevant for no fixed types like TEXT, NUMERIC)
+	   }
+	 } 
+   }

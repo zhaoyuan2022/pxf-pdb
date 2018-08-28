@@ -1,0 +1,17 @@
+---
+platform: linux
+
+inputs:
+  - name: pxf_infra
+  - name: cdh_tars_tarball
+  - name: tomcat
+  - name: jdbc
+
+outputs:
+  - name: artifacts
+
+run:
+  path: pxf_infra/singlecluster/singlecluster.bash
+  args:
+    - "5.10.2"
+    - "CDH"

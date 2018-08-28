@@ -1,0 +1,46 @@
+{
+  "type" : "record",
+  "name" : "complex",
+  "namespace" : "complex.avro",
+  "fields" : [ {
+    "name" : "type_long",
+    "type" : "long"
+  }, {
+    "name" : "type_string",
+    "type" : "string"
+  }, {
+    "name" : "type_array",
+    "type" : {"type": "array", "items": "string"}
+  }, {
+    "name": "type_union",
+    "type": ["null", "string"],
+    "default": null
+  }, {
+    "name": "type_map",
+    "type": {"type": "map", "values": "long"}
+  }, {
+    "name": "type_record",
+    "type": {
+        "type": "record",
+        "name": "addressRecord",
+        "fields": [
+            {"name":"number", "type":"int"},
+            {"name":"street", "type":"string"},
+            {"name":"city", "type":"string"}]
+    }
+  }, {
+    "name": "type_enum",
+    "type": {
+        "type": "enum",
+        "name": "relationshipenum",
+        "symbols": ["MARRIED","LOVE","FRIEND","COLLEAGUE","STRANGER","ENEMY"]
+    }
+  }, {
+    "name" : "type_md5",
+    "type": {
+        "type" : "fixed",
+        "name" : "md5Fixed",
+        "size" : 4
+    }
+  } ]
+}

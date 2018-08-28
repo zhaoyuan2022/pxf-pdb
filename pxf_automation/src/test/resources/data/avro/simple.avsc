@@ -1,0 +1,8 @@
+{"namespace": "user_simple.avro",
+ "type": "record",
+ "name": "User",
+ "fields": [
+     {"name": "name", "type": "string"},
+     {"name": "age",  "type": "int"}
+ ]
+}

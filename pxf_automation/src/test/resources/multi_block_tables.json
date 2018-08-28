@@ -1,0 +1,160 @@
+ {
+  "tables": [
+    {
+      "tableName": "multiblocktest0",
+      "dataPattern": {
+	      "coulmnsTypeList": [
+	         "TEXT"
+	         ], 
+	      "columnDelimiter": ",",
+          "columnMaxSize" : "100",
+	      "dataSizeInMegaBytes": "60" ,
+	      "randomValues" : "false"
+	  }
+    },
+    {
+      "tableName": "multiblocktest1",
+      "dataPattern": {
+	      "coulmnsTypeList": [
+	         "TEXT"
+	         ], 
+	      "columnDelimiter": ",",
+          "columnMaxSize" : "100",
+	      "dataSizeInMegaBytes": "70" ,
+	      "randomValues" : "false"
+	  }
+    },
+       {
+      "tableName": "multiblocktest2",
+      "dataPattern": {
+	      "coulmnsTypeList": [
+	         "TEXT"
+	         ], 
+	      "columnDelimiter": ",",
+          "columnMaxSize" : "100",
+	      "dataSizeInMegaBytes": "120" ,
+	      "randomValues" : "false"
+	  }
+    },
+     {
+      "tableName": "multiblocktest3",
+      "dataPattern": {
+	      "coulmnsTypeList": [
+	         "TEXT"
+	         ], 
+	      "columnDelimiter": ",",
+          "columnMaxSize" : "100",
+	      "dataSizeInMegaBytes": "130" ,
+	      "randomValues" : "false"
+	  }
+    },
+    {
+      "tableName": "multiblocktest4",
+       "dataPattern": {
+	      "coulmnsTypeList": [
+	         "TEXT"
+	         ], 
+	      "columnDelimiter": ",",
+          "columnMaxSize" : "1000",
+	      "dataSizeInMegaBytes": "5000" ,
+	      "randomValues" : "false"
+	  }
+    },
+    {
+      "tableName": "multiblocktest5",
+ 	   "dataPattern": {
+	      "coulmnsTypeList": [
+	         "TEXT"
+	         ], 
+	      "columnDelimiter": ",",
+          "columnMaxSize" : "1000",
+	      "dataSizeInMegaBytes": "5000" ,
+	      "randomValues" : "true"
+	  }
+    },
+    {
+      "tableName": "multiblocktest6",
+      "dataPattern": { 
+	      "coulmnsTypeList": [
+	        "BOOLEAN",
+	        "INTEGER",
+	        "TEXT",
+	        "NUMERIC"
+	      ],
+	      "columnDelimiter": ",",
+          "recordValues": "false,123456,abcdefghijklmnopqrstuvwxyz0123456789,09876543210987654321",
+	      "dataSizeInMegaBytes": "3000"
+	  }
+    },
+    {
+      "tableName": "multiblocktest7",
+      "dataPattern": { 
+	      "coulmnsTypeList": [
+	         "TEXT"
+	         ], 
+          "columnDelimiter": ",",
+    	  "dataSizeInMegaBytes": "4500",
+   		  "recordValues": "abcdefghijklmnopqrstuvwxyz0123456789"
+	  }
+    },
+    {
+      "tableName": "multiblocktest8",
+      "dataPattern": { 
+	      "coulmnsTypeList": [
+	        "BOOLEAN",
+	        "SMALLINT",
+	        "INTEGER",
+	        "BIGINT",
+	        "DOUBLE PRECISION",
+	        "REAL",
+	        "NUMERIC",
+	        "TEXT",
+	        "TIMESTAMP"
+	     	 ],
+	      "columnDelimiter": ",",
+	      "dataSizeInMegaBytes": "3000",
+    	  "recordValues": "true,32767,2147483647,9223372036854775807,1.7976931348623157E308,3.4028235E38,0123456789,abcdefghijklmnopqrstuvwxyz,2014-04-16 14:00:25.14"
+	  }
+    },
+    {
+      "tableName": "multiblocktest9", 
+      "dataPattern": { 
+	      "coulmnsTypeList": [
+	       "BOOLEAN",
+	        "SMALLINT",
+	        "INTEGER",
+	        "BIGINT",
+	        "DOUBLE PRECISION",
+	        "REAL",
+	        "NUMERIC",
+	        "TEXT",
+	        "TIMESTAMP"
+	       ],
+      	 "columnDelimiter": ",",
+      	 "dataSizeInMegaBytes": "6000",
+      	 "randomValues" : "true",
+      	 "columnMaxSize" : "30"
+	  }
+    },
+    {
+      "tableName": "multiblocktest10",   
+      "dataPattern": { 
+	      "coulmnsTypeList": [
+	        "BOOLEAN",
+	        "SMALLINT",
+	        "INTEGER",
+	        "BIGINT",
+	        "DOUBLE PRECISION",
+	        "REAL",
+	        "NUMERIC",
+	        "TEXT",
+	        "TIMESTAMP"
+	      ],
+     	  "columnDelimiter": ",",
+    	  "dataSizeInMegaBytes": "10000",
+    	  "randomValues" : "false",
+   		  "columnMaxSize" : "50"
+	  }
+    }
+  ]
+}
