@@ -9,8 +9,8 @@ import org.apache.hawq.pxf.api.utilities.Plugin;
  * Test class for regression tests.
  * The only thing this class does is to take received user data and
  * return it as the third column value on each readNextObject call.
- * The returned data has 3 columns delimited with DELIMITER property value.
- * First column - text, second column - int (counter), third column - text.
+ * The returned data has 4 columns delimited with DELIMITER property value.
+ * First column - text, second column - int (counter), third column - bool, fourth column - text.
  */
 public class UserDataVerifyAccessor extends Plugin implements ReadAccessor
 {
@@ -42,7 +42,7 @@ public class UserDataVerifyAccessor extends Plugin implements ReadAccessor
         }
 
         // Generate tuple with user data value as last column.
-        String data = firstColumn + userDelimiter +  new Integer(counter).toString() + userDelimiter +  userData;
+        String data = firstColumn + userDelimiter +  new Integer(counter).toString() + userDelimiter +  (counter % 2 == 0) + userDelimiter +  userData;
         String key = new Integer(counter).toString();
 
         counter++;

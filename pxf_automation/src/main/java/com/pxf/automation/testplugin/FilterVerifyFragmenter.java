@@ -5,6 +5,8 @@ import java.util.List;
 import org.apache.hawq.pxf.api.Fragment;
 import org.apache.hawq.pxf.api.Fragmenter;
 import org.apache.hawq.pxf.api.utilities.InputData;
+import org.apache.hawq.pxf.api.FilterParser;
+
 
 /**
  * Test class for regression tests.
@@ -13,6 +15,13 @@ import org.apache.hawq.pxf.api.utilities.InputData;
  */
 public class FilterVerifyFragmenter extends Fragmenter
 {
+    private static class TestFilterBuilder implements FilterParser.FilterBuilder {
+        public Object build(FilterParser.Operation operation, Object left, Object right) throws Exception {return new Object();};
+        public Object build(FilterParser.Operation operation, Object operand) throws Exception {return new Object();};
+        public Object build(FilterParser.LogicalOperation operation, Object left, Object right) throws Exception {return new Object();};
+        public Object build(FilterParser.LogicalOperation operation, Object filter) throws Exception {return new Object();};
+    }
+
     public FilterVerifyFragmenter(InputData input) {
         super(input);
     }
@@ -27,8 +36,14 @@ public class FilterVerifyFragmenter extends Fragmenter
     @Override
     public List<Fragment> getFragments() throws Exception {
 
-        String filter = (inputData.hasFilter() ?
-                inputData.getFilterString() : "No filter");
+        String filter = "No filter";
+
+        // Validate the filterstring by parsing using a dummy filterBuilder
+        if (inputData.hasFilter()) {
+            filter = inputData.getFilterString();
+            FilterParser parser = new FilterParser(new TestFilterBuilder());
+            parser.parse(filter.getBytes(FilterParser.DEFAULT_CHARSET));
+        }
 
         String [] hosts =  {"localhost" , "localhost" , "localhost"};
 

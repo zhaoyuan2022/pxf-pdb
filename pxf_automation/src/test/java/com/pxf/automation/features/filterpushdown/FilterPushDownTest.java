@@ -19,6 +19,7 @@ public class FilterPushDownTest extends BaseFeature {
         String newPath = "/tmp/publicstage/pxf";
         // copy additional plugins classes to cluster nodes, used for filter pushdown cases
         cluster.copyFileToNodes(new File("target/classes/" + testPackageLocation + "FilterVerifyFragmenter.class").getAbsolutePath(), newPath + testPackageLocation, true, false);
+        cluster.copyFileToNodes(new File("target/classes/" + testPackageLocation + "FilterVerifyFragmenter$TestFilterBuilder.class").getAbsolutePath(), newPath + testPackageLocation, true, false);
         cluster.copyFileToNodes(new File("target/classes/" + testPackageLocation + "UserDataVerifyAccessor.class").getAbsolutePath(), newPath + testPackageLocation, true, false);
         // add new path to classpath file and restart PXF service
         cluster.addPathToPxfClassPath(newPath);
@@ -43,6 +44,7 @@ public class FilterPushDownTest extends BaseFeature {
         ReadableExternalTable pxfExternalTable = new ReadableExternalTable("test_filter", new String[] {
                 "t0    text",
                 "a1    integer",
+                "b2    boolean",
                 "filterValue  text"
         }, "dummy_path","TEXT");
 
@@ -72,6 +74,7 @@ public class FilterPushDownTest extends BaseFeature {
         ReadableExternalTable pxfExternalTable = new ReadableExternalTable("test_filter", new String[] {
                 "t0    text",
                 "a1    integer",
+                "b2    boolean",
                 "filterValue  text"
         }, "dummy_path","TEXT");
 
@@ -101,6 +104,7 @@ public class FilterPushDownTest extends BaseFeature {
         ReadableExternalTable pxfExternalTable = new ReadableExternalTable("test_filter", new String[] {
                 "t0    text",
                 "a1    integer",
+                "b2    boolean",
                 "filterValue  text"
         }, "dummy_path","TEXT");
 

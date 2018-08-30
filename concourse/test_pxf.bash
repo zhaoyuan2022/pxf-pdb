@@ -3,7 +3,7 @@
 set -exo pipefail
 
 GPHOME="/usr/local/greenplum-db-devel"
-PXF_HOME="${GPHOME}/pxf"
+export PXF_HOME="${GPHOME}/pxf"
 CWDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source "${CWDIR}/pxf_common.bash"
 
