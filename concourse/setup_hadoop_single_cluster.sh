@@ -1,8 +1,10 @@
 #!/bin/bash -l
 
-export GPHD_ROOT="/home/centos/singlecluster-HDP"
-tar -xzf singlecluster-HDP.tar.gz
-sed 's/mdw/hadoop/' /home/centos/etc_hostfile >> /etc/hosts
+set -exo pipefail
+
+export GPHD_ROOT="/home/centos/singlecluster"
+
+sed -i 's/edw0/hadoop/' /etc/hosts
 sed -i -e "s/>tez/>mr/g" -e "s/localhost/${1}/g" ${GPHD_ROOT}/hive/conf/hive-site.xml
 sed -i -e "s/0.0.0.0/${1}/g" ${GPHD_ROOT}/hadoop/etc/hadoop/core-site.xml
 sed -i -e "s/0.0.0.0/${1}/g" ${GPHD_ROOT}/hadoop/etc/hadoop/hdfs-site.xml

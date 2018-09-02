@@ -30,7 +30,7 @@ function setup_hadoop_client() {
     cp /home/centos/{core,hdfs,mapred}-site.xml /etc/hadoop/conf/
 	cp /home/centos/hive-site.xml /etc/hive/conf
 	cp /home/centos/hbase-site.xml /etc/hbase/conf
-    sed 's/mdw/hadoop/' /home/centos/etc_hostfile >> /etc/hosts
+    sed -i -e 's/edw0/hadoop/' /etc/hosts
 }
 
 function _main() {

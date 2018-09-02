@@ -27,6 +27,11 @@ function setup_sshd() {
     sed -ri 's/UsePAM yes/UsePAM no/g;s/PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config
     sed -ri 's@^HostKey /etc/ssh/ssh_host_ecdsa_key$@#&@;s@^HostKey /etc/ssh/ssh_host_ed25519_key$@#&@' /etc/ssh/sshd_config
     service sshd start
+    passwd -u root
+    cp -R cluster_env_files/.ssh /root/.ssh
+    cp /root/.ssh/*.pem /root/.ssh/id_rsa
+    cp cluster_env_files/public_key.openssh /root/.ssh/authorized_keys
+    sed 's/edw0/hadoop/' cluster_env_files/etc_hostfile >> /etc/hosts
 }
 
 function configure_hdfs() {
@@ -35,12 +40,8 @@ function configure_hdfs() {
     sed -i -e "s/>tez/>mr/g" /etc/hive/conf/hive-site.xml
 }
 
-function ssh_access_to_gpdb() {
+function remote_access_to_gpdb() {
 
-    cp -R cluster_env_files/.ssh /root/.ssh
-    cat cluster_env_files/etc_hostfile >> /etc/hosts
-    sed 's/mdw/hadoop/' hdp_cluster_env_files/etc_hostfile >> /etc/hosts
-    gpdb_master=$( < cluster_env_files/etc_hostfile grep "mdw.*" | awk '{print $1}')
     ssh ${SSH_OPTS} gpadmin@mdw "source /usr/local/greenplum-db-devel/greenplum_path.sh && \
       export MASTER_DATA_DIRECTORY=/data/gpdata/master/gpseg-1 && \
       echo 'host all all 192.168.0.0/16 trust' >> /data/gpdata/master/gpseg-1/pg_hba.conf && \
@@ -48,18 +49,12 @@ function ssh_access_to_gpdb() {
       psql -d template1 -c 'CREATE DATABASE gpadmin;' && \
       psql -d template1 -c 'CREATE ROLE root LOGIN;' && \
       gpstop -u"
-    cp /root/.ssh/*.pem /root/.ssh/id_rsa
-    cp cluster_env_files/public_key.openssh /root/.ssh/authorized_keys
-    passwd -u root
 }
 
 function ssh_access_to_hadoop() {
 
-    { ssh-keyscan localhost; ssh-keyscan 0.0.0.0; ssh-keyscan hadoop; } >> /root/.ssh/known_hosts
-    HDP_SSH_OPTS="-i hdp_cluster_env_files/private_key.pem -o StrictHostKeyChecking=no "
-    scp ${HDP_SSH_OPTS} cluster_env_files/public_key.openssh centos@hadoop:/tmp
-    ssh ${HDP_SSH_OPTS} centos@hadoop "sudo mkdir -p /root/.ssh && \
-        sudo cp /tmp/public_key.openssh /root/.ssh/authorized_keys && \
+    ssh ${SSH_OPTS} centos@hadoop "sudo mkdir -p /root/.ssh && \
+        sudo cp /home/centos/.ssh/authorized_keys /root/.ssh && \
         sudo sed -i 's/PermitRootLogin no/PermitRootLogin yes/' /etc/ssh/sshd_config && \
         sudo service sshd restart"
 }
@@ -154,7 +149,7 @@ function _main() {
 
     setup_gpadmin_user
     setup_sshd
-    ssh_access_to_gpdb
+    remote_access_to_gpdb
     ssh_access_to_hadoop
     setup_local_gpdb
 

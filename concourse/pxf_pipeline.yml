@@ -1,23 +1,13 @@
 ccp_destroy_anchor: &ccp_destroy
   do:
-    - aggregate:
-      - put: terraform_gpdb
-        resource: terraform
-        params:
-          action: destroy
-          env_name_file: terraform_gpdb/name
-          terraform_source: ccp_src/google/
-        get_params:
-          action: destroy
-
-      - put: terraform_hdp
-        resource: terraform
-        params:
-          action: destroy
-          env_name_file: terraform_hdp/name
-          terraform_source: ccp_src/google/
-        get_params:
-          action: destroy
+  - put: terraform_gpdb
+    resource: terraform
+    params:
+      action: destroy
+      env_name_file: terraform_gpdb/name
+      terraform_source: ccp_src/google/
+    get_params:
+      action: destroy
 
 resource_types:
 - name: terraform
@@ -61,15 +51,6 @@ resources:
     bucket: {{pxf-aws-bucket-name}}
     key: pxf_artifacts/pxf_build_number
     region_name: {{aws-region}}
-    access_key_id: {{bucket-access-key-id}}
-    secret_access_key: {{bucket-secret-access-key}}
-
-- name: singlecluster-HDP
-  type: s3
-  source:
-    bucket: {{pxf-aws-bucket-name}}
-    region_name: {{aws-region}}
-    versioned_file: singlecluster/singlecluster-HDP.tar.gz
     access_key_id: {{bucket-access-key-id}}
     secret_access_key: {{bucket-secret-access-key}}
 
@@ -234,86 +215,46 @@ jobs:
     passed:
     - compile_pxf
     trigger: true
-  - get: singlecluster
-    resource: singlecluster-HDP
   - get: ccp-7
   - get: gpdb-pxf-dev-centos6-hdp-server
 
-  - aggregate:
-    - do:
-      - put: terraform_hdp
-        resource: terraform
-        params:
-          action: create
-          delete_on_failure: true
-          generate_random_name: true
-          terraform_source: ccp_src/google/
-          vars:
-            PLATFORM: centos7
-            number_of_nodes: 1
-            instance_type: n1-standard-4
-            ccp_reap_minutes: 240
-      - task: setup_hadoop_single_cluster
-        on_failure:
-          <<: *ccp_destroy
-        output_mapping: {cluster_env_files: hdp_cluster_env_files}
-        file: pxf_src/concourse/setup_hadoop.yml
-        image: ccp-7
-        params:
-          AWS_ACCESS_KEY_ID: {{tf-machine-access-key-id}}
-          AWS_SECRET_ACCESS_KEY: {{tf-machine-secret-access-key}}
-          AWS_DEFAULT_REGION: {{aws-region}}
-          BUCKET_PATH: {{tf-bucket-path}}
-          BUCKET_NAME: {{tf-bucket-name}}
-          IMPERSONATION: {{enable-impersonation-multinode}}
-          NO_OF_FILES: {{no_of_files}}
-    - do:
-      - put: terraform_gpdb
-        resource: terraform
-        params:
-          action: create
-          delete_on_failure: true
-          generate_random_name: true
-          terraform_source: ccp_src/google/
-          vars:
-            PLATFORM: centos7
-            number_of_nodes: {{number_of_gpdb_nodes}}
-            instance_type: n1-standard-4
-            ccp_reap_minutes: 240
-      - task: gen_gpdb_cluster
-        on_failure:
-          <<: *ccp_destroy
-        input_mapping:
-          terraform: terraform_gpdb
-        file: ccp_src/ci/tasks/gen_cluster.yml
-        params:
-          AWS_ACCESS_KEY_ID: {{tf-machine-access-key-id}}
-          AWS_SECRET_ACCESS_KEY: {{tf-machine-secret-access-key}}
-          AWS_DEFAULT_REGION: {{aws-region}}
-          BUCKET_PATH: {{tf-bucket-path}}
-          BUCKET_NAME: {{tf-bucket-name}}
-          PLATFORM: centos7
-          CLOUD_PROVIDER: google
-      - aggregate:
-        - task: intialize_greenplum
-          on_failure:
-            <<: *ccp_destroy
-          file: ccp_src/ci/tasks/gpinitsystem.yml
-        - task: install_hadoop_client
-          on_failure:
-            <<: *ccp_destroy
-          file: pxf_src/concourse/install_hadoop.yml
-          image: ccp-7
-
-  - task: setup_pxf
-    on_failure:
-      <<: *ccp_destroy
-    file: pxf_src/concourse/setup_pxf.yml
-    image: gpdb-pxf-dev-centos6-hdp-server
+  - put: terraform_gpdb
+    resource: terraform
     params:
-      IMPERSONATION: {{enable-impersonation-multinode}}
-      PXF_JVM_OPTS: {{pxf-jvm-opts}}
-  - task: test_multinode_pxf
+      action: create
+      delete_on_failure: true
+      generate_random_name: true
+      terraform_source: ccp_src/google/
+      vars:
+        PLATFORM: centos7
+        number_of_nodes: {{number_of_gpdb_nodes}}
+        extra_nodes: 1
+        segments_per_host: 4
+        instance_type: n1-standard-4
+        ccp_reap_minutes: 120
+  - task: gen_gpdb_cluster
+    input_mapping:
+      terraform: terraform_gpdb
+    file: ccp_src/ci/tasks/gen_cluster.yml
+    image: ccp-7
+    params:
+      AWS_ACCESS_KEY_ID: {{tf-machine-access-key-id}}
+      AWS_SECRET_ACCESS_KEY: {{tf-machine-secret-access-key}}
+      AWS_DEFAULT_REGION: {{aws-region}}
+      BUCKET_PATH: {{tf-bucket-path}}
+      BUCKET_NAME: {{tf-bucket-name}}
+      PLATFORM: centos7
+      CLOUD_PROVIDER: google
+  - aggregate:
+    - task: intialize_greenplum
+      file: ccp_src/ci/tasks/gpinitsystem.yml
+    - task: install_hadoop
+      file: pxf_src/concourse/install_hadoop.yml
+      image: gpdb-pxf-dev-centos6-hdp-server
+      params:
+        IMPERSONATION: {{enable-impersonation-multinode}}
+        PXF_JVM_OPTS: {{pxf-jvm-opts}}
+  - task: test_pxf_multinode
     on_success:
       <<: *ccp_destroy
     image: gpdb-pxf-dev-centos6-hdp-server

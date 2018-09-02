@@ -4,7 +4,6 @@ image_resource:
 inputs:
   - name: pxf_src
   - name: cluster_env_files
-  - name: hdp_cluster_env_files
   - name: gpdb_binary
   - name: pxf_tarball
 run:
