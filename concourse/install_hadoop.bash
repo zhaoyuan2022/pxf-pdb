@@ -35,6 +35,8 @@ function setup_pxf {
 function install_hadoop_single_cluster() {
 
     local hadoop_ip=${1}
+    tar -xzf pxf_tarball/pxf.tar.gz -C /tmp
+    cp /tmp/pxf/lib/pxf-hbase-*.jar /singlecluster/hbase/lib
     scp ${SSH_OPTS} cluster_env_files/etc_hostfile centos@edw0:
     scp ${SSH_OPTS} -rq /singlecluster centos@edw0:
     scp ${SSH_OPTS} pxf_src/concourse/setup_hadoop_single_cluster.sh centos@edw0:
