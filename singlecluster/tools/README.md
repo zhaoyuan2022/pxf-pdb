@@ -23,7 +23,7 @@ Cloudera has different Hadoop components packaged separately. The "downloadCDH.s
 To invoke the command:
 
 ```
-#CDH 5.10.2
+#CDH 5.12.2
 ./downloadCDH.sh
 ```
 

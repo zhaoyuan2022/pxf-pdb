@@ -44,7 +44,7 @@ resources:
       secret_access_key: {{bucket-secret-access-key}}
       bucket: {{pxf-aws-bucket-name}}
       region_name: {{aws-region}}
-      versioned_file: cloudera/CDH-5.10.2.tar.gz
+      versioned_file: cloudera/CDH-5.12.2.tar.gz
 
   - name: jdbc
     type: s3
@@ -81,6 +81,14 @@ resources:
       bucket: {{pxf-aws-bucket-name}}
       region_name: {{aws-region}}
       versioned_file: singlecluster/singlecluster-CDH.tar.gz
+
+  - name: pxf_infra_singlecluster
+    type: git
+    source:
+      branch: {{pxf_infra-git-branch}}
+      private_key: {{pxf_infra-git-key}}
+      uri: {{pxf_infra-git-remote}}
+      paths: [singlecluster/*]
 
   - name: dockerfile-gpdb-dev-centos6
     type: git
@@ -291,6 +299,8 @@ jobs:
       - get: gpdb-dev-centos6-image
         passed: [docker-gpdb-dev-centos6]
       - get: pxf_infra
+        resource: pxf_infra_singlecluster
+        trigger: true
     - task: package_singlecluster
       file: pxf_infra/singlecluster/package_singlecluster_cdh.yml
       image: gpdb-dev-centos6-image
@@ -308,6 +318,8 @@ jobs:
       - get: gpdb-dev-centos6-image
         passed: [docker-gpdb-dev-centos6]
       - get: pxf_infra
+        resource: pxf_infra_singlecluster
+        trigger: true
     - task: package_singlecluster
       file: pxf_infra/singlecluster/package_singlecluster_hdp.yml
       image: gpdb-dev-centos6-image
@@ -381,6 +393,7 @@ jobs:
       - get: singlecluster
         resource: singlecluster-CDH
         passed: [singlecluster_noarch_cdh]
+        trigger: true
     - put: gpdb-pxf-dev-centos6-cdh-server-image
       params:
         build: .
@@ -401,6 +414,7 @@ jobs:
       - get: singlecluster
         resource: singlecluster-HDP
         passed: [singlecluster_noarch_hdp]
+        trigger: true
     - put: gpdb-pxf-dev-centos6-hdp-server-image
       params:
         build: .

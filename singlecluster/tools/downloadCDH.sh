@@ -5,16 +5,16 @@ set -x
 
 server='http://archive.cloudera.com'
 tarballs=(
-  'hadoop-2.6.0-cdh5.10.2.tar.gz'
-  'hbase-1.2.0-cdh5.10.2.tar.gz'
-  'hive-1.1.0-cdh5.10.2.tar.gz'
-  'parquet-1.5.0-cdh5.10.2.tar.gz'
-  'parquet-format-2.1.0-cdh5.10.2.tar.gz'
-  'pig-0.12.0-cdh5.10.2.tar.gz'
-  'zookeeper-3.4.5-cdh5.10.2.tar.gz'
+  'hadoop-2.6.0-cdh5.12.2.tar.gz'
+  'hbase-1.2.0-cdh5.12.2.tar.gz'
+  'hive-1.1.0-cdh5.12.2.tar.gz'
+  'parquet-1.5.0-cdh5.12.2.tar.gz'
+  'parquet-format-2.1.0-cdh5.12.2.tar.gz'
+  'pig-0.12.0-cdh5.12.2.tar.gz'
+  'zookeeper-3.4.5-cdh5.12.2.tar.gz'
 )
 distro='cdh'
-version='5.10.2'
+version='5.12.2'
 major_version=$(echo $version| cut -c1)
 destination_dir=CDH-${version}
 

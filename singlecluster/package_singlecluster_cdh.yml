@@ -13,5 +13,5 @@ outputs:
 run:
   path: pxf_infra/singlecluster/singlecluster.bash
   args:
-    - "5.10.2"
+    - "5.12.2"
     - "CDH"
