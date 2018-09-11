@@ -1,0 +1,109 @@
+---
+resource_types:
+
+- name: terraform
+  type: docker-image
+  source:
+    repository: ljfranklin/terraform-resource
+
+- name: pull-request
+  type: docker-image
+  source:
+    repository: jtarchie/pr
+
+resources:
+
+- name: gpdb_src
+  type: git
+  source:
+    branch: {{gpdb-git-branch}}
+    uri: {{gpdb-git-remote}}
+
+- name: pxf_src
+  type: pull-request
+  source:
+    repo: greenplum-db/pxf
+    access_token: {{pxf-bot-access-token}}
+    private_key: {{pxf-git-key}}
+    uri: {{pxf-git-remote}}
+
+- name: gpdb-pxf-dev-centos6
+  type: docker-image
+  source:
+    repository: pivotaldata/gpdb-pxf-dev
+    tag: centos6
+
+- name: gpdb-pxf-dev-centos6-hdp-server
+  type: docker-image
+  source:
+    repository: pivotaldata/gpdb-pxf-dev
+    tag: centos6-hdp-server
+
+- name: bin_gpdb_centos6
+  type: s3
+  source:
+    access_key_id: {{bucket-access-key-id}}
+    bucket: {{icw_green_bucket}}
+    region_name: {{aws-region}}
+    secret_access_key: {{bucket-secret-access-key}}
+    versioned_file: bin_gpdb_centos6/gpdb_branch_((gpdb-branch))/icw_green/bin_gpdb.tar.gz
+
+jobs:
+
+- name: compile_pxf
+  plan:
+  - aggregate:
+    - get: gpdb_src
+    - get: pxf_src
+      trigger: true
+    - get: gpdb-pxf-dev-centos6
+  - put: pxf_src
+    params:
+      path: pxf_src
+      status: pending
+      context: $BUILD_JOB_NAME
+  - task: compile_pxf
+    image: gpdb-pxf-dev-centos6
+    file: pxf_src/concourse/compile_pxf.yml
+
+- name: test_pxf_hdp
+  plan:
+  - aggregate:
+    - get: bin_gpdb
+      resource: bin_gpdb_centos6
+    - get: gpdb_src
+      passed:
+      - compile_pxf
+    - get: pxf_src
+      passed:
+      - compile_pxf
+      trigger: true
+    - get: gpdb-pxf-dev-centos6-hdp-server
+  - task: test_pxf
+    image: gpdb-pxf-dev-centos6-hdp-server
+    config:
+      platform: linux
+      inputs:
+      - name: gpdb_src
+      - name: pxf_src
+      - name: bin_gpdb
+      params:
+        IMPERSONATION: true
+        TARGET_OS: centos
+        TARGET_OS_VERSION: 6
+        HADOOP_CLIENT: HDP
+        GROUP: gpdb,proxy
+      run:
+        path: pxf_src/concourse/test_pxf.bash
+    on_success:
+      put: pxf_src
+      params:
+        path: pxf_src
+        status: success
+        context: $BUILD_JOB_NAME
+    on_failure:
+      put: pxf_src
+      params:
+        path: pxf_src
+        status: failure
+        context: $BUILD_JOB_NAME

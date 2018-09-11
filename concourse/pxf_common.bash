@@ -65,6 +65,14 @@ function install_pxf_client() {
 	fi
 }
 
+function install_pxf_server() {
+	export BUILD_NUMBER="${TARGET_OS}"
+	export JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF8
+	pushd pxf_src/pxf
+	make install -s DATABASE=gpdb
+	popd
+}
+
 function add_jdbc_jar_to_pxf_public_classpath() {
 	local singlecluster=${1}
 

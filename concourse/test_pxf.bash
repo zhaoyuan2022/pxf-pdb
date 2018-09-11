@@ -45,36 +45,36 @@ function setup_singlecluster() {
 			pushd ${hdfsrepo}/hadoop/etc/hadoop
 			cat > proxy-config.xml <<-EOF
 			<property>
-			    <name>hadoop.proxyuser.gpadmin.hosts</name>
-			    <value>*</value>
-		 	</property>
-		 	<property>
-			    <name>hadoop.proxyuser.gpadmin.groups</name>
-			    <value>*</value>
-		 	</property>
-		 	<property>
-			    <name>hadoop.security.authorization</name>
-			    <value>true</value>
+				<name>hadoop.proxyuser.gpadmin.hosts</name>
+				<value>*</value>
 			</property>
 			<property>
-			    <name>hbase.security.authorization</name>
-			    <value>true</value>
+				<name>hadoop.proxyuser.gpadmin.groups</name>
+				<value>*</value>
 			</property>
 			<property>
-			    <name>hbase.rpc.protection</name>
-			    <value>authentication</value>
+				<name>hadoop.security.authorization</name>
+				<value>true</value>
 			</property>
 			<property>
-			    <name>hbase.coprocessor.master.classes</name>
-			    <value>org.apache.hadoop.hbase.security.access.AccessController</value>
+				<name>hbase.security.authorization</name>
+				<value>true</value>
 			</property>
 			<property>
-			    <name>hbase.coprocessor.region.classes</name>
-			    <value>org.apache.hadoop.hbase.security.access.AccessController,org.apache.hadoop.hbase.security.access.SecureBulkLoadEndpoint</value>
+				<name>hbase.rpc.protection</name>
+				<value>authentication</value>
 			</property>
 			<property>
-			    <name>hbase.coprocessor.regionserver.classes</name>
-			    <value>org.apache.hadoop.hbase.security.access.AccessController</value>
+				<name>hbase.coprocessor.master.classes</name>
+				<value>org.apache.hadoop.hbase.security.access.AccessController</value>
+			</property>
+			<property>
+				<name>hbase.coprocessor.region.classes</name>
+				<value>org.apache.hadoop.hbase.security.access.AccessController,org.apache.hadoop.hbase.security.access.SecureBulkLoadEndpoint</value>
+			</property>
+			<property>
+				<name>hbase.coprocessor.regionserver.classes</name>
+				<value>org.apache.hadoop.hbase.security.access.AccessController</value>
 			</property>
 			EOF
 			sed -i -e '/<configuration>/r proxy-config.xml' core-site.xml
@@ -150,20 +150,29 @@ function _main() {
 	# Reserve port 5888 for PXF service
 	echo "pxf             5888/tcp               # PXF Service" >> /etc/services
 
+	# Install GPDB
 	time install_gpdb
 	source ${GPHOME}/greenplum_path.sh
-	time install_pxf_client
 	time setup_gpadmin_user
 
-	# untar pxf server only if necessary
-	if [ -d ${PXF_HOME} ]; then
-		echo "Skipping pxf_tarball..."
+	# Install PXF Client
+	#time install_pxf_client
+
+	# Install PXF Server
+	if [ -d pxf_tarball ]; then
+		# untar pxf server only if necessary
+		if [ -d ${PXF_HOME} ]; then
+			echo "Skipping pxf_tarball..."
+		else
+			tar -xzf pxf_tarball/pxf.tar.gz -C ${GPHOME}
+		fi
 	else
-		tar -xzf pxf_tarball/pxf.tar.gz -C ${GPHOME}
+		time install_pxf_server
 	fi
 	chown -R gpadmin:gpadmin ${GPHOME}/pxf
 
-	# setup hadoop before making GPDB cluster to use system python for yum install
+	# Install Hadoop and Hadoop Client
+	# Doing this before making GPDB cluster to use system python for yum install
 	time setup_singlecluster /singlecluster
 	time setup_hadoop_client /singlecluster
 
@@ -172,9 +181,12 @@ function _main() {
 	time make_cluster
 	time add_user_access "testuser"
 	time start_pxf_server
+
 	# Let's make sure that pxf_automation/singlecluster directories are writeable
 	chmod a+w pxf_src/pxf_automation /singlecluster
 	find pxf_src/pxf_automation/tinc* -type d -exec chmod a+w {} \;
+
+	# Run Tests
 	time run_regression_test
 	if [ -n "${GROUP}" ]; then
 		time run_pxf_automation /singlecluster
