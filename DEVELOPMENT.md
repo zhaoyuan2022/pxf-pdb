@@ -1,5 +1,15 @@
 # Developing PXF
 
+## IntelliJ Setup
+
+- Start IntelliJ. Click "Open" and select the directory to which you cloned the `pxf` repo.
+- Select `File > Project Structure`.
+- Make sure you have a JDK selected.
+- In the `Project Settings > Modules` section, import two modules for the `pxf/pxf` and `pxf/pxf_automation` directories. The first time you'll get an error saying that there's
+no JDK set for Gradle. Just cancel and retry. It goes away the second time.
+- Restart IntelliJ
+- Check that it worked by running a test (Cmd+O)
+
 ## Docker Setup
 
 To start, ensure you have a `~/workspace` directory and have cloned the `gpdb` and `pxf` projects.
@@ -55,7 +65,7 @@ Inside the container, configure the Hadoop cluster to allow
 
 Run the script below:
 
-```bash 
+```bash
 /home/gpadmin/pxf/dev/configure_singlecluster.bash
 ```
 
@@ -136,4 +146,21 @@ export PG_MODE=GPDB
 make GROUP=gpdb
 
 make TEST=HdfsSmokeTest # Run specific tests
+```
+
+### Make Changes to PXF
+
+To deploy your changes to PXF in the development environment.
+
+```bash
+# $PXF_HOME folder is replaced each time you make install.
+# So, if you have any config changes, you may want to back those up.
+$PXF_HOME/bin/pxf stop
+make -C /home/gpadmin/pxf/pxf clean install DATABASE=gpdb
+
+rm -rf /usr/local/gpdb/pxf/pxf-service
+$PXF_HOME/bin/pxf init
+
+# Make any config changes you had backed up previously
+$PXF_HOME/bin/pxf start
 ```
