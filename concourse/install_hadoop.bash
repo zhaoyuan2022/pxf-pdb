@@ -64,7 +64,7 @@ function update_pghba_and_restart_gpdb() {
 
 function _main() {
 
-	cp -R cluster_env_files/.ssh /root/.ssh
+	cp -R cluster_env_files/.ssh/* /root/.ssh
     gpdb_nodes=$( < cluster_env_files/etc_hostfile grep -e "sdw\|mdw" | awk '{print $1}')
     gpdb_segments=$( < cluster_env_files/etc_hostfile grep -e "sdw" | awk '{print $1}')
 
