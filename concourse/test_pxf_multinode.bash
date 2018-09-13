@@ -20,17 +20,12 @@ function setup_gpadmin_user() {
 
 function setup_sshd() {
 
-    ssh-keygen -f /etc/ssh/ssh_host_key -N '' -t rsa1
-    ssh-keygen -f /etc/ssh/ssh_host_rsa_key -N '' -t rsa
-    ssh-keygen -f /etc/ssh/ssh_host_dsa_key -N '' -t dsa
-    sed -i -e 's|Defaults    requiretty|#Defaults    requiretty|' /etc/sudoers
-    sed -ri 's/UsePAM yes/UsePAM no/g;s/PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config
-    sed -ri 's@^HostKey /etc/ssh/ssh_host_ecdsa_key$@#&@;s@^HostKey /etc/ssh/ssh_host_ed25519_key$@#&@' /etc/ssh/sshd_config
     service sshd start
     passwd -u root
-    cp -R cluster_env_files/.ssh /root/.ssh
-    cp /root/.ssh/*.pem /root/.ssh/id_rsa
-    cp cluster_env_files/public_key.openssh /root/.ssh/authorized_keys
+    /bin/cp -Rf cluster_env_files/.ssh/* /root/.ssh
+    /bin/cp -f cluster_env_files/private_key.pem /root/.ssh/id_rsa
+    /bin/cp -f cluster_env_files/public_key.pem /root/.ssh/id_rsa.pub
+    /bin/cp -f cluster_env_files/public_key.openssh /root/.ssh/authorized_keys
     sed 's/edw0/hadoop/' cluster_env_files/etc_hostfile >> /etc/hosts
 }
 

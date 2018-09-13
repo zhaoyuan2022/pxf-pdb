@@ -19,7 +19,7 @@
 	</property>
 	<property>
 		<name>hive.execution.engine</name>
-		<value>tez</value>
+		<value>mr</value>
 		<description>Chooses execution engine. Options are: mr(default), tez, or spark</description>
 	</property>
 	<property>

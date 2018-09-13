@@ -113,9 +113,6 @@ copy_templates: $(TEMPLATES)
 	cp -r $(TEMPLATESROOT)/conf $(BUILDROOT)
 
 	-find $(BUILDROOT) -iname "*~" | xargs rm -f
-	if [ "$(HADOOP_DISTRO)" == "CDH" ]; then \
-		cat $(TEMPLATESROOT)/hive/conf/hive-site.xml | sed "s/<value>tez<\/value>/<value>mr<\/value>/" > $(BUILDROOT)/hive/conf/hive-site.xml;\
-	fi
 
 .PHONY: copy_docs
 copy_docs: $(DOCSROOT)/README.txt
