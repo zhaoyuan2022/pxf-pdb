@@ -7,29 +7,34 @@ fly -t ud set-pipeline -p gpdb_pxf_docker-images \
 # Deploy production PXF pipelines
 The following commands would create two PXF pipelines - one for **gpdb_master** and the other for **5X_STABLE**
 ```
-fly -t ud set-pipeline -p dev:pxf_oss_master -c ./pxf_pipeline.yml \
+fly -t ud set-pipeline -p pxf_master -c ./pxf_pipeline.yml \
     -l ~/workspace/continuous-integration/secrets/gpdb_common-ci-secrets.yml \
     -l ~/workspace/continuous-integration/secrets/gpdb_master-ci-secrets.yml \
-    -l default.yml -v folder-prefix=prod/gpdb_branch -v test-env= \
+    -l ~/workspace/continuous-integration/secrets/pxf-secrets.yml \
+    -v folder-prefix=prod/gpdb_branch \
+    -v test-env= \
     -l pxf-multinode-params.yml \
     -l ~/workspace/continuous-integration/secrets/ccp_ci_secrets_ud.yml \
     -v gpdb-branch=master -v icw_green_bucket=gpdb5-assert-concourse-builds
+
 ```
 
 ```
-fly -t ud set-pipeline -p dev:pxf_oss_5X_STABLE -c ./pxf_pipeline.yml \
+fly -t ud set-pipeline -p pxf_5X_STABLE -c ./pxf_pipeline.yml \
     -l ~/workspace/continuous-integration/secrets/gpdb_common-ci-secrets.yml \
     -l ~/workspace/continuous-integration/secrets/gpdb_5X_STABLE-ci-secrets.yml \
-    -l default.yml -v folder-prefix=prod/gpdb_branch -v test-env= \
+    -l ~/workspace/continuous-integration/secrets/pxf-secrets.yml \
+    -v folder-prefix=prod/gpdb_branch \
+    -v test-env= \
     -l pxf-multinode-params.yml \
     -l ~/workspace/continuous-integration/secrets/ccp_ci_secrets_ud.yml \
-    -v gpdb-branch=5X_STABLE -v icw_green_bucket=gpdb5-assert-concourse-builds
+    -v gpdb-branch=5X_STABLE -v icw_green_bucket=gpdb5-stable-concourse-builds
 ```
 
 # Deploy the pull-request pipeline
 
 ```
-fly -t ud set-pipeline -p dev:pxf_oss_pr \
+fly -t ud set-pipeline -p pxf_pr \
     -c ./pxf_pr_pipeline.yml \
     -l ~/workspace/continuous-integration/secrets/gpdb_common-ci-secrets.yml \
     -l ~/workspace/continuous-integration/secrets/gpdb_master-ci-secrets.yml \
