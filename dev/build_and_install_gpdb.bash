@@ -1,7 +1,7 @@
 #!/bin/bash
 
 source /opt/gcc_env.sh # set the compiler to gcc6.2, for C++11 support
-cd /home/gpadmin/gpdb
+cd /home/gpadmin/greenplum-db-devel
 make clean
 ./configure \
   --enable-debug \
@@ -9,8 +9,7 @@ make clean
   --with-python \
   --with-libxml \
   --disable-orca \
-  --prefix=/usr/local/gpdb
-# TODO: Change prefix to greenplum-db-devel, as that directory already exists on the container
+  --prefix=/usr/local/greenplum-db-devel
 make -j8
 make install
 

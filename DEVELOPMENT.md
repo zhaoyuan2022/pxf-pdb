@@ -15,7 +15,12 @@ no JDK set for Gradle. Just cancel and retry. It goes away the second time.
 To start, ensure you have a `~/workspace` directory and have cloned the `gpdb` and `pxf` projects.
 (The name `workspace` is not strictly required but will be used throughout this guide.)
 
-NOTE: Since the docker container all Single cluster Hadoop, Greenplum and PXF, we recommend that you have atleast 6GB memory allocated to Docker. This memory setting is available under docker preferences.
+Alternatively, you may create a symlink to your existing repo folder.
+```bash
+ln -s ~/<git_repos_root> ~/workspace
+```
+
+NOTE: Since the docker container all Single cluster Hadoop, Greenplum and PXF, we recommend that you have atleast 4 cpus and 6GB memory allocated to Docker. These settings are available under docker preferences.
 
 ```bash
 mkdir -p ~/workspace
@@ -50,29 +55,25 @@ You'll end up with a directory structure like this:
 Run the docker container:
 
 ```bash
-docker run -it \
+docker run --rm -it \
+  -w /home/gpadmin \
   -v ~/workspace/gpdb:/home/gpadmin/gpdb \
   -v ~/workspace/pxf:/home/gpadmin/pxf \
   -v ~/workspace/singlecluster-HDP:/singlecluster \
   pivotaldata/gpdb-dev:centos6 /bin/bash
 ```
 
-### Configure Hadoop
-
-Inside the container, configure the Hadoop cluster to allow
-[user impersonation](https://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-common/Superusers.html)
-(this allows the `gpadmin` user to access hadoop data).
-
-Run the script below:
-
-```bash
-/home/gpadmin/pxf/dev/configure_singlecluster.bash
-```
-
-### Build and Install GPDB
+### Build GPDB
 
 ```bash
 /home/gpadmin/pxf/dev/build_and_install_gpdb.bash
+```
+
+
+### Install GPDB
+
+```bash
+/home/gpadmin/gpdb/make -j4 install
 ```
 
 ### Start `sshd`
@@ -102,13 +103,32 @@ make -C /home/gpadmin/gpdb create-demo-cluster
 source /home/gpadmin/gpdb/gpAux/gpdemo/gpdemo-env.sh
 ```
 
-### Set up Hadoop Services
+### Configure Hadoop
+
+Inside the container, configure the Hadoop cluster to allow
+[user impersonation](https://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-common/Superusers.html)
+(this allows the `gpadmin` user to access hadoop data).
+
+Run the script below:
+
+```bash
+/home/gpadmin/pxf/dev/configure_singlecluster.bash
+```
+
+### Setup and start HDFS
 
 ```bash
 pushd /singlecluster/bin
 echo y | ./init-gphd.sh
-./start-zookeeper.sh
 ./start-hdfs.sh
+popd
+```
+
+### Start up Other Hadoop Services
+
+```bash
+pushd /singlecluster/bin
+./start-zookeeper.sh
 # Starting yarn may fail if HDFS is not up yet. Retry until it succeeds.
 ./start-yarn.sh
 ./start-hive.sh
@@ -141,11 +161,12 @@ psql -d template1 -c "create extension pxf"
 ### Run PXF Tests
 
 ```bash
-cd /home/gpadmin/pxf/pxf_automation
+pushd /home/gpadmin/pxf/pxf_automation
 export PG_MODE=GPDB
 make GROUP=gpdb
 
 make TEST=HdfsSmokeTest # Run specific tests
+popd
 ```
 
 ### Make Changes to PXF
@@ -158,9 +179,11 @@ To deploy your changes to PXF in the development environment.
 $PXF_HOME/bin/pxf stop
 make -C /home/gpadmin/pxf/pxf clean install DATABASE=gpdb
 
-rm -rf /usr/local/gpdb/pxf/pxf-service
+rm -rf /usr/local/greenplum-db-devel/pxf/logs/*
+rm -rf /usr/local/greenplum-db-devel/pxf/pxf-service
 $PXF_HOME/bin/pxf init
 
 # Make any config changes you had backed up previously
 $PXF_HOME/bin/pxf start
 ```
+
