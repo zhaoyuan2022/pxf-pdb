@@ -52,42 +52,23 @@ fly -t ud set-pipeline -p pxf_pr \
 Dev pipelines can be deployed with an optional feature name
 ```
 ./deploy dev master
-Deploying dev:pxf_username pipeline with custom values from .username.yml ...
-fly -t ud set-pipeline -p dev:pxf_username -c ./pxf_pipeline.yml \
-    -l ~/workspace/continuous-integration/secrets/gpdb_common-ci-secrets.yml \
-    -l ~/workspace/continuous-integration/secrets/gpdb_master-ci-secrets.yml \
-    -l .username.yml -v prefix=dev/username
 ```
+
 ```
 ./deploy dev master feature-foo
-Deploying dev:pxf_username-feature-foo pipeline with custom values from .username-feature-foo.yml ...
-fly -t ud set-pipeline -p dev:pxf_username-feature-foo -c ./pxf_pipeline.yml \
-    -l ~/workspace/continuous-integration/secrets/gpdb_common-ci-secrets.yml \
-    -l ~/workspace/continuous-integration/secrets/gpdb_master-ci-secrets.yml \
-    -l .username-feature-foo.yml -v prefix=dev/username-feature-foo
 ```
 To deploy dev pipeline against gpdb 5X_STABLE branch, use:
 ```
 ./deploy dev 5x
-Deploying dev:pxf_username pipeline with custom values from .username.yml ...
-fly -t ud set-pipeline -p dev:pxf_username -c ./pxf_pipeline.yml \
-    -l ~/workspace/continuous-integration/secrets/gpdb_common-ci-secrets.yml \
-    -l ~/workspace/continuous-integration/secrets/gpdb_5X_STABLE-ci-secrets.yml \
-    -l .username.yml -v prefix=dev/username
 ```
 ```
 ./deploy dev 5x feature-foo
-Deploying dev:pxf_username-feature-foo pipeline with custom values from .username-feature-foo.yml ...
-fly -t ud set-pipeline -p dev:pxf_username-feature-foo -c ./pxf_pipeline.yml \
-    -l ~/workspace/continuous-integration/secrets/gpdb_common-ci-secrets.yml \
-    -l ~/workspace/continuous-integration/secrets/gpdb_5X_STABLE-ci-secrets.yml \
-    -l .username-feature-foo.yml -v prefix=dev/username-feature-foo
 ```
 
 The master and 5X pipelines are exposed. Here are the commands to expose the pipelines, similar to the GPDB pipelines. The pipelines are currently located at https://ud.ci.gpdb.pivotal.io/
 ```
-fly -t ud expose-pipeline -p gpdb_pxf_master
-fly -t ud expose-pipeline -p gpdb_pxf_5X_STABLE
+fly -t ud expose-pipeline -p pxf_master
+fly -t ud expose-pipeline -p pxf_5X_STABLE
 ```
 
 ###Visual VM Debugging
