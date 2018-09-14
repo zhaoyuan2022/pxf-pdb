@@ -8,7 +8,7 @@ groupadd supergroup && usermod -a -G supergroup gpadmin
 export PS1="[\u@\h \W]\$ "
 source /opt/rh/devtoolset-6/enable
 export JAVA_HOME=/etc/alternatives/java_sdk
-source /usr/local/gpdb/greenplum_path.sh
+source /usr/local/greenplum-db-devel/greenplum_path.sh
 source /home/gpadmin/gpdb/gpAux/gpdemo/gpdemo-env.sh
 EOF
 
@@ -22,7 +22,7 @@ echo -e "password\npassword" | passwd gpadmin 2> /dev/null
 { ssh-keyscan localhost; ssh-keyscan 0.0.0.0; } >> /home/gpadmin/.ssh/known_hosts
 chown -R gpadmin:gpadmin /home/gpadmin/.ssh
 
-chown -R gpadmin:gpadmin /usr/local/gpdb
+chown -R gpadmin:gpadmin /usr/local/greenplum-db-devel
 
 # TODO: check if gpadmin-limits.conf already exists and bail out if it does
 >/etc/security/limits.d/gpadmin-limits.conf cat <<-EOF
@@ -34,7 +34,7 @@ EOF
 >>/home/gpadmin/.bash_profile cat <<EOF
 source ~/gpdb/gpAux/gpdemo/gpdemo-env.sh
 export HADOOP_ROOT=/singlecluster
-export PXF_HOME=/usr/local/gpdb/pxf
+export PXF_HOME=/usr/local/greenplum-db-devel/pxf
 export GPHD_ROOT=/singlecluster
 export BUILD_PARAMS="-x test"
 export LANG=en_US.UTF-8
