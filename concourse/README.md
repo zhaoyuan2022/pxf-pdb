@@ -38,7 +38,6 @@ fly -t ud set-pipeline -p pxf_pr \
     -c ./pxf_pr_pipeline.yml \
     -l ~/workspace/continuous-integration/secrets/gpdb_common-ci-secrets.yml \
     -l ~/workspace/continuous-integration/secrets/gpdb_master-ci-secrets.yml \
-    -l .pivotal-default.yml \
     -l pxf-multinode-params.yml \
     -l ~/workspace/continuous-integration/secrets/ccp_ci_secrets_ud.yml \
     -l ~/workspace/continuous-integration/secrets/pxf-secrets.yml \

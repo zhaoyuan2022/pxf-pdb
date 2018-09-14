@@ -39,14 +39,18 @@ resources:
     repository: pivotaldata/gpdb-pxf-dev
     tag: centos6-hdp-server
 
-- name: bin_gpdb_centos6
-  type: s3
+- name: centos-gpdb-dev-6
+  type: docker-image
   source:
-    access_key_id: {{bucket-access-key-id}}
-    bucket: {{icw_green_bucket}}
-    region_name: {{aws-region}}
-    secret_access_key: {{bucket-secret-access-key}}
-    versioned_file: bin_gpdb_centos6/gpdb_branch_((gpdb-branch))/icw_green/bin_gpdb.tar.gz
+    repository: pivotaldata/centos-gpdb-dev
+    tag: '6-gcc6.2-llvm3.7'
+
+- name: gpaddon_src
+  type: git
+  source:
+    branch: {{gpaddon-git-branch}}
+    private_key: {{gpaddon-git-key}}
+    uri: {{gpaddon-git-remote}}
 
 jobs:
 
@@ -69,8 +73,6 @@ jobs:
 - name: test_pxf_hdp
   plan:
   - aggregate:
-    - get: bin_gpdb
-      resource: bin_gpdb_centos6
     - get: gpdb_src
       passed:
       - compile_pxf
@@ -78,9 +80,42 @@ jobs:
       passed:
       - compile_pxf
       trigger: true
+    - get: gpaddon_src
+    - get: centos-gpdb-dev-6
     - get: gpdb-pxf-dev-centos6-hdp-server
+
+  # Build the open-source GPDB code
+  - task: sync_tools
+    file: gpdb_src/concourse/tasks/sync_tools.yml
+    image: centos-gpdb-dev-6
+    params:
+      IVYREPO_HOST: {{ivyrepo_host}}
+      IVYREPO_REALM: {{ivyrepo_realm}}
+      IVYREPO_USER: {{ivyrepo_user}}
+      IVYREPO_PASSWD: {{ivyrepo_passwd}}
+      TARGET_OS: centos
+      TARGET_OS_VERSION: 6
+      TASK_OS: centos
+      TASK_OS_VERSION: 6
+  - task: compile_gpdb
+    file: gpdb_src/concourse/tasks/compile_gpdb.yml
+    image: centos-gpdb-dev-6
+    params:
+      TARGET_OS: centos
+      TARGET_OS_VERSION: 6
+      CONFIGURE_FLAGS: {{configure_flags}}
+    on_failure:
+      put: pxf_src
+      params:
+        path: pxf_src
+        status: failure
+        context: $BUILD_JOB_NAME
+    timeout: 30m
+
   - task: test_pxf
     image: gpdb-pxf-dev-centos6-hdp-server
+    input_mapping:
+      bin_gpdb: gpdb_artifacts
     config:
       platform: linux
       inputs:
@@ -107,3 +142,4 @@ jobs:
         path: pxf_src
         status: failure
         context: $BUILD_JOB_NAME
+    timeout: 2h
