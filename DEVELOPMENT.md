@@ -30,11 +30,7 @@ git clone https://github.com/greenplum-db/gpdb.git
 git clone https://github.com/greenplum-db/pxf.git
 ```
 
-You must also download and untar the `singlecluster-HDP.tar.gz` file, which contains everything needed to run Hadoop.
-
-[Download the file from S3](https://s3-us-west-2.amazonaws.com/pivotal-public/singlecluster-HDP.tar.gz).
-
-Untar it:
+You must also [download from S3](https://s3-us-west-2.amazonaws.com/pivotal-public/singlecluster-HDP.tar.gz) and untar the `singlecluster-HDP.tar.gz` file, which contains everything needed to run Hadoop.
 
 ```bash
 mv singlecluster-HDP.tar.gz ~/workspace/
@@ -56,6 +52,12 @@ Run the docker container:
 
 ```bash
 docker run --rm -it \
+  -p 5005:5005 \
+  -p 5432:5432 \
+  -p 5888:5888 \
+  -p 8020:8020 \
+  -p 9090:9090 \
+  -p 50070:50070 \
   -w /home/gpadmin \
   -v ~/workspace/gpdb:/home/gpadmin/gpdb \
   -v ~/workspace/pxf:/home/gpadmin/pxf \
@@ -73,7 +75,9 @@ docker run --rm -it \
 ### Install GPDB
 
 ```bash
-/home/gpadmin/gpdb/make -j4 install
+pushd /home/gpadmin/gpdb
+make -j4 install
+popd
 ```
 
 ### Start `sshd`
