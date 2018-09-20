@@ -187,7 +187,7 @@ function _main() {
 	find pxf_src/automation/tinc* -type d -exec chmod a+w {} \;
 
 	# Run Tests
-	time run_regression_test
+#	time run_regression_test
 	if [ -n "${GROUP}" ]; then
 		time run_pxf_automation /singlecluster
 	fi
