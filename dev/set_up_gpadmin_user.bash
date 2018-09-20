@@ -3,15 +3,6 @@
 groupadd -g 1000 gpadmin && useradd -u 1000 -g 1000 gpadmin
 echo "gpadmin  ALL=(ALL)       NOPASSWD: ALL" > /etc/sudoers.d/gpadmin
 groupadd supergroup && usermod -a -G supergroup gpadmin
-
->>/home/gpadmin/.bash_profile cat <<EOF
-export PS1="[\u@\h \W]\$ "
-source /opt/rh/devtoolset-6/enable
-export JAVA_HOME=/etc/alternatives/java_sdk
-source /usr/local/greenplum-db-devel/greenplum_path.sh
-source /home/gpadmin/gpdb/gpAux/gpdemo/gpdemo-env.sh
-EOF
-
 chown gpadmin:gpadmin /home/gpadmin
 
 # set up ssh
@@ -32,10 +23,11 @@ gpadmin soft nofile 65536
 EOF
 
 >>/home/gpadmin/.bash_profile cat <<EOF
-source ~/gpdb/gpAux/gpdemo/gpdemo-env.sh
-export HADOOP_ROOT=/singlecluster
+export PS1="[\u@\h \W]\$ "
+source /opt/rh/devtoolset-6/enable
+export HADOOP_ROOT=~/workspace/singlecluster
 export PXF_HOME=/usr/local/greenplum-db-devel/pxf
-export GPHD_ROOT=/singlecluster
+export GPHD_ROOT=~/workspace/singlecluster
 export BUILD_PARAMS="-x test"
 export LANG=en_US.UTF-8
 export JAVA_HOME=/etc/alternatives/java_sdk
