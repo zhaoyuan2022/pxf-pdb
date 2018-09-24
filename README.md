@@ -180,6 +180,7 @@ psql -d template1 -c "create extension pxf"
 ```
 
 ### Run PXF Tests
+All tests use a database named `pxfautomation`.
 ```bash
 pushd ~/workspace/pxf/automation
 
