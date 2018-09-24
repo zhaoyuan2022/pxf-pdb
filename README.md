@@ -116,7 +116,7 @@ Configure, build and install GPDB. This will be needed only when you use the con
 
 For subsequent minor changes to gpdb source you can simply do the following
 ```bash
-pushd ~/worksapce/gpdb
+pushd ~/workspace/gpdb
 make -j4 install
 popd
 
