@@ -47,6 +47,30 @@ fly -t ud set-pipeline -p pxf_pr \
     -v icw_green_bucket=gpdb5-assert-concourse-builds
 ```
 
+# Deploy the performance pipeline
+
+```
+fly -t ud set-pipeline -p pxf_perf -c ./perf_pipeline.yml \
+    -l ~/workspace/continuous-integration/secrets/gpdb_common-ci-secrets.yml \
+    -l ~/workspace/continuous-integration/secrets/gpdb_master-ci-secrets.yml \
+    -l ~/workspace/continuous-integration/secrets/pxf-secrets.yml \
+    -l ~/workspace/continuous-integration/secrets/ccp_ci_secrets_ud.yml \
+    -l ./perf-settings.yml \
+    -v gpdb-branch=master -v icw_green_bucket=gpdb5-assert-concourse-builds \
+    -v pxf-git-branch=master
+```
+
+```
+fly -t ud set-pipeline -p pxf_perf-<DEV-BRANCH> -c ./perf_pipeline.yml \
+    -l ~/workspace/continuous-integration/secrets/gpdb_common-ci-secrets.yml \
+    -l ~/workspace/continuous-integration/secrets/gpdb_master-ci-secrets.yml \
+    -l ~/workspace/continuous-integration/secrets/pxf-secrets.yml \
+    -l ~/workspace/continuous-integration/secrets/ccp_ci_secrets_ud.yml \
+    -l ./perf-settings.yml \
+    -v gpdb-branch=master -v icw_green_bucket=gpdb5-assert-concourse-builds \
+    -v pxf-git-branch=<DEV-BRANCH>
+```
+
 # Deploy development PXF pipelines
 Dev pipelines can be deployed with an optional feature name
 ```
