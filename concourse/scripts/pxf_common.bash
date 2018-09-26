@@ -57,7 +57,7 @@ function remote_access_to_gpdb() {
     cp cluster_env_files/.ssh/*.pem /home/gpadmin/.ssh/id_rsa
     cp cluster_env_files/public_key.openssh /home/gpadmin/.ssh/authorized_keys
     { ssh-keyscan localhost; ssh-keyscan 0.0.0.0; } >> /home/gpadmin/.ssh/known_hosts
-    ssh ${SSH_OPTS} gpadmin@mdw "source /usr/local/greenplum-db-devel/greenplum_path.sh && \
+    ssh ${SSH_OPTS} gpadmin@mdw "source ${GPHOME}/greenplum_path.sh && \
       export MASTER_DATA_DIRECTORY=/data/gpdata/master/gpseg-1 && \
       echo 'host all all 10.0.0.0/16 trust' >> /data/gpdata/master/gpseg-1/pg_hba.conf && \
       psql -d template1 -c 'CREATE EXTENSION pxf;' && \
@@ -69,7 +69,7 @@ function remote_access_to_gpdb() {
 
 function create_gpdb_cluster() {
 	pushd gpdb_src/gpAux/gpdemo
-	su gpadmin -c "make create-demo-cluster"
+	su gpadmin -c "source ${GPHOME}/greenplum_path.sh && make create-demo-cluster"
 	popd
 }
 

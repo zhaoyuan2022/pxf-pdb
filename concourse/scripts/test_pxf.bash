@@ -5,7 +5,7 @@ set -exo pipefail
 CWDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source "${CWDIR}/pxf_common.bash"
 
-export GPHOME=${GPHOME:"/usr/local/greenplum-db-devel"}
+export GPHOME=${GPHOME:-"/usr/local/greenplum-db-devel"}
 export PXF_HOME="${GPHOME}/pxf"
 
 function run_pxf_automation() {
