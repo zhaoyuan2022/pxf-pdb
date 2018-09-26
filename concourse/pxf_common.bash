@@ -1,5 +1,11 @@
 #!/bin/bash -l
 
+if [ -d gpAux/extensions/pxf ]; then
+	PXF_EXTENSIONS_DIR=gpAux/extensions/pxf
+else
+	PXF_EXTENSIONS_DIR=gpcontrib/pxf
+fi
+
 function set_env() {
 	export TERM=xterm-256color
 	export TIMEFORMAT=$'\e[4;33mIt took %R seconds to complete this step\e[0m';
@@ -13,7 +19,7 @@ function run_regression_test() {
 	cd "\${1}/gpdb_src/gpAux"
 	source gpdemo/gpdemo-env.sh
 
-	cd "\${1}/gpdb_src/gpAux/extensions/pxf"
+	cd "\${1}/gpdb_src/${PXF_EXTENSIONS_DIR}"
 	make installcheck USE_PGXS=1
 
 	[ -s regression.diffs ] && cat regression.diffs && exit 1
@@ -59,7 +65,8 @@ function install_pxf_client() {
 	if [ "${TEST_ENV}" == "dev" ]; then
 		pushd gpdb_src > /dev/null
 		source /opt/gcc_env.sh
-		cd gpAux/extensions/pxf
+
+		cd ${PXF_EXTENSIONS_DIR}
 		USE_PGXS=1 make install
 		popd > /dev/null
 	fi

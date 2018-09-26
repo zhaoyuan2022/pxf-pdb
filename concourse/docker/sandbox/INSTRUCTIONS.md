@@ -164,7 +164,13 @@ echo "y" | ./init-gphd.sh
 popd
 
 # Install PXF client
-pushd /home/build/gpdb/gpAux/extensions/pxf
+
+if [ -d /home/build/gpdb/gpAux/extensions/pxf ]; then
+	PXF_EXTENSIONS_DIR=gpAux/extensions/pxf
+else
+	PXF_EXTENSIONS_DIR=gpcontrib/pxf
+fi
+pushd /home/build/gpdb/${PXF_EXTENSIONS_DIR}
 make installcheck
 psql -d template1 -c "create extension pxf"
 popd

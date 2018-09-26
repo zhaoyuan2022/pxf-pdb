@@ -36,6 +36,7 @@ resources:
     uri: {{gpdb-git-remote}}
     paths:
     - gpAux/extensions/pxf
+    - gpcontrib/pxf
 
 - name: pxf_src
   type: git
