@@ -10,7 +10,6 @@ The following commands would create two PXF pipelines - one for **gpdb_master** 
 fly -t ud set-pipeline -p pxf_master -c ./pxf_pipeline.yml \
     -l ~/workspace/continuous-integration/secrets/gpdb_common-ci-secrets.yml \
     -l ~/workspace/continuous-integration/secrets/gpdb_master-ci-secrets.yml \
-    -l ~/workspace/continuous-integration/secrets/pxf-secrets.yml \
     -v folder-prefix=prod/gpdb_branch \
     -v test-env= \
     -l pxf-multinode-params.yml \
@@ -23,7 +22,6 @@ fly -t ud set-pipeline -p pxf_master -c ./pxf_pipeline.yml \
 fly -t ud set-pipeline -p pxf_5X_STABLE -c ./pxf_pipeline.yml \
     -l ~/workspace/continuous-integration/secrets/gpdb_common-ci-secrets.yml \
     -l ~/workspace/continuous-integration/secrets/gpdb_5X_STABLE-ci-secrets.yml \
-    -l ~/workspace/continuous-integration/secrets/pxf-secrets.yml \
     -v folder-prefix=prod/gpdb_branch \
     -v test-env= \
     -l pxf-multinode-params.yml \
@@ -40,7 +38,6 @@ fly -t ud set-pipeline -p pxf_pr \
     -l ~/workspace/continuous-integration/secrets/gpdb_master-ci-secrets.yml \
     -l pxf-multinode-params.yml \
     -l ~/workspace/continuous-integration/secrets/ccp_ci_secrets_ud.yml \
-    -l ~/workspace/continuous-integration/secrets/pxf-secrets.yml \
     -v folder-prefix=dev/pivotal-default \
     -v test-env=dev \
     -v gpdb-branch=master \
@@ -53,7 +50,6 @@ fly -t ud set-pipeline -p pxf_pr \
 fly -t ud set-pipeline -p pxf_perf -c ./perf_pipeline.yml \
     -l ~/workspace/continuous-integration/secrets/gpdb_common-ci-secrets.yml \
     -l ~/workspace/continuous-integration/secrets/gpdb_master-ci-secrets.yml \
-    -l ~/workspace/continuous-integration/secrets/pxf-secrets.yml \
     -l ~/workspace/continuous-integration/secrets/ccp_ci_secrets_ud.yml \
     -l ./perf-settings.yml \
     -v gpdb-branch=master -v icw_green_bucket=gpdb5-assert-concourse-builds \
@@ -64,7 +60,6 @@ fly -t ud set-pipeline -p pxf_perf -c ./perf_pipeline.yml \
 fly -t ud set-pipeline -p pxf_perf-<DEV-BRANCH> -c ./perf_pipeline.yml \
     -l ~/workspace/continuous-integration/secrets/gpdb_common-ci-secrets.yml \
     -l ~/workspace/continuous-integration/secrets/gpdb_master-ci-secrets.yml \
-    -l ~/workspace/continuous-integration/secrets/pxf-secrets.yml \
     -l ~/workspace/continuous-integration/secrets/ccp_ci_secrets_ud.yml \
     -l ./perf-settings.yml \
     -v gpdb-branch=master -v icw_green_bucket=gpdb5-assert-concourse-builds \
