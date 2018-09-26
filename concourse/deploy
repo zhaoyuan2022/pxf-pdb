@@ -47,7 +47,7 @@ if [[ "${DEPLOY_ENV}" == "dev" ]]; then
 else
     YML_FILE="default.yml"
     PREFIX="prod/gpdb_branch"
-    PIPELINE_NAME="gpdb_pxf_${BRANCH}"
+    PIPELINE_NAME="pxf_${BRANCH}"
     TARGET="ud"
 fi
 
