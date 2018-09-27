@@ -26,13 +26,13 @@ resources:
 - name: gpdb_src
   type: git
   source:
-    branch: {{gpdb-git-branch}}
+    branch: {{gpdb-branch}}
     uri: {{gpdb-git-remote}}
 
 - name: gpdb_pxf_trigger
   type: git
   source:
-    branch: {{gpdb-git-branch}}
+    branch: {{gpdb-branch}}
     uri: {{gpdb-git-remote}}
     paths:
     - gpAux/extensions/pxf
