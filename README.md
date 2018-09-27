@@ -151,6 +151,7 @@ Start other optional components based on your need
 ```bash
 pushd ~/workspace/singlecluster/bin
 # Start Hive
+./start-yarn.sh
 ./start-hive.sh
 
 # Start HBase 
