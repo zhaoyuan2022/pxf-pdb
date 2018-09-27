@@ -1,5 +1,7 @@
 #!/bin/bash -l
 
+GPHOME="/usr/local/greenplum-db-devel"
+
 if [ -d gpAux/extensions/pxf ]; then
 	PXF_EXTENSIONS_DIR=gpAux/extensions/pxf
 else
