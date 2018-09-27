@@ -379,7 +379,7 @@ jobs:
         dockerfile: pxf_infra/concourse/docker/centos6-pxf-client/Dockerfile
         build_args:
           BASE_IMAGE: "gpdb-pxf-dev:centos6"
-          YUM_REPOFILE_URL: "http://public-repo-1.hortonworks.com/HDP/centos6/2.x/updates/2.6.2.0/hdp.repo"
+          YUM_REPOFILE_URL: "http://public-repo-1.hortonworks.com/HDP/centos6/2.x/updates/2.6.5.0/hdp.repo"
 
   - name: docker-gpdb-pxf-dev-centos6-cdh-server
     plan:
