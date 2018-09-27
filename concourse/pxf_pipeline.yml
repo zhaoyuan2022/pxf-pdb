@@ -285,6 +285,7 @@ jobs:
   - task: test_pxf
     file: pxf_src/concourse/tasks/test_pxf.yml
     image: gpdb-pxf-dev-centos6-cdh-server
+    attempts: 2
     params:
       GROUP: gpdb,proxy
       TEST_ENV: {{test-env}}
