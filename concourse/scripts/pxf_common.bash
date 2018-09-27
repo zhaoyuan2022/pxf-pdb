@@ -1,7 +1,10 @@
 #!/bin/bash -l
 
-GPHOME="/usr/local/greenplum-db-devel"
-PXF_HOME="${GPHOME}/pxf"
+if [ -d gpAux/extensions/pxf ]; then
+	PXF_EXTENSIONS_DIR=gpAux/extensions/pxf
+else
+	PXF_EXTENSIONS_DIR=gpcontrib/pxf
+fi
 
 function set_env() {
 	export TERM=xterm-256color
@@ -16,7 +19,7 @@ function run_regression_test() {
 	cd "\${1}/gpdb_src/gpAux"
 	source gpdemo/gpdemo-env.sh
 
-	cd "\${1}/gpdb_src/gpcontrib/pxf"
+	cd "\${1}/gpdb_src/${PXF_EXTENSIONS_DIR}"
 	make installcheck USE_PGXS=1
 
 	[ -s regression.diffs ] && cat regression.diffs && exit 1
@@ -115,7 +118,8 @@ function install_pxf_client() {
 		pushd gpdb_src > /dev/null
 		source ${GPHOME}/greenplum_path.sh
 		source /opt/gcc_env.sh
-		cd gpcontrib/pxf
+
+		cd ${PXF_EXTENSIONS_DIR}
 		USE_PGXS=1 make install
 		popd > /dev/null
 	fi
