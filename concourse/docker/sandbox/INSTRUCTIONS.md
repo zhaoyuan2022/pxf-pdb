@@ -21,7 +21,7 @@ The above artifacts can also be downloaded from existing PXF pipelines on Concou
 
 Use pivotaldata/gpdb-dev:centos7 as base for creating the sandbox:
 ```
-docker run -v ~/workspace/stage:/stage -v ~/worspace/singlecluster-HDP:/singlecluster -v ~/workspace/pxf_infra:/pxf_infra -h pxf-dev -it pivotaldata/gpdb-dev:centos7 /bin/bash
+docker run -v ~/workspace/stage:/stage -v ~/worspace/singlecluster-HDP:/singlecluster -v ~/workspace/pxf:/pxf -h pxf-dev -it pivotaldata/gpdb-dev:centos7 /bin/bash
 ```
 
 ## Setup gpadmin user
@@ -45,17 +45,17 @@ sed -i "s/^UsePAM yes/UsePAM no/g" /etc/ssh/sshd_config
 export JAVA_HOME=/etc/alternatives/java_sdk 
 export GPHOME=/usr/local/greenplum-db-devel
 export PXF_HOME=${GPHOME}/pxf
-export hdfsrepo=/hdfsrepo
-mkdir -p /hdfsrepo /pxf_automation
-cp -r /singlecluster/{bin,conf,hadoop,hive,setenv.sh} /hdfsrepo
-chown gpadmin:gpadmin /pxf_automation
+export singlecluster=/singlecluster
+mkdir -p /singlecluster /automation
+cp -r /singlecluster/{bin,conf,hadoop,hive,setenv.sh} /singlecluster
+chown gpadmin:gpadmin /automation
 [ ! -d ${GPHOME} ] && mkdir -p ${GPHOME}
 tar -xzf /stage/bin_gpdb.tar.gz -C ${GPHOME}
 source ${GPHOME}/greenplum_path.sh
 tar -xzf /stage/pxf.tar.gz -C ${GPHOME}
 chown -R gpadmin:gpadmin ${GPHOME}/pxf
-sed -i -e "s|^[[:blank:]]*export HADOOP_ROOT=.*$|export HADOOP_ROOT=${hdfsrepo}|g" -e 's|^[[:blank:]]*export PXF_USER_IMPERSONATION=.*$|export PXF_USER_IMPERSONATION=false|g' ${PXF_HOME}/conf/pxf-env.sh
-pushd ${hdfsrepo}/bin
+sed -i -e "s|^[[:blank:]]*export HADOOP_ROOT=.*$|export HADOOP_ROOT=${singlecluster}|g" -e 's|^[[:blank:]]*export PXF_USER_IMPERSONATION=.*$|export PXF_USER_IMPERSONATION=false|g' ${PXF_HOME}/conf/pxf-env.sh
+pushd ${singlecluster}/bin
   export SLAVES=1
   echo y | ./init-gphd.sh
   ./start-hdfs.sh
@@ -78,7 +78,7 @@ cd && rm -f run.sh
 echo /usr/sbin/sshd >> run.sh
 echo export JAVA_HOME=/etc/alternatives/java_sdk >> run.sh
 export GPHOME=/usr/local/greenplum-db-devel >> run.sh
-echo /hdfsrepo/bin/start-hdfs.sh >> run.sh
+echo /singlecluster/bin/start-hdfs.sh >> run.sh
 echo 'su gpadmin -c "export JAVA_HOME=/etc/alternatives/java_sdk && /usr/local/greenplum-db-devel/pxf/bin/pxf start"' >> run.sh
 echo 'su gpadmin -c "source /usr/local/greenplum-db-devel/greenplum_path.sh && export MASTER_DATA_DIRECTORY=/home/gpadmin/data/master/gpseg-1 && gpstart -a"' >> run.sh 
 chmod +x run.sh
@@ -106,10 +106,10 @@ gpstart -a
 
 ## Alternative Setup Instructions
 
-```bash
+```
 # Compile and install GPDB
 make clean
-./configure --enable-debug --with-perl --with-python --with-libxml --disable-orca --prefix=/usr/local/gpdb
+./configure --enable-debug --with-perl --with-python --with-libxml --disable-orca --prefix=/usr/local/greenplum-db-devel
 make -j8
 cd /home/build/gpdb
 make install
@@ -176,7 +176,7 @@ psql -d template1 -c "create extension pxf"
 popd
 
 # Run PXF Automation
-cd /pxf_infra/pxf_automation
+cd /pxf/automation
 make GROUP=gpdb
 ```
 
@@ -200,16 +200,16 @@ export PG_MODE=GPDB
 export PGPORT=5432
 export GPHD_ROOT=/singlecluster
 export PXF_HOME=/usr/local/greenplum-db-devel/pxf
-mkdir -p /pxf_automation ~/.m2
-cp -r /pxf_infra/pxf_automation/* /pxf_automation
+mkdir -p /automation ~/.m2
+cp -r /pxf/automation/* /automation
 # tar -xzf /stage/pxf_maven_dependencies.tar.gz -C ~/.m2
 
-cd /pxf_automation
+cd /automation
 make TEST=HdfsSmokeTest
 
 gpstop -a
 # exit (from gpadmin shell)
-/hdfsrepo/bin/stop-hdfs.sh
+/singlecluster/bin/stop-hdfs.sh
 ```
 
 ## Commit to a docker image

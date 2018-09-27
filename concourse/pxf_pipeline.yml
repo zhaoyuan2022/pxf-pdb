@@ -196,6 +196,7 @@ jobs:
     file: pxf_src/concourse/tasks/test_pxf_secure.yml
     image: gpdb-pxf-dev-centos6-hdp-secure
     privileged: true
+    attempts: 2
     params:
       GROUP: gpdb,proxy
       TEST_ENV: {{test-env}}
