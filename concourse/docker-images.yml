@@ -21,12 +21,12 @@ groups:
 ## RESOURCES
 ## ======================================================================
 resources:
-  - name: pxf_infra
+  - name: pxf_src
     type: git
     source:
-      branch: {{pxf_infra-git-branch}}
-      private_key: {{pxf_infra-git-key}}
-      uri: {{pxf_infra-git-remote}}
+      branch: {{pxf-git-branch}}
+      private_key: {{pxf-git-key}}
+      uri: {{pxf-git-remote}}
 
   - name: hdp_tars_tarball
     type: s3
@@ -82,12 +82,12 @@ resources:
       region_name: {{aws-region}}
       versioned_file: singlecluster/singlecluster-CDH.tar.gz
 
-  - name: pxf_infra_singlecluster
+  - name: pxf_singlecluster
     type: git
     source:
-      branch: {{pxf_infra-git-branch}}
-      private_key: {{pxf_infra-git-key}}
-      uri: {{pxf_infra-git-remote}}
+      branch: {{pxf-git-branch}}
+      private_key: {{pxf-git-key}}
+      uri: {{pxf-git-remote}}
       paths: [singlecluster/*]
 
   - name: dockerfile-gpdb-dev-centos6
@@ -131,9 +131,9 @@ resources:
   - name: dockerfile-gpdb-dev-centos6-hdp-secure
     type: git
     source:
-      branch: {{pxf_infra-git-branch}}
-      private_key: {{pxf_infra-git-key}}
-      uri: {{pxf_infra-git-remote}}
+      branch: {{pxf-git-branch}}
+      private_key: {{pxf-git-key}}
+      uri: {{pxf-git-remote}}
       paths: [concourse/docker/centos6-hdp-secure/Dockerfile]
 
   - name: dockerfile-gpdb-dev-centos7
@@ -169,9 +169,9 @@ resources:
   - name: dockerfile-gpdb-pxf-dev-centos6
     type: git
     source:
-      branch: {{pxf_infra-git-branch}}
-      private_key: {{pxf_infra-git-key}}
-      uri: {{pxf_infra-git-remote}}
+      branch: {{pxf-git-branch}}
+      private_key: {{pxf-git-key}}
+      uri: {{pxf-git-remote}}
       paths: [concourse/docker/centos6-pxf]
 
   - name: gpdb-pxf-dev-centos6-image
@@ -185,9 +185,9 @@ resources:
   - name: dockerfile-gpdb-pxf-dev-centos6-client
     type: git
     source:
-      branch: {{pxf_infra-git-branch}}
-      private_key: {{pxf_infra-git-key}}
-      uri: {{pxf_infra-git-remote}}
+      branch: {{pxf-git-branch}}
+      private_key: {{pxf-git-key}}
+      uri: {{pxf-git-remote}}
       paths: [concourse/docker/centos6-pxf-client]
 
   - name: gpdb-pxf-dev-centos6-cdh-client-image
@@ -209,9 +209,9 @@ resources:
   - name: dockerfile-gpdb-pxf-dev-centos6-server
     type: git
     source:
-      branch: {{pxf_infra-git-branch}}
-      private_key: {{pxf_infra-git-key}}
-      uri: {{pxf_infra-git-remote}}
+      branch: {{pxf-git-branch}}
+      private_key: {{pxf-git-key}}
+      uri: {{pxf-git-remote}}
       paths: [concourse/docker/centos6-pxf-server]
 
   - name: gpdb-pxf-dev-centos6-cdh-server-image
@@ -278,7 +278,7 @@ jobs:
   - name: docker-gpdb-dev-centos6-hdp-secure
     plan:
     - aggregate:
-      - get: pxf_infra
+      - get: pxf_src
       - get: dockerfile-gpdb-dev-centos6
         passed: [docker-gpdb-dev-centos6]
         trigger: true
@@ -287,7 +287,7 @@ jobs:
         trigger: true
     - put: gpdb-dev-centos6-hdp-secure-image
       params:
-        build: pxf_infra/concourse/docker/centos6-hdp-secure
+        build: pxf_src/concourse/docker/centos6-hdp-secure
 
   - name: singlecluster_noarch_cdh
     plan:
@@ -298,11 +298,11 @@ jobs:
       - get: tomcat
       - get: gpdb-dev-centos6-image
         passed: [docker-gpdb-dev-centos6]
-      - get: pxf_infra
-        resource: pxf_infra_singlecluster
+      - get: pxf_src
+        resource: pxf_singlecluster
         trigger: true
     - task: package_singlecluster
-      file: pxf_infra/singlecluster/package_singlecluster_cdh.yml
+      file: pxf_src/singlecluster/package_singlecluster_cdh.yml
       image: gpdb-dev-centos6-image
     - put: singlecluster-CDH
       params:
@@ -317,11 +317,11 @@ jobs:
       - get: tomcat
       - get: gpdb-dev-centos6-image
         passed: [docker-gpdb-dev-centos6]
-      - get: pxf_infra
-        resource: pxf_infra_singlecluster
+      - get: pxf_src
+        resource: pxf_singlecluster
         trigger: true
     - task: package_singlecluster
-      file: pxf_infra/singlecluster/package_singlecluster_hdp.yml
+      file: pxf_src/singlecluster/package_singlecluster_hdp.yml
       image: gpdb-dev-centos6-image
     - put: singlecluster-HDP
       params:
@@ -330,7 +330,7 @@ jobs:
   - name: docker-gpdb-pxf-dev-centos6
     plan:
     - aggregate:
-      - get: pxf_infra
+      - get: pxf_src
       - get: dockerfile-gpdb-dev-centos6
         passed: [docker-gpdb-dev-centos6]
         trigger: true
@@ -343,14 +343,14 @@ jobs:
     - put: gpdb-pxf-dev-centos6-image
       params:
         build: .
-        dockerfile: pxf_infra/concourse/docker/centos6-pxf/Dockerfile
+        dockerfile: pxf_src/concourse/docker/centos6-pxf/Dockerfile
         build_args:
           BASE_IMAGE: "gpdb-dev:centos6"
 
   - name: docker-gpdb-pxf-dev-centos6-cdh-client
     plan:
     - aggregate:
-      - get: pxf_infra
+      - get: pxf_src
       - get: dockerfile-gpdb-pxf-dev-centos6
         passed: [docker-gpdb-pxf-dev-centos6]
         trigger: true
@@ -359,7 +359,7 @@ jobs:
     - put: gpdb-pxf-dev-centos6-cdh-client-image
       params:
         build: .
-        dockerfile: pxf_infra/concourse/docker/centos6-pxf-client/Dockerfile
+        dockerfile: pxf_src/concourse/docker/centos6-pxf-client/Dockerfile
         build_args:
           BASE_IMAGE: "gpdb-pxf-dev:centos6"
           YUM_REPOFILE_URL: "https://archive.cloudera.com/cdh5/redhat/6/x86_64/cdh/cloudera-cdh5.repo"
@@ -367,7 +367,7 @@ jobs:
   - name: docker-gpdb-pxf-dev-centos6-hdp-client
     plan:
     - aggregate:
-      - get: pxf_infra
+      - get: pxf_src
       - get: dockerfile-gpdb-pxf-dev-centos6
         passed: [docker-gpdb-pxf-dev-centos6]
         trigger: true
@@ -376,7 +376,7 @@ jobs:
     - put: gpdb-pxf-dev-centos6-hdp-client-image
       params:
         build: .
-        dockerfile: pxf_infra/concourse/docker/centos6-pxf-client/Dockerfile
+        dockerfile: pxf_src/concourse/docker/centos6-pxf-client/Dockerfile
         build_args:
           BASE_IMAGE: "gpdb-pxf-dev:centos6"
           YUM_REPOFILE_URL: "http://public-repo-1.hortonworks.com/HDP/centos6/2.x/updates/2.6.5.0/hdp.repo"
@@ -384,7 +384,7 @@ jobs:
   - name: docker-gpdb-pxf-dev-centos6-cdh-server
     plan:
     - aggregate:
-      - get: pxf_infra
+      - get: pxf_src
       - get: dockerfile-gpdb-pxf-dev-centos6-client
         passed: [docker-gpdb-pxf-dev-centos6-cdh-client]
         trigger: true
@@ -397,7 +397,7 @@ jobs:
     - put: gpdb-pxf-dev-centos6-cdh-server-image
       params:
         build: .
-        dockerfile: pxf_infra/concourse/docker/centos6-pxf-server/Dockerfile
+        dockerfile: pxf_src/concourse/docker/centos6-pxf-server/Dockerfile
         build_args:
           BASE_IMAGE: "gpdb-pxf-dev:centos6"
           DISTRO: cdh
@@ -405,7 +405,7 @@ jobs:
   - name: docker-gpdb-pxf-dev-centos6-hdp-server
     plan:
     - aggregate:
-      - get: pxf_infra
+      - get: pxf_src
       - get: dockerfile-gpdb-pxf-dev-centos6-client
         passed: [docker-gpdb-pxf-dev-centos6-hdp-client]
         trigger: true
@@ -418,7 +418,7 @@ jobs:
     - put: gpdb-pxf-dev-centos6-hdp-server-image
       params:
         build: .
-        dockerfile: pxf_infra/concourse/docker/centos6-pxf-server/Dockerfile
+        dockerfile: pxf_src/concourse/docker/centos6-pxf-server/Dockerfile
         build_args:
           BASE_IMAGE: "gpdb-pxf-dev:centos6"
           DISTRO: hdp
