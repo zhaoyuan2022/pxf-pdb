@@ -81,11 +81,11 @@ function _main() {
 			echo "Skipping pxf_tarball..."
 		else
 			tar -xzf pxf_tarball/pxf.tar.gz -C ${GPHOME}
-			chown -R gpadmin:gpadmin ${PXF_HOME}
 		fi
 	else
 		install_pxf_server
 	fi
+	chown -R gpadmin:gpadmin ${PXF_HOME}
 
 	# Install Hadoop and Hadoop Client
 	# Doing this before making GPDB cluster to use system python for yum install
