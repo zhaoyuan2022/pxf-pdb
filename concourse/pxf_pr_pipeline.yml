@@ -129,7 +129,7 @@ jobs:
         HADOOP_CLIENT: HDP
         GROUP: gpdb,proxy
       run:
-        path: pxf_src/concourse/tasks/test_pxf.bash
+        path: pxf_src/concourse/scripts/test_pxf.bash
     on_success:
       put: pxf_src
       params:
