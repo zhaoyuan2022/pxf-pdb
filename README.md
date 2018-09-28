@@ -176,7 +176,12 @@ $PXF_HOME/bin/pxf start
 
 Install PXF client (ignore if this is already done)
 ```bash
-make -C ~/workspace/gpdb/gpAux/extensions/pxf installcheck
+if [ -d ~/workspace/gpdb/gpAux/extensions/pxf ]; then
+	PXF_EXTENSIONS_DIR=gpAux/extensions/pxf
+else
+	PXF_EXTENSIONS_DIR=gpcontrib/pxf
+fi
+make -C ~/workspace/gpdb/${PXF_EXTENSIONS_DIR} installcheck
 psql -d template1 -c "create extension pxf"
 ```
 
