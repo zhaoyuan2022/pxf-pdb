@@ -47,24 +47,18 @@ fly -t ud set-pipeline -p pxf_pr \
 # Deploy the performance pipeline
 
 ```
-fly -t ud set-pipeline -p pxf_perf -c ./perf_pipeline.yml \
+fly -t ud set-pipeline -c ./perf_pipeline.yml \
     -l ~/workspace/continuous-integration/secrets/gpdb_common-ci-secrets.yml \
     -l ~/workspace/continuous-integration/secrets/gpdb_master-ci-secrets.yml \
     -l ~/workspace/continuous-integration/secrets/ccp_ci_secrets_ud.yml \
     -l ./perf-settings.yml \
     -v gpdb-branch=master -v icw_green_bucket=gpdb5-assert-concourse-builds \
-    -v pxf-git-branch=master
+    -v pxf-git-branch=master -p pxf_perf
 ```
 
-```
-fly -t ud set-pipeline -p pxf_perf-<DEV-BRANCH> -c ./perf_pipeline.yml \
-    -l ~/workspace/continuous-integration/secrets/gpdb_common-ci-secrets.yml \
-    -l ~/workspace/continuous-integration/secrets/gpdb_master-ci-secrets.yml \
-    -l ~/workspace/continuous-integration/secrets/ccp_ci_secrets_ud.yml \
-    -l ./perf-settings.yml \
-    -v gpdb-branch=master -v icw_green_bucket=gpdb5-assert-concourse-builds \
-    -v pxf-git-branch=<DEV-BRANCH>
-```
+You can deploy a development version of the perf pipeline by substituting the name
+of your development branch into `pxf-git-branch=master`. Also, make sure to change
+the name of your development pipeline (i.e. `-p dev:<YOUR-PIPELINE>`).
 
 # Deploy development PXF pipelines
 Dev pipelines can be deployed with an optional feature name
@@ -89,7 +83,7 @@ fly -t ud expose-pipeline -p pxf_master
 fly -t ud expose-pipeline -p pxf_5X_STABLE
 ```
 
-###Visual VM Debugging
+### Visual VM Debugging
 
 To perform memory profiling add the following line to PXF's enviroment settings (`pxf/conf/pxf-env.sh`) on the machine where we want to debug:
 
