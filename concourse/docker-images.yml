@@ -397,7 +397,7 @@ jobs:
         build: .
         dockerfile: pxf_src/concourse/docker/pxf-dev-base/Dockerfile
         build_args:
-          BASE_IMAGE: "pivotaldata/ubuntu-gpdb-dev:16.04_gcc_6_3"
+          BASE_IMAGE: "ubuntu-gpdb-dev:16.04_gcc_6_3"
 
   - name: docker-gpdb-pxf-dev-centos6-cdh-client
     plan:
