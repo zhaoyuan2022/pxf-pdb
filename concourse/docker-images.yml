@@ -12,10 +12,13 @@ groups:
   - singlecluster_noarch_cdh
   - singlecluster_noarch_hdp
   - docker-gpdb-pxf-dev-centos6
+  - docker-gpdb-pxf-dev-ubuntu16
   - docker-gpdb-pxf-dev-centos6-cdh-client
   - docker-gpdb-pxf-dev-centos6-hdp-client
   - docker-gpdb-pxf-dev-centos6-cdh-server
   - docker-gpdb-pxf-dev-centos6-hdp-server
+  - docker-gpdb-pxf-dev-ubuntu16-cdh-server
+  - docker-gpdb-pxf-dev-ubuntu16-hdp-server
 
 ## ======================================================================
 ## RESOURCES
@@ -166,19 +169,27 @@ resources:
       username: {{docker-username}}
       password: {{docker-password}}
 
-  - name: dockerfile-gpdb-pxf-dev-centos6
+  - name: dockerfile-gpdb-pxf-dev-base
     type: git
     source:
       branch: {{pxf-git-branch}}
       private_key: {{pxf-git-key}}
       uri: {{pxf-git-remote}}
-      paths: [concourse/docker/centos6-pxf]
+      paths: [concourse/docker/pxf-dev-base]
 
   - name: gpdb-pxf-dev-centos6-image
     type: docker-image
     source:
       repository: pivotaldata/gpdb-pxf-dev
       tag: centos6
+      username: {{docker-username}}
+      password: {{docker-password}}
+
+  - name: gpdb-pxf-dev-ubuntu16-image
+    type: docker-image
+    source:
+      repository: pivotaldata/gpdb-pxf-dev
+      tag: ubuntu16
       username: {{docker-username}}
       password: {{docker-password}}
 
@@ -214,6 +225,14 @@ resources:
       uri: {{pxf-git-remote}}
       paths: [concourse/docker/centos6-pxf-server]
 
+  - name: dockerfile-gpdb-pxf-dev-ubuntu16-server
+    type: git
+    source:
+      branch: {{pxf-git-branch}}
+      private_key: {{pxf-git-key}}
+      uri: {{pxf-git-remote}}
+      paths: [concourse/docker/ubuntu16-pxf-server]
+
   - name: gpdb-pxf-dev-centos6-cdh-server-image
     type: docker-image
     source:
@@ -227,6 +246,22 @@ resources:
     source:
       repository: pivotaldata/gpdb-pxf-dev
       tag: centos6-hdp-server
+      username: {{docker-username}}
+      password: {{docker-password}}
+
+  - name: gpdb-pxf-dev-ubuntu16-cdh-server-image
+    type: docker-image
+    source:
+      repository: pivotaldata/gpdb-pxf-dev
+      tag: ubuntu16-cdh-server
+      username: {{docker-username}}
+      password: {{docker-password}}
+
+  - name: gpdb-pxf-dev-ubuntu16-hdp-server-image
+    type: docker-image
+    source:
+      repository: pivotaldata/gpdb-pxf-dev
+      tag: ubuntu16-hdp-server
       username: {{docker-username}}
       password: {{docker-password}}
 
@@ -334,7 +369,7 @@ jobs:
       - get: dockerfile-gpdb-dev-centos6
         passed: [docker-gpdb-dev-centos6]
         trigger: true
-      - get: dockerfile-gpdb-pxf-dev-centos6
+      - get: dockerfile-gpdb-pxf-dev-base
         trigger: true
       - get: pxf_maven_dependencies
         trigger: true
@@ -343,15 +378,32 @@ jobs:
     - put: gpdb-pxf-dev-centos6-image
       params:
         build: .
-        dockerfile: pxf_src/concourse/docker/centos6-pxf/Dockerfile
+        dockerfile: pxf_src/concourse/docker/pxf-dev-base/Dockerfile
         build_args:
           BASE_IMAGE: "gpdb-dev:centos6"
+
+  - name: docker-gpdb-pxf-dev-ubuntu16
+    plan:
+    - aggregate:
+      - get: pxf_src
+      - get: dockerfile-gpdb-pxf-dev-base
+        trigger: true
+      - get: pxf_maven_dependencies
+        trigger: true
+      - get: pxf_gradle_dependencies
+        trigger: true
+    - put: gpdb-pxf-dev-ubuntu16-image
+      params:
+        build: .
+        dockerfile: pxf_src/concourse/docker/pxf-dev-base/Dockerfile
+        build_args:
+          BASE_IMAGE: "pivotaldata/ubuntu-gpdb-dev:16.04_gcc_6_3"
 
   - name: docker-gpdb-pxf-dev-centos6-cdh-client
     plan:
     - aggregate:
       - get: pxf_src
-      - get: dockerfile-gpdb-pxf-dev-centos6
+      - get: dockerfile-gpdb-pxf-dev-base
         passed: [docker-gpdb-pxf-dev-centos6]
         trigger: true
       - get: dockerfile-gpdb-pxf-dev-centos6-client
@@ -368,7 +420,7 @@ jobs:
     plan:
     - aggregate:
       - get: pxf_src
-      - get: dockerfile-gpdb-pxf-dev-centos6
+      - get: dockerfile-gpdb-pxf-dev-base
         passed: [docker-gpdb-pxf-dev-centos6]
         trigger: true
       - get: dockerfile-gpdb-pxf-dev-centos6-client
@@ -422,6 +474,46 @@ jobs:
         build_args:
           BASE_IMAGE: "gpdb-pxf-dev:centos6"
           DISTRO: hdp
+
+  - name: docker-gpdb-pxf-dev-ubuntu16-cdh-server
+    plan:
+    - aggregate:
+      - get: pxf_src
+      - get: dockerfile-gpdb-pxf-dev-base
+        passed: [docker-gpdb-pxf-dev-ubuntu16]
+        trigger: true
+      - get: dockerfile-gpdb-pxf-dev-ubuntu16-server
+        trigger: true
+      - get: singlecluster
+        resource: singlecluster-CDH
+        passed: [singlecluster_noarch_cdh]
+        trigger: true
+    - put: gpdb-pxf-dev-ubuntu16-cdh-server-image
+      params:
+        build: .
+        dockerfile: pxf_src/concourse/docker/ubuntu16-pxf-server/Dockerfile
+        build_args:
+          BASE_IMAGE: "gpdb-pxf-dev:ubuntu16"
+
+  - name: docker-gpdb-pxf-dev-ubuntu16-hdp-server
+    plan:
+    - aggregate:
+      - get: pxf_src
+      - get: dockerfile-gpdb-pxf-dev-base
+        passed: [docker-gpdb-pxf-dev-ubuntu16]
+        trigger: true
+      - get: dockerfile-gpdb-pxf-dev-ubuntu16-server
+        trigger: true
+      - get: singlecluster
+        resource: singlecluster-HDP
+        passed: [singlecluster_noarch_hdp]
+        trigger: true
+    - put: gpdb-pxf-dev-ubuntu16-hdp-server-image
+      params:
+        build: .
+        dockerfile: pxf_src/concourse/docker/ubuntu16-pxf-server/Dockerfile
+        build_args:
+          BASE_IMAGE: "gpdb-pxf-dev:ubuntu16"
 
   - name: docker-gpdb-dev-centos7
     plan:
