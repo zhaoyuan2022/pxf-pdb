@@ -127,7 +127,7 @@ jobs:
         TARGET_OS: centos
         TARGET_OS_VERSION: 6
         HADOOP_CLIENT: HDP
-        GROUP: gpdb,proxy
+        GROUP: smoke,proxy
       run:
         path: pxf_src/concourse/scripts/test_pxf.bash
     on_success:
