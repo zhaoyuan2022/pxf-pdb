@@ -1,7 +1,7 @@
-from mpp.models import SQLConcurrencyTestCase
 from mpp.models import SQLTestCase
+from mpp.models import SQLConcurrencyTestCase
 
-class PxfHiveRcReadText(SQLConcurrencyTestCase):
+class PxfHiveSmallData(SQLConcurrencyTestCase):
     """
     @db_name pxfautomation
     @concurrency 1

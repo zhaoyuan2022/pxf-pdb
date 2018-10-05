@@ -19,21 +19,22 @@ package org.greenplum.pxf.plugins.hive;
  * under the License.
  */
 
-import org.apache.hadoop.hive.common.type.HiveDecimal;
-import org.apache.hadoop.hive.serde.serdeConstants;
-import org.greenplum.pxf.api.BasicFilter;
-import org.greenplum.pxf.api.FilterParser;
-import org.greenplum.pxf.api.LogicalFilter;
-import org.greenplum.pxf.api.utilities.ColumnDescriptor;
-import org.greenplum.pxf.api.utilities.InputData;
-import org.greenplum.pxf.plugins.hdfs.HdfsSplittableDataAccessor;
-import org.greenplum.pxf.plugins.hive.utilities.HiveUtilities;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hive.common.type.HiveDecimal;
+import org.apache.hadoop.hive.serde.serdeConstants;
 import org.apache.hadoop.mapred.InputFormat;
 import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.Reporter;
+import org.greenplum.pxf.api.BasicFilter;
+import org.greenplum.pxf.api.FilterParser;
+import org.greenplum.pxf.api.LogicalFilter;
+import org.greenplum.pxf.api.OneRow;
+import org.greenplum.pxf.api.utilities.ColumnDescriptor;
+import org.greenplum.pxf.api.utilities.InputData;
+import org.greenplum.pxf.plugins.hdfs.HdfsSplittableDataAccessor;
+import org.greenplum.pxf.plugins.hive.utilities.HiveUtilities;
 
 import java.io.IOException;
 import java.sql.Date;
@@ -56,6 +57,7 @@ public class HiveAccessor extends HdfsSplittableDataAccessor {
     private static final Log LOG = LogFactory.getLog(HiveAccessor.class);
     List<HivePartition> partitions;
     String HIVE_DEFAULT_PARTITION = "__HIVE_DEFAULT_PARTITION__";
+    int skipHeaderCount = 0;
 
     class HivePartition {
         public String name;
@@ -85,8 +87,7 @@ public class HiveAccessor extends HdfsSplittableDataAccessor {
          * calling the base constructor, otherwise it would have been:
          * super(input, createInputFormat(input))
          */
-        super(input, null);
-        inputFormat = createInputFormat(input);
+        this(input, null);
     }
 
     /**
@@ -94,9 +95,20 @@ public class HiveAccessor extends HdfsSplittableDataAccessor {
      *
      * @param input contains the InputFormat class name and the partition fields
      * @param inputFormat Hive InputFormat
+     * @throws Exception if failed to create input format
      */
-    public HiveAccessor(InputData input, InputFormat<?, ?> inputFormat) {
+    public HiveAccessor(InputData input, InputFormat<?, ?> inputFormat) throws Exception {
         super(input, inputFormat);
+        HiveUserData hiveUserData = HiveUtilities.parseHiveUserData(input);
+
+        if (inputFormat == null) {
+            this.inputFormat = HiveDataFragmenter.makeInputFormat(
+                    hiveUserData.getInputFormatName()/* inputFormat name */, jobConf);
+        }
+
+        initPartitionFields(hiveUserData.getPartitionKeys());
+        filterInFragmenter = hiveUserData.isFilterInFragmenter();
+        skipHeaderCount = hiveUserData.getSkipHeader();
     }
 
     /**
@@ -110,8 +122,26 @@ public class HiveAccessor extends HdfsSplittableDataAccessor {
      */
     @Override
     public boolean openForRead() throws Exception {
+        // Make sure lines aren't skipped outside of the first fragment
+        if (inputData.getFragmentIndex() != 0) {
+            skipHeaderCount = 0;
+        }
         return isOurDataInsideFilteredPartition() && super.openForRead();
     }
+
+    /**
+     * Fetches one record from the file. The record is returned as a Java object.
+     * We will skip skipHeaderCount # of lines within the first fragment.
+     */
+    @Override
+    public OneRow readNextObject() throws IOException {
+        while (skipHeaderCount > 0) {
+            super.readNextObject();
+            skipHeaderCount--;
+        }
+        return super.readNextObject();
+    }
+
 
     /**
      * Creates the RecordReader suitable for this given split.
@@ -125,20 +155,6 @@ public class HiveAccessor extends HdfsSplittableDataAccessor {
     protected Object getReader(JobConf jobConf, InputSplit split)
             throws IOException {
         return inputFormat.getRecordReader(split, jobConf, Reporter.NULL);
-    }
-
-    /*
-     * Parses the user-data supplied by the HiveFragmenter from InputData. Based
-     * on the user-data construct the partition fields and the InputFormat for
-     * current split
-     */
-    private InputFormat<?, ?> createInputFormat(InputData input)
-            throws Exception {
-        HiveUserData hiveUserData = HiveUtilities.parseHiveUserData(input);
-        initPartitionFields(hiveUserData.getPartitionKeys());
-        filterInFragmenter = hiveUserData.isFilterInFragmenter();
-        return HiveDataFragmenter.makeInputFormat(
-                hiveUserData.getInputFormatName()/* inputFormat name */, jobConf);
     }
 
     /*

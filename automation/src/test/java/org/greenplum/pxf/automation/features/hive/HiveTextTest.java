@@ -12,7 +12,9 @@ import org.junit.Assert;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 public class HiveTextTest extends HiveBaseTest {
 
@@ -457,6 +459,27 @@ public class HiveTextTest extends HiveBaseTest {
 
         runTincTest("pxf.features.hcatalog.aggregate_queries.runTest");
         runTincTest("pxf.features.hive.aggregate_queries.runTest");
+    }
+
+    /**
+     * Query a small Hive table, skipping the first few rows with skip.header.line.count.
+     * This table uses text storage.
+     *
+     * @throws Exception if test fails to run
+     */
+    @Test(groups = { "features", "gpdb" })
+    public void hiveTableWithSkipHeader() throws Exception {
+        List<List<String>> tableProperties = new ArrayList<>();
+        tableProperties.add(Arrays.asList("skip.header.line.count", "3"));
+
+        HiveTable hiveTableWithSkipHeader = new HiveTable("hive_table_with_skipHeader_text", HIVE_SMALLDATA_COLS);
+        hiveTableWithSkipHeader.setTableProperties(tableProperties);
+        hive.createTableAndVerify(hiveTableWithSkipHeader);
+        hive.insertData(hiveSmallDataTable, hiveTableWithSkipHeader);
+
+        createExternalTable("pxf_hive_table_with_skipheader_text", PXF_HIVE_SMALLDATA_COLS, hiveTableWithSkipHeader);
+
+        runTincTest("pxf.features.hive.text_skip_header_rows.runTest");
     }
 
     /**
