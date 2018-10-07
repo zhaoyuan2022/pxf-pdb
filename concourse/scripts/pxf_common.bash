@@ -3,10 +3,10 @@
 GPHOME="/usr/local/greenplum-db-devel"
 PXF_HOME="${GPHOME}/pxf"
 
-if [ -d gpAux/extensions/pxf ]; then
-	PXF_EXTENSIONS_DIR=gpAux/extensions/pxf
+if [ -d gpdb_src/gpAux/extensions/pxf ]; then
+	PXF_EXTENSIONS_DIR=gpdb_src/gpAux/extensions/pxf
 else
-	PXF_EXTENSIONS_DIR=gpcontrib/pxf
+	PXF_EXTENSIONS_DIR=gpdb_src/gpcontrib/pxf
 fi
 
 function set_env() {
@@ -15,14 +15,13 @@ function set_env() {
 }
 
 function run_regression_test() {
+	ln -s ${PWD}/gpdb_src /home/gpadmin/gpdb_src
 	cat > /home/gpadmin/run_regression_test.sh <<-EOF
 	source /opt/gcc_env.sh
 	source ${GPHOME}/greenplum_path.sh
+	source gpdb_src/gpAux/gpdemo/gpdemo-env.sh
 
-	cd "\${1}/gpdb_src/gpAux"
-	source gpdemo/gpdemo-env.sh
-
-	cd "\${1}/gpdb_src/${PXF_EXTENSIONS_DIR}"
+	cd "${PXF_EXTENSIONS_DIR}"
 	make installcheck USE_PGXS=1
 
 	[ -s regression.diffs ] && cat regression.diffs && exit 1
@@ -30,7 +29,7 @@ function run_regression_test() {
 	exit 0
 	EOF
 
-	chown -R gpadmin:gpadmin gpdb_src/${PXF_EXTENSIONS_DIR}
+	chown -R gpadmin:gpadmin ${PXF_EXTENSIONS_DIR}
 	chown gpadmin:gpadmin /home/gpadmin/run_regression_test.sh
 	chmod a+x /home/gpadmin/run_regression_test.sh
 	su gpadmin -c "bash /home/gpadmin/run_regression_test.sh $(pwd)"
@@ -112,18 +111,15 @@ function setup_gpadmin_user() {
     if [ -d gpdb_src/gpAux/gpdemo ]; then
         chown -R gpadmin:gpadmin gpdb_src/gpAux/gpdemo
     fi
-    ln -s ${PWD}/gpdb_src /home/gpadmin/gpdb_src
-    ln -s ${PWD}/pxf_src /home/gpadmin/pxf_src
 }
 
 function install_pxf_client() {
 	# recompile pxf.so file for dev environments only
 	if [ "${TEST_ENV}" == "dev" ]; then
-		pushd gpdb_src > /dev/null
 		source ${GPHOME}/greenplum_path.sh
 		source /opt/gcc_env.sh
 
-		cd ${PXF_EXTENSIONS_DIR}
+		pushd ${PXF_EXTENSIONS_DIR} > /dev/null
 		USE_PGXS=1 make install
 		popd > /dev/null
 	fi
@@ -135,19 +131,6 @@ function install_pxf_server() {
 	pushd pxf_src/server
 	make install DATABASE=gpdb
 	popd
-}
-
-function setup_hdp_repo() {
-    cat > hdp.repo <<-EOF
-		#VERSION_NUMBER=2.6.5.0-292
-		[HDP-2.6.5.0]
-		name=HDP Version - HDP-2.6.5.0
-		baseurl=http://public-repo-1.hortonworks.com/HDP/centos7/2.x/updates/2.6.5.0
-		gpgcheck=1
-		gpgkey=http://public-repo-1.hortonworks.com/HDP/centos7/2.x/updates/2.6.5.0/RPM-GPG-KEY/RPM-GPG-KEY-Jenkins
-		enabled=1
-		priority=1
-	EOF
 }
 
 function setup_impersonation() {

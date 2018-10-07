@@ -13,6 +13,7 @@ function run_pxf_automation() {
 	chmod a+w pxf_src/automation /singlecluster
 	find pxf_src/automation/tinc* -type d -exec chmod a+w {} \;
 
+	ln -s ${PWD}/pxf_src /home/gpadmin/pxf_src
 	su gpadmin -c "source ${GPHOME}/greenplum_path.sh && psql -p 15432 -d template1 -c \"CREATE EXTENSION PXF\""
 
 	cat > /home/gpadmin/run_pxf_automation_test.sh <<-EOF
