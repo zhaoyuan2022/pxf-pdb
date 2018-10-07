@@ -38,22 +38,6 @@ function run_pxf_automation() {
 function setup_hadoop() {
 	local hdfsrepo=$1
 
-	case ${HADOOP_CLIENT} in
-		CDH|HDP)
-			cp ${hdfsrepo}/hadoop/etc/hadoop/{core,hdfs,mapred,yarn}-site.xml /etc/hadoop/conf
-			cp ${hdfsrepo}/hive/conf/hive-site.xml /etc/hive/conf
-			cp ${hdfsrepo}/hbase/conf/hbase-site.xml /etc/hbase/conf
-			;;
-		TAR)
-			# TAR-based setup, edit the properties in pxf-env.sh to specify HADOOP_ROOT value
-			sed -i -e "s|^[[:blank:]]*export HADOOP_ROOT=.*$|export HADOOP_ROOT=${hdfsrepo}|g" ${PXF_HOME}/conf/pxf-env.sh
-			;;
-		*)
-			echo "FATAL: Unknown HADOOP_CLIENT=${HADOOP_CLIENT} parameter value"
-			exit 1
-			;;
-	esac
-
 	if [ -n "${GROUP}" ]; then
 		export SLAVES=1
 	    setup_impersonation ${hdfsrepo}
@@ -62,34 +46,20 @@ function setup_hadoop() {
 }
 
 function _main() {
-	# Reserve port 5888 for PXF service
-	echo "pxf             5888/tcp               # PXF Service" >> /etc/services
-
 	# Install GPDB
 	install_gpdb_binary
 	setup_gpadmin_user
 
-	# Install PXF Client (pxf.so file)
+	# Install PXF
 	install_pxf_client
-
-	# Install PXF Server
-	if [ -d pxf_tarball ]; then
-		# untar pxf server only if necessary
-		if [ -d ${PXF_HOME} ]; then
-			echo "Skipping pxf_tarball..."
-		else
-			tar -xzf pxf_tarball/pxf.tar.gz -C ${GPHOME}
-		fi
-	else
+	if [ ! -d pxf_tarball ]; then
 		install_pxf_server
 	fi
 	chown -R gpadmin:gpadmin ${PXF_HOME}
 
-	# Install Hadoop and Hadoop Client
-	# Doing this before making GPDB cluster to use system python for yum install
+	# Setup Hadoop before creating GPDB cluster to use system python for yum install
 	setup_hadoop /singlecluster
 
-	add_jdbc_jar_to_pxf_public_classpath /singlecluster
 	create_gpdb_cluster
 	add_remote_user_access_for_gpdb "testuser"
 	start_pxf_server

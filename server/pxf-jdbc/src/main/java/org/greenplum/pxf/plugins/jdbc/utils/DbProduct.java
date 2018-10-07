@@ -27,7 +27,7 @@ public abstract class DbProduct {
     /**
      * Get an instance of some class - the database product
      *
-     * @param String dbName A full name of the database
+     * @param dbName A full name of the database
      * @return a DbProduct of the required class
      */
     public static DbProduct getDbProduct(String dbName) {

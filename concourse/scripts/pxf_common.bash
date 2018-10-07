@@ -30,6 +30,7 @@ function run_regression_test() {
 	exit 0
 	EOF
 
+	chown -R gpadmin:gpadmin gpdb_src/${PXF_EXTENSIONS_DIR}
 	chown gpadmin:gpadmin /home/gpadmin/run_regression_test.sh
 	chmod a+x /home/gpadmin/run_regression_test.sh
 	su gpadmin -c "bash /home/gpadmin/run_regression_test.sh $(pwd)"
@@ -132,7 +133,7 @@ function install_pxf_server() {
 	export BUILD_NUMBER="${TARGET_OS}"
 	export JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF8
 	pushd pxf_src/server
-	make install -s DATABASE=gpdb
+	make install DATABASE=gpdb
 	popd
 }
 
@@ -219,15 +220,6 @@ function start_hadoop_services() {
 		echo 'Granting gpadmin user admin privileges for HBase'
 		echo "grant 'gpadmin', 'RWXCA'" | hbase shell
 	fi
-}
-
-function add_jdbc_jar_to_pxf_public_classpath() {
-	local singlecluster=${1}
-
-	# append the full path to PostgreSQL JDBC JAR file to pxf_public.classpath for JDBC tests
-	ls ${singlecluster}/jdbc/postgresql-jdbc*.jar >> ${PXF_HOME}/conf/pxf-public.classpath
-
-	cat ${PXF_HOME}/conf/pxf-public.classpath
 }
 
 function start_pxf_server() {
