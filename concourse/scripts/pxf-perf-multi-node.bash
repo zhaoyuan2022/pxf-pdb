@@ -63,28 +63,6 @@ EOF
     gpscp -u gpadmin -f /tmp/segment_hosts /tmp/s3.conf =:~/s3/s3.conf
 }
 
-function download_jar_dependencies {
-    mkdir pxf-jars
-    pushd pxf-jars
-#        wget http://central.maven.org/maven2/com/amazonaws/aws-java-sdk-core/1.11.406/aws-java-sdk-core-1.11.406.jar
-#        wget http://central.maven.org/maven2/com/amazonaws/aws-java-sdk-kms/1.11.406/aws-java-sdk-kms-1.11.406.jar
-#        wget http://central.maven.org/maven2/com/amazonaws/aws-java-sdk-s3/1.11.406/aws-java-sdk-s3-1.11.406.jar
-#        wget http://central.maven.org/maven2/org/apache/hadoop/hadoop-aws/2.8.2/hadoop-aws-2.8.2.jar
-        wget http://central.maven.org/maven2/com/amazonaws/aws-java-sdk-core/1.11.416/aws-java-sdk-core-1.11.416.jar
-        wget http://central.maven.org/maven2/com/amazonaws/aws-java-sdk-kms/1.11.416/aws-java-sdk-kms-1.11.416.jar
-        wget http://central.maven.org/maven2/com/amazonaws/aws-java-sdk-s3/1.11.416/aws-java-sdk-s3-1.11.416.jar
-        wget http://central.maven.org/maven2/org/apache/hadoop/hadoop-aws/2.8.5/hadoop-aws-2.8.5.jar
-        wget http://central.maven.org/maven2/org/apache/httpcomponents/httpclient/4.5.2/httpclient-4.5.2.jar
-        wget http://central.maven.org/maven2/org/apache/httpcomponents/httpcore/4.4.4/httpcore-4.4.4.jar
-        wget http://central.maven.org/maven2/com/fasterxml/jackson/core/jackson-databind/2.6.7.1/jackson-databind-2.6.7.1.jar
-        wget http://central.maven.org/maven2/com/fasterxml/jackson/core/jackson-core/2.6.7/jackson-core-2.6.7.jar
-        wget http://central.maven.org/maven2/com/fasterxml/jackson/core/jackson-annotations/2.6.0/jackson-annotations-2.6.0.jar
-    popd
-    gpscp -r -u gpadmin -f /tmp/segment_hosts pxf-jars =:~/
-    rm -rf pxf-jars
-    gpssh -u gpadmin -f /tmp/segment_hosts -v -s -e 'source /usr/local/greenplum-db-devel/greenplum_path.sh && echo "/home/gpadmin/pxf-jars/*.jar" >> $GPHOME/pxf/conf/pxf-public.classpath && $GPHOME/pxf/bin/pxf restart'
-}
-
 function create_pxf_external_tables {
     psql -c "CREATE EXTERNAL TABLE pxf_lineitem_read (like lineitem) LOCATION ('pxf://tmp/lineitem_read/?PROFILE=HdfsTextSimple') FORMAT 'CSV' (DELIMITER '|')"
     psql -c "CREATE WRITABLE EXTERNAL TABLE pxf_lineitem_write (like lineitem) LOCATION ('pxf://tmp/lineitem_write/?PROFILE=HdfsTextSimple') FORMAT 'CSV' DISTRIBUTED BY (l_partkey)"
@@ -276,7 +254,6 @@ function assert_count_in_table {
 
 function run_s3_extension_benchmark {
     create_s3_extension_external_tables
-    download_jar_dependencies
 
     cat << EOF
 
@@ -323,10 +300,10 @@ EOF
 </configuration>
 EOF
 
-    # Make a backup of core-site
-    gpssh -u centos -f /tmp/segment_hosts -v -s -e "sudo cp /etc/hadoop/conf/core-site.xml /etc/hadoop/conf/core-site.xml.back"
-    gpscp -u centos -f /tmp/segment_hosts /tmp/core-site.xml =:/tmp/core-site-patch.xml
-    gpssh -u centos -f /tmp/segment_hosts -v -s -e "sudo cp /tmp/core-site-patch.xml /etc/hadoop/conf/core-site.xml"
+    # Make a backup of core-site and update it with the S3 core-site
+    gpscp -u gpadmin -f /tmp/segment_hosts /tmp/core-site.xml =:/tmp/core-site-patch.xml
+    gpssh -u gpadmin -f /tmp/segment_hosts -v -s -e \
+      'source /usr/local/greenplum-db-devel/greenplum_path.sh && mv $GPHOME/pxf/conf/core-site.xml $GPHOME/pxf/conf/core-site.xml.back && cp /tmp/core-site-patch.xml $GPHOME/pxf/conf/core-site.xml'
 
     cat << EOF
 
@@ -347,9 +324,8 @@ EOF
     time psql -c "INSERT INTO lineitem_s3_pxf_write SELECT * FROM lineitem"
 
     # Restore core-site
-    gpssh -u centos -f /tmp/segment_hosts -v -s -e "sudo cp /etc/hadoop/conf/core-site.xml /etc/hadoop/conf/core-site.xml.s3"
-    gpssh -u centos -f /tmp/segment_hosts -v -s -e "sudo cp /etc/hadoop/conf/core-site.xml.back /etc/hadoop/conf/core-site.xml"
-    gpssh -u gpadmin -f /tmp/segment_hosts -v -s -e 'source /usr/local/greenplum-db-devel/greenplum_path.sh && $GPHOME/pxf/bin/pxf restart'
+    gpssh -u gpadmin -f /tmp/segment_hosts -v -s -e \
+      'source /usr/local/greenplum-db-devel/greenplum_path.sh && mv $GPHOME/pxf/conf/core-site.xml $GPHOME/pxf/conf/core-site.xml.s3 && cp $GPHOME/pxf/conf/core-site.xml.back $GPHOME/pxf/conf/core-site.xml && $GPHOME/pxf/bin/pxf restart'
 }
 
 function main {
@@ -368,7 +344,7 @@ function main {
     echo -e "Data loading and validation complete\n"
     LINEITEM_COUNT=$(psql -t -c "SELECT COUNT(*) FROM lineitem" | tr -d ' ')
 
-    run_s3_extension_benchmark
+#    run_s3_extension_benchmark
 
     if [ "${BENCHMARK_GPHDFS}" == "true" ]; then
         run_gphdfs_benchmark
