@@ -103,7 +103,7 @@ docker run --rm -it \
   -v ~/workspace/gpdb:/home/gpadmin/workspace/gpdb \
   -v ~/workspace/pxf:/home/gpadmin/workspace/pxf \
   -v ~/workspace/singlecluster-HDP:/home/gpadmin/workspace/singlecluster \
-  pivotaldata/gpdb-dev:centos6 /bin/bash -c \
+  pivotaldata/gpdb-pxf-dev:centos6 /bin/bash -c \
   "/home/gpadmin/workspace/pxf/dev/set_up_gpadmin_user.bash && /sbin/service sshd start && /bin/bash"
 
 # in the container
