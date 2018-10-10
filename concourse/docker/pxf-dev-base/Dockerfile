@@ -4,9 +4,9 @@ FROM pivotaldata/${BASE_IMAGE} as scratch
 
 ADD pxf_src pxf_src
 
-RUN pushd pxf_src/server && make tar && popd
+RUN cd pxf_src/server && make tar
 
-RUN CWD=$(pwd) && pushd pxf_src/automation && PXF_HOME=${CWD}/pxf_src/server/build/stage make dev && popd
+RUN CWD=$(pwd) && cd pxf_src/automation && PXF_HOME=${CWD}/pxf_src/server/build/stage make dev
 
 FROM pivotaldata/${BASE_IMAGE}
 

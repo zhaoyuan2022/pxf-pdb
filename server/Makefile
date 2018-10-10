@@ -19,33 +19,33 @@
 default: all
 
 ifneq "$(HD)" ""
-    BUILD_PARAMS+= -Dhd=$(HD)
+	BUILD_PARAMS+= -Dhd=$(HD)
 else
-    ifneq "$(PXF_HOME)" ""
-        BUILD_PARAMS+= -DdeployPath="$(PXF_HOME)"
-    else ifneq "$(GPHOME)" ""
-        PXF_HOME= "$(GPHOME)/pxf"
-        BUILD_PARAMS+= -DdeployPath="$(PXF_HOME)"
-    else
+	ifneq "$(PXF_HOME)" ""
+		BUILD_PARAMS+= -DdeployPath="$(PXF_HOME)"
+	else ifneq "$(GPHOME)" ""
+		PXF_HOME= "$(GPHOME)/pxf"
+		BUILD_PARAMS+= -DdeployPath="$(PXF_HOME)"
+	else
 		@echo "Cannot invoke install without configuring either PXF_HOME or GPHOME"
 		exit
-    endif
+	endif
 endif
 
 ifneq "$(LICENSE)" ""
-    BUILD_PARAMS+= -Plicense="$(LICENSE)"
+	BUILD_PARAMS+= -Plicense="$(LICENSE)"
 endif
 
 ifneq "$(VENDOR)" ""
-    BUILD_PARAMS+= -Pvendor="$(VENDOR)"
+	BUILD_PARAMS+= -Pvendor="$(VENDOR)"
 endif
 
 ifneq "$(PXF_VERSION)" ""
-    BUILD_PARAMS+= -Pversion="$(PXF_VERSION)"
+	BUILD_PARAMS+= -Pversion="$(PXF_VERSION)"
 endif
 
 ifneq "$(DATABASE)" ""
-    BUILD_PARAMS+= -Ddatabase="$(DATABASE)"
+	BUILD_PARAMS+= -Ddatabase="$(DATABASE)"
 endif
 
 help:
