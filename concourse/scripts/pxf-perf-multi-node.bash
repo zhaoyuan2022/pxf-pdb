@@ -325,7 +325,7 @@ EOF
 
     # Restore core-site
     gpssh -u gpadmin -f /tmp/segment_hosts -v -s -e \
-      'source /usr/local/greenplum-db-devel/greenplum_path.sh && mv $GPHOME/pxf/conf/core-site.xml $GPHOME/pxf/conf/core-site.xml.s3 && cp $GPHOME/pxf/conf/core-site.xml.back $GPHOME/pxf/conf/core-site.xml && $GPHOME/pxf/bin/pxf restart'
+      'source /usr/local/greenplum-db-devel/greenplum_path.sh && mv $GPHOME/pxf/conf/core-site.xml $GPHOME/pxf/conf/core-site.xml.s3 && cp $GPHOME/pxf/conf/core-site.xml.back $GPHOME/pxf/conf/core-site.xml'
 }
 
 function main {
@@ -344,7 +344,7 @@ function main {
     echo -e "Data loading and validation complete\n"
     LINEITEM_COUNT=$(psql -t -c "SELECT COUNT(*) FROM lineitem" | tr -d ' ')
 
-#    run_s3_extension_benchmark
+    run_s3_extension_benchmark
 
     if [ "${BENCHMARK_GPHDFS}" == "true" ]; then
         run_gphdfs_benchmark
