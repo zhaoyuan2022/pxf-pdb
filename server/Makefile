@@ -18,18 +18,11 @@
 # protect the default target for this file from the targets in Makefile.global
 default: all
 
-ifneq "$(HD)" ""
-    BUILD_PARAMS+= -Dhd=$(HD)
-else
-    ifneq "$(PXF_HOME)" ""
-        BUILD_PARAMS+= -DdeployPath="$(PXF_HOME)"
-    else ifneq "$(GPHOME)" ""
-        PXF_HOME= "$(GPHOME)/pxf"
-        BUILD_PARAMS+= -DdeployPath="$(PXF_HOME)"
-    else
-		@echo "Cannot invoke install without configuring either PXF_HOME or GPHOME"
-		exit
-    endif
+ifneq "$(PXF_HOME)" ""
+    BUILD_PARAMS+= -DdeployPath="$(PXF_HOME)"
+else ifneq "$(GPHOME)" ""
+    PXF_HOME= "$(GPHOME)/pxf"
+    BUILD_PARAMS+= -DdeployPath="$(PXF_HOME)"
 endif
 
 ifneq "$(LICENSE)" ""
