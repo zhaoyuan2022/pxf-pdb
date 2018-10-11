@@ -26,7 +26,6 @@ resources:
     type: git
     source:
       branch: {{pxf-git-branch}}
-      private_key: {{pxf-git-key}}
       uri: {{pxf-git-remote}}
 
   - name: hdp_tars_tarball
@@ -87,7 +86,6 @@ resources:
     type: git
     source:
       branch: {{pxf-git-branch}}
-      private_key: {{pxf-git-key}}
       uri: {{pxf-git-remote}}
       paths: [singlecluster/*]
 
@@ -133,7 +131,6 @@ resources:
     type: git
     source:
       branch: {{pxf-git-branch}}
-      private_key: {{pxf-git-key}}
       uri: {{pxf-git-remote}}
       paths: [concourse/docker/centos6-hdp-secure/Dockerfile]
 
@@ -171,7 +168,6 @@ resources:
     type: git
     source:
       branch: {{pxf-git-branch}}
-      private_key: {{pxf-git-key}}
       uri: {{pxf-git-remote}}
       paths: [concourse/docker/pxf-dev-base]
 
@@ -195,7 +191,6 @@ resources:
     type: git
     source:
       branch: {{pxf-git-branch}}
-      private_key: {{pxf-git-key}}
       uri: {{pxf-git-remote}}
       paths: [concourse/docker/centos6-pxf-server]
 
@@ -203,7 +198,6 @@ resources:
     type: git
     source:
       branch: {{pxf-git-branch}}
-      private_key: {{pxf-git-key}}
       uri: {{pxf-git-remote}}
       paths: [concourse/docker/ubuntu16-pxf-server]
 

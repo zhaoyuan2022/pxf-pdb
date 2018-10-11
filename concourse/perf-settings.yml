@@ -1,3 +1,4 @@
+gpdb-git-branch: master
 tf-bucket-path: clusters-google/
 tf-cloud-provider: google
 folder-prefix: perf
