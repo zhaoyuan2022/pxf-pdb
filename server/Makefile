@@ -83,7 +83,3 @@ doc:
 .PHONY: install
 install:
 	./gradlew install $(BUILD_PARAMS)
-
-.PHONY: version
-version:
-	@./gradlew -q version
