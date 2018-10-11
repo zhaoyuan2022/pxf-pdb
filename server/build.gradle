@@ -308,6 +308,14 @@ wrapper {
     gradleVersion = '4.9'
 }
 
+
+
+task version {
+    doLast {
+        println project.version
+    }
+}
+
 // tomcat
 def tomcatName = "apache-tomcat-${tomcatVersion}"
 def tomcatTargetDir = "tomcat/build"
