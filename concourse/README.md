@@ -44,6 +44,10 @@ fly -t ud set-pipeline -p pxf_pr \
     -v icw_green_bucket=gpdb5-assert-concourse-builds
 ```
 
+# Deploy the release pipeline
+
+https://github.com/pivotal/gp-continuous-integration/blob/master/README.md#pxf_release
+
 # Deploy the performance pipeline
 
 ```
