@@ -36,10 +36,8 @@ fly -t ud set-pipeline \
 ```
 fly -t ud set-pipeline \
     -c ~/workspace/pxf/concourse/pxf_pr_pipeline.yml \
-    -l ~/workspace/continuous-integration/secrets/gpdb_common-ci-secrets.yml \
     -l ~/workspace/continuous-integration/secrets/gpdb-release-secrets.dev.yml \
     -l ~/workspace/continuous-integration/secrets/gpdb_master-ci-secrets.yml \
-    -l ~/workspace/continuous-integration/secrets/ccp_ci_secrets_ud.yml \
     -v folder-prefix=dev/pivotal-default -v test-env=dev -v gpdb-branch=master \
     -v icw_green_bucket=gpdb5-assert-concourse-builds \
     -p pxf_pr
