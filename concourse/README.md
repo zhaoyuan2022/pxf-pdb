@@ -13,8 +13,8 @@ The following commands would create two PXF pipelines - one for **gpdb_master** 
 fly -t ud set-pipeline \
     -c ~/workspace/pxf/concourse/pxf_pipeline.yml \
     -l ~/workspace/continuous-integration/secrets/gpdb_common-ci-secrets.yml \
-    -l ~/workspace/pxf/concourse/pxf-multinode-params.yml \
     -l ~/workspace/continuous-integration/secrets/ccp_ci_secrets_ud.yml \
+    -l ~/workspace/pxf/concourse/pxf-multinode-params.yml \
     -v folder-prefix=prod/gpdb_branch -v test-env= \
     -v gpdb-branch=master -v icw_green_bucket=gpdb5-assert-concourse-builds \
     -p pxf_master
@@ -24,8 +24,8 @@ fly -t ud set-pipeline \
 fly -t ud set-pipeline \
     -c ~/workspace/pxf/concourse/pxf_pipeline.yml \
     -l ~/workspace/continuous-integration/secrets/gpdb_common-ci-secrets.yml \
-    -l ~/workspace/pxf/concourse/pxf-multinode-params.yml \
     -l ~/workspace/continuous-integration/secrets/ccp_ci_secrets_ud.yml \
+    -l ~/workspace/pxf/concourse/pxf-multinode-params.yml \
     -v folder-prefix=prod/gpdb_branch -v test-env= \
     -v gpdb-branch=5X_STABLE -v icw_green_bucket=gpdb5-stable-concourse-builds \
     -p pxf_5X_STABLE 
