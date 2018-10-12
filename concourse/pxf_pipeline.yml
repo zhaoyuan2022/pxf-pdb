@@ -54,12 +54,6 @@ resources:
     access_key_id: {{bucket-access-key-id}}
     secret_access_key: {{bucket-secret-access-key}}
 
-- name: gpdb-pxf-dev-centos6
-  type: docker-image
-  source:
-    repository: pivotaldata/gpdb-pxf-dev
-    tag: centos6
-
 - name: gpdb-pxf-dev-centos6-cdh-server
   type: docker-image
   source:
@@ -139,9 +133,9 @@ jobs:
       params: {pre: rc}
     - get: pxf_src
       trigger: true
-    - get: gpdb-pxf-dev-centos6
+    - get: gpdb-pxf-dev-centos6-hdp-server
   - task: compile_pxf
-    image: gpdb-pxf-dev-centos6
+    image: gpdb-pxf-dev-centos6-hdp-server
     file: pxf_src/concourse/tasks/compile_pxf.yml
   - put: pxf_tarball
     params:
