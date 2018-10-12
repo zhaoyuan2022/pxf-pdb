@@ -53,9 +53,6 @@ function _main() {
 
 	# Install PXF
 	install_pxf_client
-	if [ ! -d pxf_tarball ]; then
-		install_pxf_server
-	fi
 	chown -R gpadmin:gpadmin ${PXF_HOME}
 
 	# Setup Hadoop before creating GPDB cluster to use system python for yum install
