@@ -18,4 +18,4 @@ mv /tmp/component_manifest.json components/component_manifest.json
 
 git config user.email "pxf_bot@example.com"
 git config user.name "PXF_BOT"
-git commit -am "Update PXF manifest to version ${VERSION}"
+git diff --quiet && git diff --staged --quiet || git commit -am "Update PXF manifest to version ${VERSION}"
