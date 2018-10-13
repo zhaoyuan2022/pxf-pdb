@@ -10,6 +10,7 @@ FROM pivotaldata/${BASE_IMAGE}
 
 COPY --from=scratch /singlecluster /singlecluster
 
-RUN cp /singlecluster/hadoop/etc/hadoop/{core,hdfs,mapred,yarn}-site.xml /etc/hadoop/conf && \
+RUN mkdir -p /etc/hadoop/conf /etc/hive/conf /etc/hbase/conf && \
+    cp /singlecluster/hadoop/etc/hadoop/{core,hdfs,mapred,yarn}-site.xml /etc/hadoop/conf && \
     cp /singlecluster/hive/conf/hive-site.xml /etc/hive/conf && \
     cp /singlecluster/hbase/conf/hbase-site.xml /etc/hbase/conf
