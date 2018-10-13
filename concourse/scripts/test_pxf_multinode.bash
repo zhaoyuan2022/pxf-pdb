@@ -69,6 +69,8 @@ function run_pxf_automation() {
 	set -exo pipefail
 
 	source ${GPHOME}/greenplum_path.sh
+
+	export PATH=\$PATH:${GPHD_ROOT}/bin:${HADOOP_ROOT}/bin:${HBASE_ROOT}/bin:${HIVE_ROOT}/bin:${ZOOKEEPER_ROOT}/bin
 	export GPHOME=/usr/local/greenplum-db-devel
 	export PXF_HOME=${GPHOME}/pxf
 	export PGHOST=localhost

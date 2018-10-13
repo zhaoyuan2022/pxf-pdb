@@ -20,7 +20,6 @@ function run_regression_test() {
 	source /opt/gcc_env.sh
 	source ${GPHOME}/greenplum_path.sh
 	source gpdb_src/gpAux/gpdemo/gpdemo-env.sh
-	export PATH=\$PATH:${GPHD_ROOT}/bin:${HADOOP_ROOT}/bin:${HBASE_ROOT}/bin:${HIVE_ROOT}/bin:${ZOOKEEPER_ROOT}/bin
 
 	cd "${PXF_EXTENSIONS_DIR}"
 	make installcheck USE_PGXS=1

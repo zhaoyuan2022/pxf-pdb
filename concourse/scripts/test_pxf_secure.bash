@@ -15,6 +15,7 @@ function run_pxf_smoke_secure() {
 	source ${GPHOME}/greenplum_path.sh
 	source \${1}/gpdb_src/gpAux/gpdemo/gpdemo-env.sh
 
+	export PATH=\$PATH:${GPHD_ROOT}/bin:${HADOOP_ROOT}/bin:${HBASE_ROOT}/bin:${HIVE_ROOT}/bin:${ZOOKEEPER_ROOT}/bin
 	echo "Reading external table from Hadoop to Greenplum using PXF"
 	psql -d template1 -c "CREATE EXTENSION PXF"
 	psql -d template1 -c "CREATE EXTERNAL TABLE test (name TEXT) LOCATION ('pxf://tmp/test.txt?profile=HdfsTextSimple') FORMAT 'TEXT';"

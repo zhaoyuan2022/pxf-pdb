@@ -21,6 +21,7 @@ function run_pxf_automation() {
 
 	source ${GPHOME}/greenplum_path.sh
 
+	export PATH=\$PATH:${GPHD_ROOT}/bin:${HADOOP_ROOT}/bin:${HBASE_ROOT}/bin:${HIVE_ROOT}/bin:${ZOOKEEPER_ROOT}/bin
 	export GPHD_ROOT=/singlecluster
 	export PXF_HOME=${PXF_HOME}
 	export PGPORT=15432
