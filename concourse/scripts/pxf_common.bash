@@ -20,6 +20,7 @@ function run_regression_test() {
 	source /opt/gcc_env.sh
 	source ${GPHOME}/greenplum_path.sh
 	source gpdb_src/gpAux/gpdemo/gpdemo-env.sh
+	export PATH=\$PATH:${GPHD_ROOT}/bin:${HADOOP_ROOT}/bin:${HBASE_ROOT}/bin:${HIVE_ROOT}/bin:${ZOOKEEPER_ROOT}/bin
 
 	cd "${PXF_EXTENSIONS_DIR}"
 	make installcheck USE_PGXS=1
@@ -198,6 +199,7 @@ function start_hadoop_services() {
     ${GPHD_ROOT}/bin/start-yarn.sh
     ${GPHD_ROOT}/bin/start-hbase.sh
     ${GPHD_ROOT}/bin/start-hive.sh
+    export PATH=$PATH:${GPHD_ROOT}/bin:${HADOOP_ROOT}/bin:${HBASE_ROOT}/bin:${HIVE_ROOT}/bin:${ZOOKEEPER_ROOT}/bin
 
 	# list running Hadoop daemons
 	jps
