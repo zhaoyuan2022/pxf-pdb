@@ -1,13 +1,12 @@
 ARG BASE_IMAGE
-ARG DISTRO
 
-FROM pivotaldata/${BASE_IMAGE}-${DISTRO} as scratch
+FROM pivotaldata/${BASE_IMAGE} as scratch
 
 ADD singlecluster/singlecluster-*.tar.gz /
 
 RUN cd / && mv singlecluster-* singlecluster && chmod a+w singlecluster
 
-FROM pivotaldata/${BASE_IMAGE}-${DISTRO}
+FROM pivotaldata/${BASE_IMAGE}
 
 COPY --from=scratch /singlecluster /singlecluster
 
