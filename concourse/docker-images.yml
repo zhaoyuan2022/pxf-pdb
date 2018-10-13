@@ -345,6 +345,9 @@ jobs:
     plan:
     - aggregate:
       - get: pxf_src
+      - get: dockerfile-gpdb-pxf-dev-base
+        passed: [docker-gpdb-pxf-dev-centos6]
+        trigger: true
       - get: dockerfile-gpdb-pxf-dev-centos6-server
         trigger: true
       - get: singlecluster
@@ -362,6 +365,9 @@ jobs:
     plan:
     - aggregate:
       - get: pxf_src
+      - get: dockerfile-gpdb-pxf-dev-base
+        passed: [docker-gpdb-pxf-dev-centos6]
+        trigger: true
       - get: dockerfile-gpdb-pxf-dev-centos6-server
         trigger: true
       - get: singlecluster
