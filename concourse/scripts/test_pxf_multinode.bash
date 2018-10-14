@@ -6,6 +6,7 @@ CWDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source "${CWDIR}/pxf_common.bash"
 
 SSH_OPTS="-i cluster_env_files/private_key.pem -o StrictHostKeyChecking=no"
+GPHD_ROOT="/singlecluster"
 
 function configure_local_hdfs() {
 
@@ -17,7 +18,7 @@ function run_multinode_smoke_test() {
 
     echo "Running multinode smoke test with ${NO_OF_FILES} files"
     time ssh hadoop "export JAVA_HOME=/etc/alternatives/jre_1.8.0_openjdk
-    /singlecluster/bin/hdfs dfs -mkdir -p /tmp && mkdir -p /tmp/pxf_test && \
+    ${GPHD_ROOT}/bin/hdfs dfs -mkdir -p /tmp && mkdir -p /tmp/pxf_test && \
     for i in \$(seq 1 ${NO_OF_FILES}); do \
     cat > /tmp/pxf_test/test_\${i}.txt <<-EOF
 	1
@@ -25,8 +26,8 @@ function run_multinode_smoke_test() {
 	3
 	EOF
     done && \
-    /singlecluster/bin/hdfs dfs -copyFromLocal /tmp/pxf_test/ /tmp && \
-    /singlecluster/bin/hdfs dfs -chown -R gpadmin:gpadmin /tmp/pxf_test"
+    ${GPHD_ROOT}/bin/hdfs dfs -copyFromLocal /tmp/pxf_test/ /tmp && \
+    ${GPHD_ROOT}/bin/hdfs dfs -chown -R gpadmin:gpadmin /tmp/pxf_test"
 
     echo "Found $(hdfs dfs -ls /tmp/pxf_test | grep pxf_test | wc -l) items in /tmp/pxf_test"
     expected_output=$((3 * ${NO_OF_FILES}))
@@ -61,7 +62,7 @@ function close_ssh_tunnels() {
 
 function run_pxf_automation() {
 
-    hdfs dfs -chown gpadmin:gpadmin /tmp
+    ${GPHD_ROOT}/bin/hdfs dfs -chown gpadmin:gpadmin /tmp
     sed -i 's/sutFile=default.xml/sutFile=MultiNodesCluster.xml/g' pxf_src/automation/jsystem.properties
     chown -R gpadmin:gpadmin /home/gpadmin pxf_src/automation
 
