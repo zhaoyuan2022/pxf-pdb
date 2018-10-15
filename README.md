@@ -116,6 +116,7 @@ Configure, build and install GPDB. This will be needed only when you use the con
 ```bash
 ~/workspace/pxf/dev/build_gpdb.bash
 ~/workspace/pxf/dev/install_gpdb.bash
+
 ```
 
 For subsequent minor changes to GPDB source you can simply do the following:
@@ -128,6 +129,7 @@ Create Greenplum Cluster
 source /usr/local/greenplum-db-devel/greenplum_path.sh
 make -C ~/workspace/gpdb create-demo-cluster
 source ~/workspace/gpdb/gpAux/gpdemo/gpdemo-env.sh
+
 ```
 
 ### Setup Hadoop
@@ -184,6 +186,7 @@ else
 fi
 make -C ~/workspace/gpdb/${PXF_EXTENSIONS_DIR} installcheck
 psql -d template1 -c "create extension pxf"
+
 ```
 
 ### Run PXF Tests
