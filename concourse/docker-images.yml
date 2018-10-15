@@ -187,19 +187,12 @@ resources:
       username: {{docker-username}}
       password: {{docker-password}}
 
-  - name: dockerfile-gpdb-pxf-dev-centos6-server
+  - name: dockerfile-gpdb-pxf-dev-server
     type: git
     source:
       branch: {{pxf-git-branch}}
       uri: {{pxf-git-remote}}
-      paths: [concourse/docker/centos6-pxf-server]
-
-  - name: dockerfile-gpdb-pxf-dev-ubuntu16-server
-    type: git
-    source:
-      branch: {{pxf-git-branch}}
-      uri: {{pxf-git-remote}}
-      paths: [concourse/docker/ubuntu16-pxf-server]
+      paths: [concourse/docker/pxf-dev-server]
 
   - name: gpdb-pxf-dev-centos6-cdh-server-image
     type: docker-image
@@ -348,7 +341,7 @@ jobs:
       - get: dockerfile-gpdb-pxf-dev-base
         passed: [docker-gpdb-pxf-dev-centos6]
         trigger: true
-      - get: dockerfile-gpdb-pxf-dev-centos6-server
+      - get: dockerfile-gpdb-pxf-dev-server
         trigger: true
       - get: singlecluster
         resource: singlecluster-CDH
@@ -357,7 +350,7 @@ jobs:
     - put: gpdb-pxf-dev-centos6-cdh-server-image
       params:
         build: .
-        dockerfile: pxf_src/concourse/docker/centos6-pxf-server/Dockerfile
+        dockerfile: pxf_src/concourse/docker/pxf-dev-server/Dockerfile
         build_args:
           BASE_IMAGE: "gpdb-pxf-dev:centos6"
 
@@ -368,7 +361,7 @@ jobs:
       - get: dockerfile-gpdb-pxf-dev-base
         passed: [docker-gpdb-pxf-dev-centos6]
         trigger: true
-      - get: dockerfile-gpdb-pxf-dev-centos6-server
+      - get: dockerfile-gpdb-pxf-dev-server
         trigger: true
       - get: singlecluster
         resource: singlecluster-HDP
@@ -377,7 +370,7 @@ jobs:
     - put: gpdb-pxf-dev-centos6-hdp-server-image
       params:
         build: .
-        dockerfile: pxf_src/concourse/docker/centos6-pxf-server/Dockerfile
+        dockerfile: pxf_src/concourse/docker/pxf-dev-server/Dockerfile
         build_args:
           BASE_IMAGE: "gpdb-pxf-dev:centos6"
 
@@ -388,7 +381,7 @@ jobs:
       - get: dockerfile-gpdb-pxf-dev-base
         passed: [docker-gpdb-pxf-dev-ubuntu16]
         trigger: true
-      - get: dockerfile-gpdb-pxf-dev-ubuntu16-server
+      - get: dockerfile-gpdb-pxf-dev-server
         trigger: true
       - get: singlecluster
         resource: singlecluster-CDH
@@ -397,7 +390,7 @@ jobs:
     - put: gpdb-pxf-dev-ubuntu16-cdh-server-image
       params:
         build: .
-        dockerfile: pxf_src/concourse/docker/ubuntu16-pxf-server/Dockerfile
+        dockerfile: pxf_src/concourse/docker/pxf-dev-server/Dockerfile
         build_args:
           BASE_IMAGE: "gpdb-pxf-dev:ubuntu16"
 
@@ -408,7 +401,7 @@ jobs:
       - get: dockerfile-gpdb-pxf-dev-base
         passed: [docker-gpdb-pxf-dev-ubuntu16]
         trigger: true
-      - get: dockerfile-gpdb-pxf-dev-ubuntu16-server
+      - get: dockerfile-gpdb-pxf-dev-server
         trigger: true
       - get: singlecluster
         resource: singlecluster-HDP
@@ -417,7 +410,7 @@ jobs:
     - put: gpdb-pxf-dev-ubuntu16-hdp-server-image
       params:
         build: .
-        dockerfile: pxf_src/concourse/docker/ubuntu16-pxf-server/Dockerfile
+        dockerfile: pxf_src/concourse/docker/pxf-dev-server/Dockerfile
         build_args:
           BASE_IMAGE: "gpdb-pxf-dev:ubuntu16"
 
