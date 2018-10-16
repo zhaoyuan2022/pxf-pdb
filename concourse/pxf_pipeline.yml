@@ -226,6 +226,8 @@ jobs:
     params:
       GROUP: gpdb,proxy
       TEST_ENV: {{test-env}}
+      TEST_OS: centos
+      TARGET_OS: centos
 
 - name: test_pxf_hdp_multinode_gpdb
   max_in_flight: 2
@@ -290,6 +292,9 @@ jobs:
     image: gpdb-pxf-dev-centos6-hdp-server
     file: pxf_src/concourse/tasks/test_pxf_multinode.yml
     params:
+      GROUP: gpdb,proxy
+      TEST_OS: centos
+      TARGET_OS: centos
       NO_OF_FILES: {{no_of_files}}
 
 - name: test_pxf_cdh_centos6
@@ -316,6 +321,8 @@ jobs:
     params:
       GROUP: gpdb,proxy,profile
       TEST_ENV: {{test-env}}
+      TEST_OS: centos
+      TARGET_OS: centos
       HADOOP_CLIENT: CDH
 
 - name: test_pxf_no_impersonation
