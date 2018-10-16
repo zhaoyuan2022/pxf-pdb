@@ -178,7 +178,7 @@ jobs:
     file: pxf_src/concourse/tasks/test_pxf.yml
     image: gpdb-pxf-dev-centos6-hdp-server
     params:
-      GROUP: gpdb,proxy
+      GROUP: gpdb,proxy,profile
       TEST_ENV: {{test-env}}
       HADOOP_CLIENT: HDP
       TEST_OS: centos
@@ -206,7 +206,7 @@ jobs:
     file: pxf_src/concourse/tasks/test_pxf.yml
     image: gpdb-pxf-dev-ubuntu16-hdp-server
     params:
-      GROUP: gpdb,proxy
+      GROUP: gpdb,proxy,profile
       TEST_ENV: {{test-env}}
       HADOOP_CLIENT: HDP
       TEST_OS: ubuntu
@@ -240,7 +240,7 @@ jobs:
       TEST_ENV: {{test-env}}
 
 - name: test_pxf_hdp_multinode_gpdb
-  max_in_flight: 1
+  max_in_flight: 2
   plan:
   - get: ccp_src
   - get: gpdb_src
@@ -304,7 +304,7 @@ jobs:
     params:
       NO_OF_FILES: {{no_of_files}}
 
-- name: test_pxf_cdh
+- name: test_pxf_cdh_centos6
   plan:
   - aggregate:
     - get: gpdb_src
@@ -326,7 +326,7 @@ jobs:
     image: gpdb-pxf-dev-centos6-cdh-server
     attempts: 2
     params:
-      GROUP: gpdb,proxy
+      GROUP: gpdb,proxy,profile
       TEST_ENV: {{test-env}}
       HADOOP_CLIENT: CDH
 
@@ -361,7 +361,7 @@ jobs:
   - get: pxf_tarball
     passed:
     - test_pxf_hdp_centos6
-    - test_pxf_cdh
+    - test_pxf_cdh_centos6
     - test_pxf_hdp_secure
     - test_pxf_no_impersonation
     - test_pxf_hdp_multinode_gpdb
