@@ -303,7 +303,7 @@ EOF
     # Make a backup of core-site and update it with the S3 core-site
     gpscp -u gpadmin -f /tmp/segment_hosts /tmp/core-site.xml =:/tmp/core-site-patch.xml
     gpssh -u gpadmin -f /tmp/segment_hosts -v -s -e \
-      'source /usr/local/greenplum-db-devel/greenplum_path.sh && mv $GPHOME/pxf/conf/core-site.xml $GPHOME/pxf/conf/core-site.xml.back && cp /tmp/core-site-patch.xml $GPHOME/pxf/conf/core-site.xml'
+      'source /usr/local/greenplum-db-devel/greenplum_path.sh && mv $GPHOME/pxf/conf/core-site.xml $GPHOME/pxf/conf/core-site.xml.back && cp /tmp/core-site-patch.xml $GPHOME/pxf/conf/core-site.xml && gpstop -u'
 
     cat << EOF
 
@@ -325,7 +325,7 @@ EOF
 
     # Restore core-site
     gpssh -u gpadmin -f /tmp/segment_hosts -v -s -e \
-      'source /usr/local/greenplum-db-devel/greenplum_path.sh && mv $GPHOME/pxf/conf/core-site.xml $GPHOME/pxf/conf/core-site.xml.s3 && cp $GPHOME/pxf/conf/core-site.xml.back $GPHOME/pxf/conf/core-site.xml'
+      'source /usr/local/greenplum-db-devel/greenplum_path.sh && mv $GPHOME/pxf/conf/core-site.xml $GPHOME/pxf/conf/core-site.xml.s3 && cp $GPHOME/pxf/conf/core-site.xml.back $GPHOME/pxf/conf/core-site.xml && gpstop -u'
 }
 
 function main {
