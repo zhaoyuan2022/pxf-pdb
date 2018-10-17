@@ -10,8 +10,8 @@ GPHD_ROOT="/singlecluster"
 
 function configure_local_hdfs() {
 
-    sed -i -e 's|hdfs://0.0.0.0:8020|hdfs://hadoop:8020|' /etc/hadoop/conf/core-site.xml /etc/hbase/conf/hbase-site.xml
-    sed -i -e "s/>tez/>mr/g" /etc/hive/conf/hive-site.xml
+    sed -i -e 's|hdfs://0.0.0.0:8020|hdfs://hadoop:8020|' ${PXF_HOME}/conf/core-site.xml ${PXF_HOME}/conf/hbase-site.xml
+    sed -i -e "s/>tez/>mr/g" ${PXF_HOME}/conf/hive-site.xml
 }
 
 function run_multinode_smoke_test() {
@@ -29,7 +29,7 @@ function run_multinode_smoke_test() {
     ${GPHD_ROOT}/bin/hdfs dfs -copyFromLocal /tmp/pxf_test/ /tmp && \
     ${GPHD_ROOT}/bin/hdfs dfs -chown -R gpadmin:gpadmin /tmp/pxf_test"
 
-    echo "Found $(hdfs dfs -ls /tmp/pxf_test | grep pxf_test | wc -l) items in /tmp/pxf_test"
+    echo "Found $(${GPHD_ROOT}/bin/hdfs dfs -ls /tmp/pxf_test | grep pxf_test | wc -l) items in /tmp/pxf_test"
     expected_output=$((3 * ${NO_OF_FILES}))
 
     time ssh ${SSH_OPTS} gpadmin@mdw "source ${GPHOME}/greenplum_path.sh
@@ -93,7 +93,6 @@ function _main() {
     install_gpdb_binary
     setup_gpadmin_user
     install_pxf_server
-
     remote_access_to_gpdb
 
     open_ssh_tunnels
