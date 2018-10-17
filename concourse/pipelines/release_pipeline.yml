@@ -133,33 +133,7 @@ jobs:
     params:
       file: pxf_artifacts/pxf.tar.gz
 
-- name: test_pxf_cdh
-  plan:
-  - aggregate:
-    - get: gpdb_src
-      passed:
-      - compile_pxf
-    - get: bin_gpdb
-      resource: bin_gpdb_centos6
-    - get: pxf_src
-      passed:
-      - compile_pxf
-      trigger: true
-    - get: pxf_tarball
-      passed:
-      - compile_pxf
-      trigger: true
-    - get: gpdb-pxf-dev-centos6-cdh-server
-  - task: test_pxf
-    file: pxf_src/concourse/tasks/test_pxf.yml
-    image: gpdb-pxf-dev-centos6-cdh-server
-    attempts: 2
-    params:
-      GROUP: gpdb,proxy,profile
-      TEST_ENV: {{test-env}}
-      HADOOP_CLIENT: CDH
-
-- name: test_pxf_hdp
+- name: test_pxf_hdp_centos6
   plan:
   - aggregate:
     - get: gpdb_src
@@ -183,6 +157,7 @@ jobs:
       GROUP: gpdb,proxy,profile
       TEST_ENV: {{test-env}}
       HADOOP_CLIENT: HDP
+      TEST_OS: centos
       TARGET_OS: centos
       TARGET_OS_VERSION: 6
 
@@ -211,8 +186,11 @@ jobs:
     params:
       GROUP: gpdb,proxy
       TEST_ENV: {{test-env}}
+      TEST_OS: centos
+      TARGET_OS: centos
 
 - name: test_pxf_hdp_multinode_gpdb
+  max_in_flight: 2
   plan:
   - get: ccp_src
   - get: gpdb_src
@@ -275,7 +253,37 @@ jobs:
     file: pxf_src/concourse/tasks/test_pxf_multinode.yml
     params:
       GROUP: gpdb,proxy
+      TEST_OS: centos
+      TARGET_OS: centos
       NO_OF_FILES: {{no_of_files}}
+
+- name: test_pxf_cdh_centos6
+  plan:
+  - aggregate:
+    - get: gpdb_src
+      passed:
+      - compile_pxf
+    - get: bin_gpdb
+      resource: bin_gpdb_centos6
+    - get: pxf_src
+      passed:
+      - compile_pxf
+      trigger: true
+    - get: pxf_tarball
+      passed:
+      - compile_pxf
+      trigger: true
+    - get: gpdb-pxf-dev-centos6-cdh-server
+  - task: test_pxf
+    file: pxf_src/concourse/tasks/test_pxf.yml
+    image: gpdb-pxf-dev-centos6-cdh-server
+    attempts: 2
+    params:
+      GROUP: gpdb,proxy,profile
+      TEST_ENV: {{test-env}}
+      TEST_OS: centos
+      TARGET_OS: centos
+      HADOOP_CLIENT: CDH
 
 - name: test_pxf_no_impersonation
   plan:
@@ -300,6 +308,8 @@ jobs:
     params:
       IMPERSONATION: false
       TEST_ENV: {{test-env}}
+      TEST_OS: centos
+      TARGET_OS: centos
 
 - name: build_release_candidate_centos
   plan:
@@ -307,8 +317,8 @@ jobs:
   - get: gpdb-pxf-dev-centos6
   - get: pxf_tarball
     passed:
-    - test_pxf_hdp
-    - test_pxf_cdh
+    - test_pxf_hdp_centos6
+    - test_pxf_cdh_centos6
     - test_pxf_hdp_secure
     - test_pxf_no_impersonation
     - test_pxf_hdp_multinode_gpdb
@@ -316,8 +326,8 @@ jobs:
   - get: gpdb_release
   - get: pxf_src
     passed:
-    - test_pxf_hdp
-    - test_pxf_cdh
+    - test_pxf_hdp_centos6
+    - test_pxf_cdh_centos6
     - test_pxf_hdp_secure
     - test_pxf_no_impersonation
     - test_pxf_hdp_multinode_gpdb
