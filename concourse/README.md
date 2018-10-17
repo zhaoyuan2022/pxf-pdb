@@ -62,7 +62,7 @@ fly -t gpdb-prod set-pipeline \
 
 ```
 fly -t ud set-pipeline \
-    -c ~/workspace/pxf/concourse/perf_pipeline.yml \
+    -c ~/workspace/pxf/concourse/pipelines/perf_pipeline.yml \
     -l ~/workspace/gp-continuous-integration/secrets/gpdb_common-ci-secrets.yml \
     -l ~/workspace/gp-continuous-integration/secrets/ccp_ci_secrets_ud.yml \
     -l ~/workspace/pxf/concourse/perf-settings.yml \
