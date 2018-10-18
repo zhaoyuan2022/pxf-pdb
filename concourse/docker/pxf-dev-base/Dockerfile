@@ -10,5 +10,5 @@ RUN cd /tmp/pxf_src/server && make tar && \
     mkdir -p /home/gpadmin && \
     mv /root/.m2 /home/gpadmin && \
     chown -R 1000:1000 /home/gpadmin/.m2 && \
-    ln -s /root/.gradle /home/gpadmin/.gradle && \
+    ln -s /home/gpadmin/.gradle /root/.gradle && \
     rm -rf /tmp/pxf_src
