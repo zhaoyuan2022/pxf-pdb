@@ -284,6 +284,7 @@ jobs:
       params:
         IMPERSONATION: {{enable-impersonation-multinode}}
         PXF_JVM_OPTS: {{pxf-jvm-opts}}
+        TARGET_OS: centos
   - task: test_pxf_multinode
     input_mapping:
       bin_gpdb: gpdb_binary
