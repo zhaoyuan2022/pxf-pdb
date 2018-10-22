@@ -79,10 +79,9 @@ the name of your development pipeline (i.e. `-p dev:<YOUR-PIPELINE>`).
 50G Performance pipeline:
 
 ```
-fly -t ud set-pipeline -c ~/workspace/pxf/concourse/perf_pipeline.yml \
-    -l ~/workspace/continuous-integration/secrets/gpdb_common-ci-secrets.yml \
-    -l ~/workspace/continuous-integration/secrets/gpdb_master-ci-secrets.yml \
-    -l ~/workspace/continuous-integration/secrets/ccp_ci_secrets_ud.yml \
+fly -t ud set-pipeline -c ~/workspace/pxf/concourse/pipelines/perf_pipeline.yml \
+    -l ~/workspace/gp-continuous-integration/secrets/gpdb_common-ci-secrets.yml \
+    -l ~/workspace/gp-continuous-integration/secrets/ccp_ci_secrets_ud.yml \
     -l ~/workspace/pxf/concourse/perf-settings-50g.yml \
     -v gpdb-branch=master -v icw_green_bucket=gpdb5-assert-concourse-builds \
     -v pxf-git-branch=master -p pxf_perf-50g
@@ -91,10 +90,9 @@ fly -t ud set-pipeline -c ~/workspace/pxf/concourse/perf_pipeline.yml \
 500G Performance pipeline:
 
 ```
-fly -t ud set-pipeline -c ~/workspace/pxf/concourse/perf_pipeline.yml \
-    -l ~/workspace/continuous-integration/secrets/gpdb_common-ci-secrets.yml \
-    -l ~/workspace/continuous-integration/secrets/gpdb_master-ci-secrets.yml \
-    -l ~/workspace/continuous-integration/secrets/ccp_ci_secrets_ud.yml \
+fly -t ud set-pipeline -c ~/workspace/pxf/concourse/pipelines/perf_pipeline.yml \
+    -l ~/workspace/gp-continuous-integration/secrets/gpdb_common-ci-secrets.yml \
+    -l ~/workspace/gp-continuous-integration/secrets/ccp_ci_secrets_ud.yml \
     -l ~/workspace/pxf/concourse/perf-settings-500g.yml \
     -v gpdb-branch=master -v icw_green_bucket=gpdb5-assert-concourse-builds \
     -v pxf-git-branch=master -p pxf_perf-500g
