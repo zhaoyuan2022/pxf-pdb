@@ -92,6 +92,10 @@ NOTE: Since the docker container will house all Single cluster Hadoop, Greenplum
 The following commands run the docker container and set up and switch to user gpadmin.
 
 ```bash
+# Get the latest image
+docker pull pivotaldata/gpdb-pxf-dev:centos6
+
+# If you want to use gdb to debug gpdb you need the --privileged flag in the command below
 docker run --rm -it \
   -p 5432:5432 \
   -p 5888:5888 \
