@@ -13,7 +13,11 @@ RUN cd /tmp/pxf_src/server && make tar && \
     ln -s /home/gpadmin/.gradle /root/.gradle && \
     rm -rf /tmp/pxf_src
 
+# install Go utilities in root's home for CI, and in gpadmin's home for development
 RUN yum install -y go && \
+    GOPATH=/root/go go get github.com/golang/dep/cmd/dep && \
+    GOPATH=/root/go go get github.com/onsi/ginkgo/ginkgo && \
+    echo >>/root/.bash_profile 'export PATH="$PATH:/root/go/bin"' && \
     GOPATH=/home/gpadmin/go go get github.com/golang/dep/cmd/dep && \
     GOPATH=/home/gpadmin/go go get github.com/onsi/ginkgo/ginkgo && \
     echo >>/home/gpadmin/.bash_profile 'export PATH="$PATH:/home/gpadmin/go/bin"'
