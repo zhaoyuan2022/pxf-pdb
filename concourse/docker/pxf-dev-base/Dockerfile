@@ -14,10 +14,13 @@ RUN cd /tmp/pxf_src/server && make tar && \
     rm -rf /tmp/pxf_src
 
 # install Go utilities in root's home for CI, and in gpadmin's home for development
-RUN yum install -y go && \
+RUN pushd /tmp && \
+        wget https://dl.google.com/go/go1.11.1.linux-amd64.tar.gz && \
+        tar -C /usr/local -xzf go1.11.1.linux-amd64.tar.gz && \
+    popd && \
     GOPATH=/root/go go get github.com/golang/dep/cmd/dep && \
     GOPATH=/root/go go get github.com/onsi/ginkgo/ginkgo && \
-    echo >>/root/.bash_profile 'export PATH="$PATH:/root/go/bin"' && \
+    echo >>/root/.bash_profile 'export PATH="/root/go/bin:/usr/local/go/bin:$PATH"' && \
     GOPATH=/home/gpadmin/go go get github.com/golang/dep/cmd/dep && \
     GOPATH=/home/gpadmin/go go get github.com/onsi/ginkgo/ginkgo && \
-    echo >>/home/gpadmin/.bash_profile 'export PATH="$PATH:/home/gpadmin/go/bin"'
+    echo >>/home/gpadmin/.bash_profile 'export PATH="/home/gpadmin/go/bin:/usr/local/go/bin:$PATH"'
