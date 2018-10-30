@@ -24,4 +24,5 @@ RUN export ORIG_PWD="$(pwd)" && \
     echo >>/root/.bash_profile 'export PATH="/root/go/bin:/usr/local/go/bin:$PATH"' && \
     GOPATH=/home/gpadmin/go /usr/local/go/bin/go get github.com/golang/dep/cmd/dep && \
     GOPATH=/home/gpadmin/go /usr/local/go/bin/go get github.com/onsi/ginkgo/ginkgo && \
-    echo >>/home/gpadmin/.bash_profile 'export PATH="/home/gpadmin/go/bin:/usr/local/go/bin:$PATH"'
+    echo >>/home/gpadmin/.bash_profile 'export PATH="/home/gpadmin/go/bin:/usr/local/go/bin:$PATH"' && \
+    chown 1000:1000 /home/gpadmin/.bash_profile
