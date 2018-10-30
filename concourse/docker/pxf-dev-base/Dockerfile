@@ -19,9 +19,9 @@ RUN export ORIG_PWD="$(pwd)" && \
         wget https://dl.google.com/go/go1.11.1.linux-amd64.tar.gz && \
         tar -C /usr/local -xzf go1.11.1.linux-amd64.tar.gz && \
     cd "$ORIG_PWD" && \
-    GOPATH=/root/go go get github.com/golang/dep/cmd/dep && \
-    GOPATH=/root/go go get github.com/onsi/ginkgo/ginkgo && \
+    GOPATH=/root/go /usr/local/go/bin/go get github.com/golang/dep/cmd/dep && \
+    GOPATH=/root/go /usr/local/go/bin/go get github.com/onsi/ginkgo/ginkgo && \
     echo >>/root/.bash_profile 'export PATH="/root/go/bin:/usr/local/go/bin:$PATH"' && \
-    GOPATH=/home/gpadmin/go go get github.com/golang/dep/cmd/dep && \
-    GOPATH=/home/gpadmin/go go get github.com/onsi/ginkgo/ginkgo && \
+    GOPATH=/home/gpadmin/go /usr/local/go/bin/go get github.com/golang/dep/cmd/dep && \
+    GOPATH=/home/gpadmin/go /usr/local/go/bin/go get github.com/onsi/ginkgo/ginkgo && \
     echo >>/home/gpadmin/.bash_profile 'export PATH="/home/gpadmin/go/bin:/usr/local/go/bin:$PATH"'
