@@ -43,6 +43,8 @@ git clone https://github.com/greenplum-db/pxf.git
 ## How to Build
 PXF uses gradle for build and has a wrapper makefile for abstraction
 ```bash
+cd pxf/server
+
 # Compile & Test PXF
 make
   
