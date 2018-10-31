@@ -20,42 +20,90 @@
 # pxf-service	start/stop/initialize/status the PXF instance
 #
 
+# establish PXF_HOME and global vars used by all commands
 if [ -z ${PXF_HOME} ]; then
-    parent_script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
-    env_script=${parent_script_dir}/conf/pxf-env.sh
-else
-    env_script=${PXF_HOME}/conf/pxf-env.sh
+    export PXF_HOME="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 fi
-
-# load pxf-env.sh script
-if [ ! -f ${env_script} ]; then
-	echo WARNING: failed to find $env_script
-else
-	source ${env_script}
-fi
-
-pxf_user=${PXF_USER}
-instance_port=${PXF_PORT:-5888}
+default_env_script=${PXF_HOME}/conf/pxf-env-default.sh
+tomcat_root=${PXF_HOME}/apache-tomcat
+tomcat_templates=${PXF_HOME}/templates/tomcat
+instance_root=${PXF_HOME}
 instance_name=pxf-service
-pxf_debug=${PXF_DEBUG:-false}
-
-if [ -z ${PXF_HOME} ]; then
-    # RPM based setup
-    pxf_root=/usr/lib/pxf
-    tomcat_root=/opt/apache-tomcat
-    tomcat_templates=/opt/pxf/tomcat-templates
-    instance_root=/var/pxf
-    instance_owner=$pxf_user:$pxf_user
-else
-    # OSS/Source code based setup
-    pxf_root=${PXF_HOME}/lib
-    tomcat_root=${PXF_HOME}/apache-tomcat
-    tomcat_templates=${PXF_HOME}/tomcat-templates
-    instance_root=${PXF_HOME}
-    instance_owner=${pxf_user}
-fi
 
 curl=`which curl`
+
+function validate_user()
+{
+	# make sure current user is not root
+    if [ $EUID -eq 0 ]; then
+        fail "Cannot run as root user"
+    fi
+}
+
+function confirm_with_user()
+{
+	echo "*****************************************************************************"
+	echo "* GP_EXTENSIONS_HOME or PXF_CONF variables are not defined, using defaults"
+	echo "* Using ${PXF_CONF} for user configurations"
+	echo "* WARNING: using this directory is not recommended for production deployments"
+	echo "*****************************************************************************"
+
+	read -p "Do you want to proceed? [Y]: " answer
+	answer=${answer:-"Y"}
+	case ${answer:0:1} in
+		y|Y )
+			echo "Proceeding with the initialization"
+		;;
+		* )
+			echo "Initialization aborted"
+			exit 1
+		;;
+	esac
+}
+
+function update_pxf_conf()
+{
+    if [ -z "${PXF_CONF}" ]; then
+        # PXF_CONF was not specified during init command
+        # check if we can fall back on GP_EXTENSIONS_HOME
+        if [ ! -z "${GP_EXTENSIONS_HOME}" ]; then
+			export PXF_CONF="${GP_EXTENSIONS_HOME}/pxf"
+        else
+			# need to default to user's home directory and ask for confirmation, unless silent mode is used
+			local current_user=$( id -un )
+			local pxf_user_home=$( getent passwd ${current_user} | cut -d: -f6 )
+			if [ -z "${pxf_user_home}" ]; then
+				fail "PXF_CONF is not set and user ${current_user} home directory is not defined"
+			elif [ ! -d "${pxf_user_home}" ]; then
+				fail "PXF_CONF is not set and user ${current_user} home directory ${pxf_user_home} does not exist"
+			else
+				export PXF_CONF="${pxf_user_home}/pxf"
+				if [ "${silent}" == "false" ]; then
+					confirm_with_user
+				fi
+			fi
+		fi
+    fi
+
+	echo "Using ${PXF_CONF} as a location for user-configurable files"
+
+    # update the value on PXF_CONF in the default env file
+    sed -i -e "s|{PXF_CONF:=.*}$|{PXF_CONF:=\"${PXF_CONF}\"}|g" ${default_env_script}
+}
+
+function get_environment()
+{
+    # load default environment
+    if [ ! -f ${default_env_script} ]; then
+	    fail "Failed to find ${default_env_script}"
+    fi
+    source ${default_env_script}
+
+    # validate JAVA_HOME
+    if [ ! -x ${JAVA_HOME}/bin/java ]; then
+        fail "\$JAVA_HOME is invalid"
+    fi
+}
 
 # print error message and return with error code
 function fail()
@@ -75,13 +123,10 @@ function createInstance()
 	cp -r ${tomcat_root}/* ${instance_root}/${instance_name}/.
 
 	if [ $? -gt 0 ]; then
-		echo ERROR: instance creation failed
+		echo "ERROR: instance creation failed"
 		return 1
 	fi
 
-    if [ ! -z ${pxf_user} ]; then
-        chown -R ${instance_owner} ${instance_root}
-    fi
     chmod 700 ${instance_root}/${instance_name}
 
     # copy configuration files into instance
@@ -89,6 +134,7 @@ function createInstance()
     cp ${tomcat_templates}/conf/catalina.properties ${instance_root}/${instance_name}/conf/.
     cp ${tomcat_templates}/conf/server.xml ${instance_root}/${instance_name}/conf/.
     cp ${tomcat_templates}/conf/web.xml ${instance_root}/${instance_name}/conf/.
+
     return 0
 }
 
@@ -98,8 +144,8 @@ function createInstance()
 #
 function deployWebapp()
 {
-	cp ${pxf_root}/pxf.war ${instance_root}/${instance_name}/webapps/ || return 1
-	cp ${pxf_root}/pxf-service-*[0-9].jar ${instance_root}/${instance_name}/lib/ || return 1
+	cp ${PXF_HOME}/lib/pxf.war ${instance_root}/${instance_name}/webapps/ || return 1
+	cp ${PXF_HOME}/lib/pxf-service-*[0-9].jar ${instance_root}/${instance_name}/lib/ || return 1
 
 	return 0
 }
@@ -116,7 +162,7 @@ function waitForTomcat()
 
 	# wait until tomcat is up:
 	echo Checking if tomcat is up and running...
-	until [[ "`curl --silent --connect-timeout 1 -I http://localhost:${instance_port} | grep 'Coyote'`" != "" ]];
+	until [[ "`curl --silent --connect-timeout 1 -I http://localhost:${PXF_PORT} | grep 'Coyote'`" != "" ]];
 	do
 		let attempts=attempts+1
 		if [[ "$attempts" -eq "$max_attempts" ]]; then
@@ -138,16 +184,16 @@ function checkWebapp()
 {
 	waitForTomcat $1 || return 1
 
-	echo Checking if PXF webapp is up and running...
-	curlResponse=$(${curl} -s "http://localhost:${instance_port}/pxf/v0")
+	echo "Checking if PXF webapp is up and running..."
+	curlResponse=$(${curl} -s "http://localhost:${PXF_PORT}/pxf/v0")
 	expectedResponse="Wrong version v0, supported version is v[0-9]+"
 
 	if [[ ${curlResponse} =~ $expectedResponse ]]; then
-		echo PXF webapp is listening on port ${instance_port}
+		echo PXF webapp is listening on port ${PXF_PORT}
 		return 0
 	fi
 
-	echo ERROR: PXF webapp is inaccessible but tomcat is up. Check logs for more information
+	echo "ERROR: PXF webapp is inaccessible but tomcat is up. Check logs for more information"
 	return 1
 }
 
@@ -161,21 +207,6 @@ function instanceExists()
 
 	${instance_root}/${instance_name}/bin/catalina.sh version > /dev/null 2>&1
 	return $?
-}
-
-# doInit handles the init command
-function doInit()
-{
-	instanceExists
-	if [ $? -eq 0 ]; then
-		echo WARNING: instance already exists in ${instance_root}, nothing to do...
-		return 0
-	fi
-	generatePrivateClasspath || return 1
-	createInstance || return 1
-	deployWebapp || return 1
-	createLogsDir || return 1
-	createRunDir  || return 1
 }
 
 #
@@ -200,11 +231,11 @@ function configureWebapp()
     sed -i -e "s:secondaryClasspathFiles=\"[a-zA-Z0-9\/\;.-]*\":secondaryClasspathFiles=\"${PXF_HOME}\/conf\/pxf-public.classpath\":" ${context_file}
 
     web_file=${instance_root}/${instance_name}/webapps/pxf/WEB-INF/web.xml
-    sed -i -e "s:<param-value>.*pxf-log4j.properties<\/param-value>:<param-value>$PXF_HOME\/conf\/pxf-log4j.properties<\/param-value>:" ${web_file}
+    sed -i -e "s:<param-value>.*pxf-log4j.properties<\/param-value>:<param-value>${PXF_CONF}\/conf\/pxf-log4j.properties<\/param-value>:" ${web_file}
 
     # set port
     catalinaProperties=${instance_root}/${instance_name}/conf/catalina.properties
-    sed -i -e "s|^[[:blank:]]*connector.http.port=.*$|connector.http.port=$instance_port|g" ${catalinaProperties}
+    sed -i -e "s|^[[:blank:]]*connector.http.port=.*$|connector.http.port=${PXF_PORT}|g" ${catalinaProperties}
 
     # set container configs
     catalinaEnv=${instance_root}/${instance_name}/bin/setenv.sh
@@ -224,17 +255,14 @@ function configureWebapp()
 function commandWebapp()
 {
     command=$1
-    if [ "${pxf_debug}" == "true" ] && [ "${command}" == "start" ]; then
+    if [ "${PXF_DEBUG}" == "true" ] && [ "${command}" == "start" ]; then
         command="jpda $command"
     fi
     pushd ${instance_root} > /dev/null
-    if [ ! -z ${pxf_user} ]; then
-        # Run command as a pxf_user
-        su ${pxf_user} -c "$instance_root/$instance_name/bin/catalina.sh $command"
-    else
-        # Run command as a current user
-        ${instance_root}/${instance_name}/bin/catalina.sh ${command}
-    fi
+
+    # Run command as a current user
+    ${instance_root}/${instance_name}/bin/catalina.sh ${command}
+
     if [ $? -ne 0 ]; then
         return 1
     fi
@@ -243,91 +271,108 @@ function commandWebapp()
 
 function createLogsDir()
 {
-    mkdir -p ${PXF_LOGDIR}
-    if [ ! -z ${pxf_user} ]; then
-        chown -R ${instance_owner} ${PXF_LOGDIR}
+    # logs dir is likely outside PXF_HOME, setup only if it does not yet exist
+    if [ ! -d "${PXF_LOGDIR}" ]; then
+        echo "Creating PXF logs directory ${PXF_LOGDIR} ..."
+        mkdir -p ${PXF_LOGDIR}
+        chmod 700 ${PXF_LOGDIR}
     fi
-    chmod 700 ${PXF_LOGDIR}
-    return 0
 }
 
 function createRunDir()
 {
+	echo "Creating PXF runtime directory ${PXF_RUNDIR} ..."
     mkdir -p ${PXF_RUNDIR}
-    if [ ! -z ${pxf_user} ]; then
-        chown -R ${instance_owner} ${PXF_RUNDIR}
-    fi
     chmod 700 ${PXF_RUNDIR}
-    return 0
 }
 
 function generatePrivateClasspath()
 {
     # verify that a template file for the distribution exists
-    local template_file="${PXF_HOME}/conf-templates/pxf-private.classpath.template"
+    local template_file="${PXF_HOME}/templates/pxf/pxf-private.classpath.template"
     if [ ! -f "${template_file}" ]; then
         fail "Template file ${template_file} not found"
     fi
 
     echo "Generating ${PXF_HOME}/conf/pxf-private.classpath file from ${template_file} ..."
 
-    # create initial version of the file by replacing PXF_HOME token (applicable to all templates)
-    sed -e "s|PXF_HOME|${PXF_HOME}|g" ${template_file} > ${PXF_HOME}/conf/pxf-private.classpath
+    # create initial version of the file by replacing PXF_HOME and PXF_CONF tokens
+    cp ${template_file} ${PXF_HOME}/conf/pxf-private.classpath
+    sed -i -e "s|PXF_HOME|${PXF_HOME}|g" ${PXF_HOME}/conf/pxf-private.classpath
+    sed -i -e "s|PXF_CONF|${PXF_CONF}|g" ${PXF_HOME}/conf/pxf-private.classpath
+}
 
+function generateUserConfigs()
+{
+    # create and setup user configuration directories (only if they do not exist)
+    setup_conf_directory ${PXF_CONF}
+    setup_conf_directory ${PXF_CONF}/conf ${PXF_HOME}/templates/user/conf
+    setup_conf_directory ${PXF_CONF}/keytabs
+    setup_conf_directory ${PXF_CONF}/logs
+    setup_conf_directory ${PXF_CONF}/servers ${PXF_HOME}/templates/user/servers
+}
+
+function setup_conf_directory()
+{
+    local target=$1
+    local source=$2
+
+    if [ ! -d "${target}" ]; then
+        if [ -z "${source}" ]; then
+            echo "Creating configuration directory ${target} ..."
+            mkdir -p ${target}
+        else
+            echo "Copying configurations from ${source} to ${target} ..."
+            cp -R ${source} $( dirname ${target} )
+        fi
+    else
+        echo "Directory ${target} already exists, no update required"
+    fi
 }
 
 function printUsage()
 {
-    echo $"Usage: $0 {start|stop|restart|init|status}"
+    echo $"Usage: $0 {start|stop|restart|init|status} [-y]"
 }
 
-function validateParameters()
+function validate_system()
 {
-
     # validate curl
     which curl &> /dev/null
-    if [ "$?" -ne "0" ]
-    then
-        echo "ERROR: curl is not installed, please install"
-        exit 1
+    if [ $? -ne 0 ]; then
+		fail "curl is not installed, please install"
     fi
 
     # validate unzip
     which unzip &> /dev/null
-    if [ "$?" -ne "0" ]
-    then
-        echo "ERROR: unzip is not installed, please install"
-        exit 1
+    if [ $? -ne 0 ]; then
+        fail "unzip is not installed, please install"
     fi
+}
 
-    # validate pxf user
-    if [ ! -z ${pxf_user} ]; then
-        id ${pxf_user}  &> /dev/null;
-        if [ "$?" -ne "0" ]
-        then
-            echo "ERROR: User $pxf_user doesn't exist. Please set valid user via \$PXF_USER variable"
-            exit 1
-        fi
-    fi
+# doInit handles the init command
+function doInit()
+{
+	instanceExists
+	if [ $? -eq 0 ]; then
+		echo ERROR: instance already exists in ${instance_root}, nothing to do...
+		return 0
+	fi
 
-    # make sure current user is not root
-    if [ $EUID -eq 0 ]; then
-        echo "ERROR: Cannot run as root user"
-        exit 1
-    fi
+	update_pxf_conf
+	get_environment
+	generatePrivateClasspath || return 1
+	generateUserConfigs || return 1
+	createInstance || return 1
+	deployWebapp || return 1
+	createLogsDir || return 1
+	createRunDir  || return 1
 
-    # validate JAVA_HOME
-    if [ ! -x ${JAVA_HOME}/bin/java ]; then
-        echo ERROR: \$JAVA_HOME is invalid
-        exit 1
-    fi
-
-    return 0
 }
 
 #
 # doStart handles start command
-# command is executed as the user $pxf_user
+# command is executed as the current user
 #
 # after start, uses checkWebapp to verify the PXF webapp was loaded
 # successfully
@@ -336,9 +381,9 @@ function doStart()
 {
 	instanceExists
 	if [ $? -ne 0 ]; then
-		echo ERROR: cant find PXF instance, maybe call init?
-		return 1
+		fail "can't find PXF instance, maybe call init?"
 	fi
+	get_environment
 	configureWebapp || return 1
 	commandWebapp start || return 1
 	checkWebapp 300 || return 1
@@ -346,47 +391,51 @@ function doStart()
 
 #
 # doStart handles stop command
-# command is executed as the user $pxf_user
+# command is executed as the current user
 #
 #
 function doStop()
 {
     instanceExists
     if [ $? -ne 0 ]; then
-        echo "ERROR: can't find PXF instance, maybe call init?"
-        return 1
+        fail "can't find PXF instance, maybe call init?"
     fi
+	get_environment
     commandWebapp stop || return 1
 }
 
 function doStatus()
 {
+	get_environment
 	checkWebapp 1 || return 1
 }
 
-command=$1
+pxf_script_command=$1
 
-case "$command" in
+silent=false
+if [ "$2" == "-y" ] || [ "$2" == "-Y" ]; then
+	silent=true
+fi
+
+validate_user
+validate_system
+
+case "${pxf_script_command}" in
 	"init" )
-		validateParameters
 		doInit
 		;;
 	"start" )
-		validateParameters
 		doStart
 		;;
 	"stop" )
-		validateParameters
 		doStop
 		;;
 	"restart" )
-		validateParameters
 		doStop
 		sleep 1s
 		doStart
 		;;
 	"status" )
-		validateParameters
 		doStatus
 		;;
 	* )
