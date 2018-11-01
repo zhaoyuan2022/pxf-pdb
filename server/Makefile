@@ -16,6 +16,9 @@
 # under the License.
 #
 # protect the default target for this file from the targets in Makefile.global
+
+PXF_CLI_MAKEFILE_LOCATION = pxf-cli/go/src/pxf-cluster
+
 default: all
 
 ifneq "$(PXF_HOME)" ""
@@ -56,9 +59,12 @@ all:
 	./gradlew clean tar aggregateJavadoc $(BUILD_PARAMS)
 
 compile:
-	./gradlew compileJava
+	./gradlew compileJava && make -C $(PXF_CLI_MAKEFILE_LOCATION)
 
-test unittest:
+test-cli:
+	make -C $(PXF_CLI_MAKEFILE_LOCATION) test
+
+test unittest: test-cli
 	./gradlew test
 
 tar:
