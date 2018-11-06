@@ -418,13 +418,18 @@ function doCluster()
 	"$parent_script_dir/bin/pxf-cluster" "$@"
 }
 
-command=$1
+pxf_script_command=$1
+
+silent=false
 
 validate_user
 validate_system
 
-case "${command}" in
+case "${pxf_script_command}" in
 	"init" )
+		if [ "$2" == "-y" ] || [ "$2" == "-Y" ]; then
+			silent=true
+		fi
 		doInit
 		;;
 	"start" )
