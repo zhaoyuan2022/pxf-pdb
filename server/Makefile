@@ -59,18 +59,32 @@ all:
 	./gradlew clean tar aggregateJavadoc $(BUILD_PARAMS)
 
 compile:
-	./gradlew compileJava && make -C $(PXF_CLI_MAKEFILE_LOCATION)
+	./gradlew compileJava
 
-test-cli:
+compile-cli:
+	make -C $(PXF_CLI_MAKEFILE_LOCATION)
+
+test-cli: compile-cli
 	make -C $(PXF_CLI_MAKEFILE_LOCATION) test
+
+clean-cli:
+	make -C $(PXF_CLI_MAKEFILE_LOCATION) clean
+
+assemble-cli: compile-cli
+	mkdir -p build/stage/bin
+	cp $(PXF_CLI_MAKEFILE_LOCATION)/pxf-cluster build/stage/bin
+
+install-cli: compile-cli
+	mkdir -p $(PXF_HOME)/bin
+	cp $(PXF_CLI_MAKEFILE_LOCATION)/pxf-cluster $(PXF_HOME)/bin
 
 test unittest: test-cli
 	./gradlew test
 
-tar:
+tar: assemble-cli
 	./gradlew tar $(BUILD_PARAMS)
 
-clean:
+clean: clean-cli
 	./gradlew clean
 	rm -rf build
 
@@ -80,7 +94,7 @@ doc:
 	./gradlew aggregateJavadoc
 
 .PHONY: install
-install:
+install: install-cli
 	./gradlew install $(BUILD_PARAMS)
 
 .PHONY: version
