@@ -23,5 +23,5 @@ RUN cd /tmp/pxf_src/server && \
     mv /root/.m2 /home/gpadmin && \
     chown -R 1000:1000 /home/gpadmin && \
     chown -R 1000:1000 /opt/go && \
-    ln -s /home/gpadmin/.gradle /root/.gradle && \
+    ln -s /root/.gradle /home/gpadmin/.gradle && \
     rm -rf /tmp/pxf_src
