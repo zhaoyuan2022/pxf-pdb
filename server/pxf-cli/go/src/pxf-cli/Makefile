@@ -1,14 +1,13 @@
 .PHONY: all depend build tar install test clean help
 .DEFAULT_GOAL := build
 
-export GOPATH := $(shell cd ../.. && pwd)
-PXF_STAGING_DIR := $(shell cd ../../../../build/stage/bin && pwd)
-PXF_SERVICE_SCRIPTS := $(shell cd ../../../../../server/pxf-service/src/scripts && pwd)
 TARGET := $(shell echo $${PWD\#\#*/})
-SERVER := $(shell cd ../../../../../server && pwd)
-PXF_VERSION := $(shell grep version= ${SERVER}/gradle.properties | cut -d= -f2)
-BACKUP_VERSION_STR := "-X ${TARGET}/cmd.version=${PXF_VERSION}"
-LDFLAGS := -ldflags ${BACKUP_VERSION_STR}
+PXF_SERVER_DIR := $(shell cd ../../../.. && pwd)
+PXF_STAGING_DIR := ${PXF_SERVER_DIR}/build/stage/bin
+PXF_SERVICE_SCRIPTS := ${PXF_SERVER_DIR}/pxf-service/src/scripts
+PXF_VERSION := $(shell grep version= ${PXF_SERVER_DIR}/gradle.properties | cut -d= -f2)
+LDFLAGS := -ldflags "-X ${TARGET}/cmd.version=${PXF_VERSION}"
+GOPATH := ${PXF_SERVER_DIR}/pxf-cli/go
 
 help:
 	@echo
