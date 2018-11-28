@@ -343,13 +343,6 @@ function validate_system()
     fi
 }
 
-# doVersion handles the version command
-# the string below will be replaced with 'echo <correct-version>' during the build process
-doVersion() {
-	GRADLE_PRINT_PXF_VERSION
-	exit 0
-}
-
 function printUsage()
 {
     local normal=$(tput sgr0)
@@ -373,8 +366,8 @@ doHelp() {
 	  init      initialize the local PXF server instance
 	  start     start the local PXF server instance
 	  stop      stop the local PXF server instance
-	  restart   restart the local PXF server instance
-	  status    show the status of the local PXF server instance
+	  restart   restart the local PXF server instance (not supported for cluster)
+	  status    show the status of the local PXF server instance (not supported for cluster)
 	  version   show the version of PXF server
 	  cluster   perform <command> on each segment host in the cluster
 
@@ -447,8 +440,7 @@ function doStatus()
 
 function doCluster()
 {
-	shift # drop the 'cluster' arg
-	GPHOME=${GPHOME:-"${PXF_HOME}/.."} "$parent_script_dir/bin/pxf-cluster" "$@"
+	GPHOME=${GPHOME:-"${PXF_HOME}/.."} "$parent_script_dir/bin/pxf-cli" "$@"
 }
 
 pxf_script_command=$1
@@ -482,8 +474,8 @@ case "${pxf_script_command}" in
 	'help' | '-h' | '--help' )
 		doHelp
 		;;
-	'version' )
-		doVersion
+	'version' | '--version' | '-v' )
+		doCluster --version
 		;;
 	'cluster' )
 		doCluster "$@"

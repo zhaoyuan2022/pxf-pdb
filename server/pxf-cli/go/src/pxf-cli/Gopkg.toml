@@ -23,24 +23,16 @@
 #   non-go = false
 #   go-tests = true
 #   unused-packages = true
-required = ["golang.org/x/tools/cmd/goimports", "github.com/onsi/ginkgo/ginkgo"]
+
 
 [[constraint]]
-  name = "github.com/onsi/ginkgo"
-  version = "v1.6.0"
-
-[[constraint]]
-  name = "github.com/onsi/gomega"
-  version = "1.4.2"
-
-[[constraint]]
-  name = "github.com/greenplum-db/gp-common-go-libs"
-  revision = "459655a5c915e633b3a15987ae469ab64b3405a4"
-
-[[override]]
-  name = "gopkg.in/fsnotify.v1"
-  source = "https://github.com/fsnotify/fsnotify.git"
+  name = "github.com/spf13/cobra"
+  version = "0.0.3"
 
 [prune]
   go-tests = true
   unused-packages = true
+
+[[override]]
+  name = "gopkg.in/fsnotify.v1"
+  source = "https://github.com/fsnotify/fsnotify.git"

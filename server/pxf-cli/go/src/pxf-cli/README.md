@@ -7,7 +7,7 @@
 
 1. Go to the pxf-cluster folder and install dependencies
    ```
-   cd pxf/cli/go/src/pxf-cluster
+   cd pxf/server/pxf-cli/go/src/pxf-cli
    make depend
    ```
 
@@ -19,6 +19,10 @@
 1. Build the CLI
    ```
    make
+   ```
+   This will put the binary at `pxf/server/pxf-cli/go/bin/pxf-cli`. You can also install the binary into `${PXF_HOME}/bin/pxf-cli` with:
+   ```
+   make install
    ```
 
 ## Adding New Dependencies
