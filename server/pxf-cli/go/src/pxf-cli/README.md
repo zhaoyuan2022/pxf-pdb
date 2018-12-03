@@ -2,12 +2,13 @@
 
 ## Getting Started
 
-1. Ensure you are set up for PXF development by following the README.md at the
-   root of this repository.
+1. Ensure you are set up for PXF development by following the README.md at the root of this repository. This tool requires Go version 1.9 or higher. Follow the directions [here](https://golang.org/doc/) to get the language set up.
 
 1. Go to the pxf-cluster folder and install dependencies
    ```
    cd pxf/server/pxf-cli/go/src/pxf-cli
+   go get github.com/golang/dep/cmd/dep
+   go get github.com/onsi/ginkgo/ginkgo
    make depend
    ```
 
