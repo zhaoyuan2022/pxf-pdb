@@ -29,17 +29,17 @@ var _ = Describe("pxf-cli", func() {
 
 	It("returns unknown command when invalid arg is given", func() {
 		output := runCli(pxfCliPath, "invalid")
-		Expect(output).To(ContainSubstring(`unknown command "invalid" for "pxf-cli"`))
+		Expect(output).To(ContainSubstring(`unknown command "invalid" for "pxf"`))
 	})
 
 	It("returns help when no args are given", func() {
 		output := runCli(pxfCliPath)
-		Expect(output).To(ContainSubstring("Usage: pxf <command> [-y]"))
+		Expect(output).To(ContainSubstring("Usage: pxf cluster <command>"))
 	})
 
 	It("returns help when --help flag is given", func() {
 		output := runCli(pxfCliPath, "--help")
-		Expect(output).To(ContainSubstring("Usage: pxf <command> [-y]"))
+		Expect(output).To(ContainSubstring("Usage: pxf cluster <command"))
 	})
 
 	It("returns help when --version flag is given", func() {
@@ -49,6 +49,6 @@ var _ = Describe("pxf-cli", func() {
 
 	It("returns help when invalid cluster arg is given", func() {
 		output := runCli(pxfCliPath, "cluster", "init1")
-		Expect(output).To(ContainSubstring(fmt.Sprintf("perform <command> on each segment host in the cluster")))
+		Expect(output).To(ContainSubstring(fmt.Sprintf("Perform <command> on each segment host in the cluster")))
 	})
 })

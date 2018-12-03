@@ -35,6 +35,9 @@ tar: build
 	cp ${GOPATH}/bin/pxf-cli ${PXF_STAGING_DIR}
 
 install: build
+	@if [[ "$(PXF_HOME)" == "" ]]; then \
+		echo "ERROR: PXF_HOME is not set correctly"; exit 2; \
+	fi
 	mkdir -p ${PXF_HOME}/bin
 	cp ${PXF_SERVICE_SCRIPTS}/pxf-service ${PXF_HOME}/bin/pxf
 	cp ${GOPATH}/bin/pxf-cli ${PXF_HOME}/bin
