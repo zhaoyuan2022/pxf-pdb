@@ -12,7 +12,7 @@ var version string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:     "pxf-cli",
+	Use:     "pxf",
 	Version: version,
 }
 
@@ -37,9 +37,8 @@ func init() {
 	})
 	rootCmd.SetVersionTemplate(`{{printf "PXF version %s" .Version}}
 `)
-	rootCmd.SetUsageTemplate(`Usage: pxf <command> [-y]
-       pxf cluster <command>
-       pxf {-h | --help}{{if .HasAvailableSubCommands}}
+	rootCmd.SetUsageTemplate(`Usage: pxf cluster <command>
+       pxf cluster {-h | --help}{{if .HasAvailableSubCommands}}
 
 List of Commands:{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
   {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
@@ -54,6 +53,7 @@ Additional help topics:{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
   {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
 
 Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
+
 `)
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.

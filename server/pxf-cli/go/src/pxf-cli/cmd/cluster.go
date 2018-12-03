@@ -14,12 +14,12 @@ import (
 var (
 	clusterCmd = &cobra.Command{
 		Use:   "cluster",
-		Short: "perform <command> on each segment host in the cluster",
+		Short: "Perform <command> on each segment host in the cluster",
 	}
 
 	initCmd = &cobra.Command{
 		Use:   "init",
-		Short: "initialize the local PXF server instance",
+		Short: "Initialize the local PXF server instance",
 		Run: func(cmd *cobra.Command, args []string) {
 			doSetup()
 			clusterRun(pxf.Init)
@@ -28,7 +28,7 @@ var (
 
 	startCmd = &cobra.Command{
 		Use:   "start",
-		Short: "start the local PXF server instance",
+		Short: "Start the local PXF server instance",
 		Run: func(cmd *cobra.Command, args []string) {
 			doSetup()
 			clusterRun(pxf.Start)
@@ -37,7 +37,7 @@ var (
 
 	stopCmd = &cobra.Command{
 		Use:   "stop",
-		Short: "stop the local PXF server instance",
+		Short: "Stop the local PXF server instance",
 		Run: func(cmd *cobra.Command, args []string) {
 			doSetup()
 			clusterRun(pxf.Stop)
