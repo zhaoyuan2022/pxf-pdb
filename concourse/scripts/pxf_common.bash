@@ -162,7 +162,7 @@ function install_pxf_server() {
 		else
 			export BUILD_NUMBER="${TARGET_OS}"
 			export JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF8
-			pushd pxf_src/server
+			pushd pxf_src
 			make install
 			popd
 		fi
