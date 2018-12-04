@@ -1,13 +1,12 @@
 PXF_VERSION := $(shell grep '^version=' ./server/gradle.properties | cut -d "=" -f2)
 
-ifneq "$(PXF_HOME)" ""
-	BUILD_PARAMS+= -DdeployPath="$(PXF_HOME)"
-else ifneq "$(GPHOME)" ""
-	PXF_HOME= "$(GPHOME)/pxf"
-	BUILD_PARAMS+= -DdeployPath="$(PXF_HOME)"
+ifeq "$(PXF_HOME)" ""
+    ifneq "$(GPHOME)" ""
+        PXF_HOME= "$(GPHOME)/pxf"
+    endif
 endif
 
-export PXF_HOME PXF_VERSION BUILD_PARAMS
+export PXF_HOME PXF_VERSION
 
 default: all
 

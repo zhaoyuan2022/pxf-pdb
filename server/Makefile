@@ -19,12 +19,6 @@
 
 default: all
 
-ifeq "$(PXF_HOME)" ""
-    ifneq "$(GPHOME)" ""
-        PXF_HOME= "$(GPHOME)/pxf"
-    endif
-endif
-
 BUILD_PARAMS+= -DdeployPath="$(PXF_HOME)"
 
 ifneq "$(LICENSE)" ""
@@ -77,6 +71,9 @@ doc:
 
 .PHONY: install
 install:
+	@if [[ "$(PXF_HOME)" == "" ]]; then \
+		echo "ERROR: PXF_HOME is not set correctly"; exit 2; \
+	fi
 	./gradlew install ${BUILD_PARAMS}
 
 .PHONY: version
