@@ -324,5 +324,4 @@ jobs:
       AWS_ACCESS_KEY_ID: {{tf-machine-access-key-id}}
       AWS_SECRET_ACCESS_KEY: {{tf-machine-secret-access-key}}
       AWS_DEFAULT_REGION: {{aws-region}}
-      TEST_OS: centos
       TARGET_OS: centos

@@ -277,7 +277,6 @@ jobs:
       GROUP: gpdb,proxy,profile
       TEST_ENV: {{test-env}}
       HADOOP_CLIENT: HDP
-      TEST_OS: centos
       TARGET_OS: centos
       TARGET_OS_VERSION: 6
 {% if acceptance %}
@@ -356,7 +355,6 @@ jobs:
     params:
       GROUP: gpdb,proxy
       TEST_ENV: {{test-env}}
-      TEST_OS: centos
       TARGET_OS: centos
 {% if acceptance %}
       ACCEPTANCE: true
@@ -436,7 +434,6 @@ jobs:
     file: pxf_src/concourse/tasks/test_pxf_multinode.yml
     params:
       GROUP: gpdb,proxy
-      TEST_OS: centos
       TARGET_OS: centos
       NO_OF_FILES: {{no_of_files}}
 {% if acceptance %}
@@ -474,7 +471,6 @@ jobs:
     params:
       GROUP: gpdb,proxy,profile
       TEST_ENV: {{test-env}}
-      TEST_OS: centos
       TARGET_OS: centos
       HADOOP_CLIENT: CDH
 {% if acceptance %}
@@ -511,7 +507,6 @@ jobs:
     params:
       IMPERSONATION: false
       TEST_ENV: {{test-env}}
-      TEST_OS: centos
       TARGET_OS: centos
 {% if acceptance %}
       ACCEPTANCE: true
