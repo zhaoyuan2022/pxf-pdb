@@ -435,7 +435,6 @@ jobs:
     params:
       GROUP: gpdb,proxy
       TARGET_OS: centos
-      NO_OF_FILES: {{no_of_files}}
 {% if acceptance %}
       ACCEPTANCE: true
 {% endif %}

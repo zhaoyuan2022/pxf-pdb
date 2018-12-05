@@ -6,5 +6,9 @@ inputs:
   - name: cluster_env_files
   - name: bin_gpdb
   - name: pxf_tarball
+params:
+  GROUP: feature
+  TARGET_OS: centos
+  TARGET_OS_VERSION: 6
 run:
   path: pxf_src/concourse/scripts/test_pxf_multinode.bash

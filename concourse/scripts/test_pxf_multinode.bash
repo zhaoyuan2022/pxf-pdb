@@ -104,7 +104,6 @@ function _main() {
 		exit 1
 	fi
 
-	run_multinode_smoke_test
 	run_pxf_automation
 	close_ssh_tunnels
 }

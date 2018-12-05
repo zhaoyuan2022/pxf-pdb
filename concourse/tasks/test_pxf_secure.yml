@@ -10,5 +10,7 @@ params:
   CLUSTER_NAME: hdp
   NODE: c6401.ambari.apache.org
   REALM: AMBARI.APACHE.ORG
+  GROUP: smoke
+  TARGET_OS: centos
 run:
   path: pxf_src/concourse/scripts/test_pxf_secure.bash
