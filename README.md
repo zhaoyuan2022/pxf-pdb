@@ -236,7 +236,7 @@ To deploy your changes to PXF in the development environment.
 # $PXF_HOME folder is replaced each time you make install.
 # So, if you have any config changes, you may want to back those up.
 $PXF_HOME/bin/pxf stop
-make -C ~/workspace/pxf/server install
+make -C ~/workspace/pxf install
 
 # Make any config changes you had backed up previously
 $PXF_HOME/bin/pxf start
