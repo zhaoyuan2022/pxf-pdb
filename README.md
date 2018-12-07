@@ -13,6 +13,9 @@ Package Contents
 ## server/
 Contains the server side code of PXF along with the PXF Service and all the Plugins
 
+## cli/
+Contains command line interface code for PXF
+
 ## automation/
 Contains the automation and integration tests for PXF against the various datasources
 
@@ -27,17 +30,17 @@ PXF Development
 =================
 Below are the steps to build and install PXF along with its dependencies including GPDB and Hadoop.
 
-To start, ensure you have a `~/workspace` directory and have cloned the `pxf` and its prerequisities(shown below) under it.
+To start, ensure you have a `~/workspace` directory and have cloned the `pxf` and its prerequisites(shown below) under it.
 (The name `workspace` is not strictly required but will be used throughout this guide.)
-Alternatively, you may create a symlink to your existing repo folder.
-```bash
-ln -s ~/<git_repos_root> ~/workspace
-```
 ```bash
 mkdir -p ~/workspace
 cd ~/workspace
 
 git clone https://github.com/greenplum-db/pxf.git
+```
+Alternatively, you may create a symlink to your existing repo folder.
+```bash
+ln -s ~/<git_repos_root> ~/workspace
 ```
 
 ## Install Dependencies
@@ -64,7 +67,7 @@ to install them.
 ## How to Build
 PXF uses gradle for build and has a wrapper makefile for abstraction
 ```bash
-cd pxf/server
+cd ~/workspace/pxf
 
 # Compile & Test PXF
 make
@@ -193,7 +196,7 @@ popd
 Install PXF Server
 ```bash
 # Install PXF
-make -C ~/workspace/pxf/server install
+make -C ~/workspace/pxf install
 
 # Initialize PXF
 $PXF_HOME/bin/pxf init
