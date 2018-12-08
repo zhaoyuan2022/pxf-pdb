@@ -205,6 +205,14 @@ $PXF_HOME/bin/pxf init
 $PXF_HOME/bin/pxf start
 ```
 
+Finally, if you don't have any servers configured, go ahead and copy the `core-site.xml` template to the default config location:
+
+```
+cp "${PXF_CONF}/templates/core-site.xml" "${PXF_CONF}/servers/default"
+```
+
+where `PXF_CONF` can be defined before running `pxf init` (otherwise the `pxf` script sets it to `${HOME}/pxf`).
+
 Install PXF client (ignore if this is already done)
 ```bash
 if [ -d ~/workspace/gpdb/gpAux/extensions/pxf ]; then
@@ -255,9 +263,9 @@ no JDK set for Gradle. Just cancel and retry. It goes away the second time.
 - Restart IntelliJ
 - Check that it worked by running a test (Cmd+O)
 
-## To run a Kerberized Hadoop Cluster
+# To run a Kerberized Hadoop Cluster
 
-# Requirements
+## Requirements
 
 - Download bin_gpdb (from any of the pipelines)
 - Download pxf_tarball (from any of the pipelines)
@@ -291,7 +299,7 @@ docker run --rm -it \
 pxf_src/concourse/scripts/test_pxf_secure.bash
 
 echo "+----------------------------------------------+"
-echo "| Kerberos admin principal: admin/admin@${REALM} |"
+echo "| Kerberos admin principal: admin/admin@$REALM |"
 echo "| Kerberos admin password : admin              |"
 echo "+----------------------------------------------+"
 
