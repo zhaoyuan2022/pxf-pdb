@@ -25,7 +25,8 @@ var (
 		Short: "Initialize the local PXF server instance",
 		Run: func(cmd *cobra.Command, args []string) {
 			doSetup()
-			clusterRun(pxf.Init)
+			err := clusterRun(pxf.Init)
+			exitWithReturnCode(err)
 		},
 	}
 
@@ -34,7 +35,8 @@ var (
 		Short: "Start the local PXF server instance",
 		Run: func(cmd *cobra.Command, args []string) {
 			doSetup()
-			clusterRun(pxf.Start)
+			err := clusterRun(pxf.Start)
+			exitWithReturnCode(err)
 		},
 	}
 
@@ -43,7 +45,8 @@ var (
 		Short: "Stop the local PXF server instance",
 		Run: func(cmd *cobra.Command, args []string) {
 			doSetup()
-			clusterRun(pxf.Stop)
+			err := clusterRun(pxf.Stop)
+			exitWithReturnCode(err)
 		},
 	}
 
@@ -52,7 +55,8 @@ var (
 		Short: "Sync PXF configs from master to all segment hosts",
 		Run: func(cmd *cobra.Command, args []string) {
 			doSetup()
-			clusterRun(pxf.Sync)
+			err := clusterRun(pxf.Sync)
+			exitWithReturnCode(err)
 		},
 	}
 
@@ -65,6 +69,13 @@ func init() {
 	clusterCmd.AddCommand(startCmd)
 	clusterCmd.AddCommand(stopCmd)
 	clusterCmd.AddCommand(syncCmd)
+}
+
+func exitWithReturnCode(err error) {
+	if err != nil {
+		os.Exit(1)
+	}
+	os.Exit(0)
 }
 
 func GetHostList(command pxf.Command) int {
