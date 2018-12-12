@@ -3,12 +3,15 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"github.com/greenplum-db/gp-common-go-libs/operating"
+	"os"
+	"pxf-cli/pxf"
+	"strings"
+
 	"github.com/greenplum-db/gp-common-go-libs/cluster"
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/spf13/cobra"
-	"pxf-cli/pxf"
-	"strings"
 )
 
 var (
@@ -43,6 +46,17 @@ var (
 			clusterRun(pxf.Stop)
 		},
 	}
+
+	syncCmd = &cobra.Command{
+		Use:   "sync",
+		Short: "Sync PXF configs from master to all segment hosts",
+		Run: func(cmd *cobra.Command, args []string) {
+			doSetup()
+			clusterRun(pxf.Sync)
+		},
+	}
+
+	segHostList map[string]int
 )
 
 func init() {
@@ -50,14 +64,36 @@ func init() {
 	clusterCmd.AddCommand(initCmd)
 	clusterCmd.AddCommand(startCmd)
 	clusterCmd.AddCommand(stopCmd)
+	clusterCmd.AddCommand(syncCmd)
 }
 
-func GetHostlist(command pxf.Command) int {
-	hostlist := cluster.ON_HOSTS
+func GetHostList(command pxf.Command) int {
+	hostList := cluster.ON_HOSTS
 	if command == pxf.Init {
-		hostlist = cluster.ON_HOSTS_AND_MASTER
+		hostList = cluster.ON_HOSTS_AND_MASTER
 	}
-	return hostlist
+	return hostList
+}
+
+func GenerateHostList(cluster *cluster.Cluster) (map[string]int, error) {
+	hostSegMap := make(map[string]int, 0)
+	for contentID, seg := range cluster.Segments {
+		if contentID == -1 {
+			master, _ := operating.System.Hostname()
+			if seg.Hostname != master {
+				return nil, errors.New("ERROR: pxf cluster commands should only be run from Greenplum master")
+			}
+			continue
+		}
+		hostSegMap[seg.Hostname]++
+	}
+	return hostSegMap, nil
+}
+
+func GenerateStatusReport(command pxf.Command) string {
+	cmdMsg := fmt.Sprintf(pxf.StatusMessage[command], len(segHostList))
+	gplog.Info(cmdMsg)
+	return cmdMsg
 }
 
 func GenerateOutput(command pxf.Command, remoteOut *cluster.RemoteOutput) error {
@@ -94,9 +130,19 @@ func GenerateOutput(command pxf.Command, remoteOut *cluster.RemoteOutput) error 
 
 func doSetup() {
 	connectionPool = dbconn.NewDBConnFromEnvironment("postgres")
-	connectionPool.MustConnect(1)
-	segConfigs = cluster.MustGetSegmentConfiguration(connectionPool)
+	err := connectionPool.Connect(1)
+	if err != nil {
+		gplog.Error(fmt.Sprintf("ERROR: Could not connect to GPDB.\n%s\n"+
+			"Please make sure that your Greenplum database is running and you are on the master node.", err.Error()))
+		os.Exit(1)
+	}
+	segConfigs := cluster.MustGetSegmentConfiguration(connectionPool)
 	globalCluster = cluster.NewCluster(segConfigs)
+	segHostList, err = GenerateHostList(globalCluster)
+	if err != nil {
+		gplog.Error(err.Error())
+		os.Exit(1)
+	}
 }
 
 func clusterRun(command pxf.Command) error {
@@ -107,11 +153,12 @@ func clusterRun(command pxf.Command) error {
 		return err
 	}
 
+	cmdMsg := GenerateStatusReport(command)
 	remoteOut := globalCluster.GenerateAndExecuteCommand(
-		fmt.Sprintf("Executing command '%s' on all hosts", string(command)),
+		cmdMsg,
 		func(contentID int) string {
 			return remoteCommand
 		},
-		GetHostlist(command))
+		GetHostList(command))
 	return GenerateOutput(command, remoteOut)
 }

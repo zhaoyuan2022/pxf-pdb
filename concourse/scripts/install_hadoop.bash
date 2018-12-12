@@ -25,21 +25,6 @@ function setup_pxf {
         sudo chown -R gpadmin:gpadmin ${GPHOME}/pxf"
 }
 
-function configure_pxf {
-
-    local segment=${1}
-    local hadoop_ip=${2}
-
-    # configure PXF as gpadmin
-    ssh ${SSH_OPTS} gpadmin@${segment} "
-        cp ${PXF_CONF_DIR}/templates/*-site.xml ${PXF_CONF_DIR}/servers/default/ &&
-        sed -i -e 's/\(0.0.0.0\|localhost\|127.0.0.1\)/${hadoop_ip}/g' ${PXF_CONF_DIR}/servers/default/*-site.xml &&
-        if [ ${IMPERSONATION} == false ]; then
-            echo 'export PXF_USER_IMPERSONATION=false' >> ${PXF_CONF_DIR}/conf/pxf-env.sh
-        fi &&
-        echo 'export PXF_JVM_OPTS=\"${PXF_JVM_OPTS}\"' >> ${PXF_CONF_DIR}/conf/pxf-env.sh"
-}
-
 function install_hadoop_single_cluster() {
 
     local hadoop_ip=${1}
@@ -97,17 +82,16 @@ function install_pxf_and_hadoop() {
         setup_pxf ${node} ${hadoop_ip} &
     done
     wait
-    # init all PXFs using cluster command
-    # pxf init is required on master because automation script is expecting it
+    # init all PXFs using cluster command, configure PXF on master, sync configs and start pxf
     ssh ${SSH_OPTS} gpadmin@mdw "source ${GPHOME}/greenplum_path.sh &&
-        PXF_CONF=${PXF_CONF_DIR} ${GPHOME}/pxf/bin/pxf cluster init"
-    # configure pxf on all segment hosts
-    for segment in ${gpdb_segments}; do
-        configure_pxf ${segment} ${hadoop_ip} &
-    done
-    wait
-    # start all PXFs using cluster command
-    ssh ${SSH_OPTS} gpadmin@mdw "source ${GPHOME}/greenplum_path.sh &&
+        PXF_CONF=${PXF_CONF_DIR} ${GPHOME}/pxf/bin/pxf cluster init &&
+        cp ${PXF_CONF_DIR}/templates/*-site.xml ${PXF_CONF_DIR}/servers/default/ &&
+        sed -i -e 's/\(0.0.0.0\|localhost\|127.0.0.1\)/${hadoop_ip}/g' ${PXF_CONF_DIR}/servers/default/*-site.xml &&
+        if [ ${IMPERSONATION} == false ]; then
+            echo 'export PXF_USER_IMPERSONATION=false' >> ${PXF_CONF_DIR}/conf/pxf-env.sh
+        fi &&
+        echo 'export PXF_JVM_OPTS=\"${PXF_JVM_OPTS}\"' >> ${PXF_CONF_DIR}/conf/pxf-env.sh &&
+        ${GPHOME}/pxf/bin/pxf cluster sync &&
         ${GPHOME}/pxf/bin/pxf cluster start"
 }
 
