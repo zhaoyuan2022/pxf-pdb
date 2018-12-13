@@ -131,10 +131,7 @@ docker run --rm -it \
   -v ~/workspace/pxf:/home/gpadmin/workspace/pxf \
   -v ~/workspace/singlecluster-HDP:/home/gpadmin/workspace/singlecluster \
   pivotaldata/gpdb-pxf-dev:centos6 /bin/bash -c \
-  "/home/gpadmin/workspace/pxf/dev/set_up_gpadmin_user.bash && /sbin/service sshd start && /bin/bash"
-
-# in the container
-su - gpadmin
+  "/home/gpadmin/workspace/pxf/dev/set_up_gpadmin_user.bash && /sbin/service sshd start && su - gpadmin"
 ```
 
 ### Setup GPDB
@@ -143,7 +140,6 @@ Configure, build and install GPDB. This will be needed only when you use the con
 ```bash
 ~/workspace/pxf/dev/build_gpdb.bash
 ~/workspace/pxf/dev/install_gpdb.bash
-
 ```
 
 For subsequent minor changes to GPDB source you can simply do the following:
@@ -156,7 +152,6 @@ Create Greenplum Cluster
 source /usr/local/greenplum-db-devel/greenplum_path.sh
 make -C ~/workspace/gpdb create-demo-cluster
 source ~/workspace/gpdb/gpAux/gpdemo/gpdemo-env.sh
-
 ```
 
 ### Setup Hadoop
@@ -173,7 +168,6 @@ pushd ~/workspace/singlecluster/bin
 echo y | ./init-gphd.sh
 ./start-hdfs.sh
 popd
-
 ```
 
 Start other optional components based on your need
@@ -187,7 +181,6 @@ pushd ~/workspace/singlecluster/bin
 ./start-zookeeper.sh
 ./start-hbase.sh
 popd
-
 ```
 
 ### Setup PXF
@@ -198,6 +191,7 @@ Install PXF Server
 make -C ~/workspace/pxf install
 
 # Initialize PXF
+export PXF_CONF=~/pxf
 $PXF_HOME/bin/pxf init
 
 # Start PXF
@@ -210,8 +204,6 @@ Finally, if you don't have any servers configured, go ahead and copy the Hadoop 
 cp "${PXF_CONF}"/templates/*-site.xml "${PXF_CONF}/servers/default"
 ```
 
-where `PXF_CONF` can be defined before running `pxf init` (otherwise the `pxf` script sets it to `${HOME}/pxf`).
-
 Install PXF client (ignore if this is already done)
 ```bash
 if [ -d ~/workspace/gpdb/gpAux/extensions/pxf ]; then
@@ -221,7 +213,6 @@ else
 fi
 make -C ~/workspace/gpdb/${PXF_EXTENSIONS_DIR} installcheck
 psql -d template1 -c "create extension pxf"
-
 ```
 
 ### Run PXF Tests
@@ -235,7 +226,6 @@ make TEST=HdfsSmokeTest
 # Run all tests. This will be time consuming.
 make GROUP=gpdb
 popd
-
 ```
 
 If you see any HBase failures, try copying `pxf-hbase-*.jar` to the HBase classpath, and restart HBase:
