@@ -162,8 +162,7 @@ source ~/workspace/gpdb/gpAux/gpdemo/gpdemo-env.sh
 ### Setup Hadoop
 Hdfs will be needed to demonstrate functionality. You can choose to start additional hadoop components (hive/hbase) if you need them.
 
-Setup [User Impersonation](https://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-common/Superusers.html) prior to starting the hadoop components.
-(this allows the `gpadmin` user to access hadoop data).
+Setup [User Impersonation](https://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-common/Superusers.html) prior to starting the hadoop components (this allows the `gpadmin` user to access hadoop data).
 ```bash
 ~/workspace/pxf/dev/configure_singlecluster.bash
 ```
@@ -205,10 +204,10 @@ $PXF_HOME/bin/pxf init
 $PXF_HOME/bin/pxf start
 ```
 
-Finally, if you don't have any servers configured, go ahead and copy the `core-site.xml` template to the default config location:
+Finally, if you don't have any servers configured, go ahead and copy the Hadoop templates to the default configuration location:
 
 ```
-cp "${PXF_CONF}/templates/core-site.xml" "${PXF_CONF}/servers/default"
+cp "${PXF_CONF}"/templates/*-site.xml "${PXF_CONF}/servers/default"
 ```
 
 where `PXF_CONF` can be defined before running `pxf init` (otherwise the `pxf` script sets it to `${HOME}/pxf`).
@@ -237,6 +236,14 @@ make TEST=HdfsSmokeTest
 make GROUP=gpdb
 popd
 
+```
+
+If you see any HBase failures, try copying `pxf-hbase-*.jar` to the HBase classpath, and restart HBase:
+
+```
+cp ${PXF_HOME}/lib/pxf-hbase-*.jar ~/workspace/singlecluster/hbase/lib
+~/workspace/singlecluster/bin/stop-hbase.sh
+~/workspace/singlecluster/bin/start-hbase.sh
 ```
 
 ### Make Changes to PXF
