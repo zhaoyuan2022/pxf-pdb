@@ -21,11 +21,11 @@ package org.greenplum.pxf.plugins.hdfs;
 
 import org.greenplum.pxf.api.OneField;
 import org.greenplum.pxf.api.OneRow;
-import org.greenplum.pxf.api.ReadResolver;
+import org.greenplum.pxf.api.model.Resolver;
 import org.greenplum.pxf.api.UnsupportedTypeException;
 import org.greenplum.pxf.api.io.DataType;
-import org.greenplum.pxf.api.utilities.InputData;
-import org.greenplum.pxf.api.utilities.Plugin;
+import org.greenplum.pxf.api.model.RequestContext;
+import org.greenplum.pxf.api.model.BasePlugin;
 
 import org.greenplum.pxf.plugins.hdfs.utilities.HdfsUtilities;
 import org.apache.parquet.example.data.Group;
@@ -41,20 +41,10 @@ import java.sql.Timestamp;
 import java.util.LinkedList;
 import java.util.List;
 
-public class ParquetResolver extends Plugin implements ReadResolver {
+public class ParquetResolver extends BasePlugin implements Resolver {
 
     public static final int JULIAN_EPOCH_OFFSET_DAYS = 2440588;
     public static final long MILLIS_IN_DAY = 24 * 3600 * 1000;
-
-    /**
-     * Constructs the ParquetResolver
-     *
-     * @param metaData the InputData
-     */
-    public ParquetResolver(InputData metaData) {
-
-        super(metaData);
-    }
 
     /**
      * {@inheritDoc}
@@ -71,11 +61,23 @@ public class ParquetResolver extends Plugin implements ReadResolver {
     @Override
     public List<OneField> getFields(OneRow row) throws Exception {
         Object data = row.getData();
-        ParquetUserData parquetUserData = HdfsUtilities.parseParquetUserData(inputData);
+        ParquetUserData parquetUserData = HdfsUtilities.parseParquetUserData(context);
         Group g = (Group) data;
         List<OneField> output = resolveRecord(parquetUserData, g);
 
         return output;
+    }
+
+    /**
+     * Constructs and sets the fields of a {@link OneRow}.
+     *
+     * @param record list of {@link OneField}
+     * @return the constructed {@link OneRow}
+     * @throws Exception if constructing a row from the fields failed
+     */
+    @Override
+    public OneRow setFields(List<OneField> record) throws Exception {
+        throw new UnsupportedOperationException();
     }
 
     private List<OneField> resolveRecord(ParquetUserData userData, Group g) {

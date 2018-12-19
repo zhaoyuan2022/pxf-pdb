@@ -8,9 +8,9 @@ package org.greenplum.pxf.plugins.hive;
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,15 +20,14 @@ package org.greenplum.pxf.plugins.hive;
  */
 
 
-import org.greenplum.pxf.api.FragmentsStats;
-import org.greenplum.pxf.api.io.DataType;
-import org.greenplum.pxf.api.utilities.ColumnDescriptor;
-import org.greenplum.pxf.api.utilities.InputData;
-import org.greenplum.pxf.plugins.hive.utilities.HiveUtilities;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hive.metastore.api.FieldSchema;
 import org.apache.hadoop.hive.metastore.api.Table;
+import org.greenplum.pxf.api.io.DataType;
+import org.greenplum.pxf.api.model.RequestContext;
+import org.greenplum.pxf.api.utilities.ColumnDescriptor;
+import org.greenplum.pxf.plugins.hive.utilities.HiveUtilities;
 
 import java.util.List;
 
@@ -59,15 +58,6 @@ public class HiveInputFormatFragmenter extends HiveDataFragmenter {
         ORC_FILE_INPUT_FORMAT
     }
 
-    /**
-     * Constructs a HiveInputFormatFragmenter.
-     *
-     * @param inputData all input parameters coming from the client
-     */
-    public HiveInputFormatFragmenter(InputData inputData) {
-        super(inputData, HiveInputFormatFragmenter.class);
-    }
-
     /*
      * Checks that hive fields and partitions match the GPDB schema. Throws an
      * exception if: - the number of fields (+ partitions) do not match the GPDB
@@ -76,7 +66,7 @@ public class HiveInputFormatFragmenter extends HiveDataFragmenter {
     @Override
     void verifySchema(Table tbl) throws Exception {
 
-        int columnsSize = inputData.getColumns();
+        int columnsSize = context.getColumns();
         int hiveColumnsSize = tbl.getSd().getColsSize();
         int hivePartitionsSize = tbl.getPartitionKeysSize();
 
@@ -98,25 +88,17 @@ public class HiveInputFormatFragmenter extends HiveDataFragmenter {
         // check hive fields
         List<FieldSchema> hiveColumns = tbl.getSd().getCols();
         for (FieldSchema hiveCol : hiveColumns) {
-            ColumnDescriptor colDesc = inputData.getColumn(index++);
+            ColumnDescriptor colDesc = context.getColumn(index++);
             DataType colType = DataType.get(colDesc.columnTypeCode());
             HiveUtilities.validateTypeCompatible(colType, colDesc.columnTypeModifiers(), hiveCol.getType(), colDesc.columnName());
         }
         // check partition fields
         List<FieldSchema> hivePartitions = tbl.getPartitionKeys();
         for (FieldSchema hivePart : hivePartitions) {
-            ColumnDescriptor colDesc = inputData.getColumn(index++);
+            ColumnDescriptor colDesc = context.getColumn(index++);
             DataType colType = DataType.get(colDesc.columnTypeCode());
             HiveUtilities.validateTypeCompatible(colType, colDesc.columnTypeModifiers(), hivePart.getType(), colDesc.columnName());
         }
 
-    }
-
-    /**
-     * Returns statistics for Hive table. Currently it's not implemented.
-     */
-    @Override
-    public FragmentsStats getFragmentsStats() throws Exception {
-        return  super.getFragmentsStats();
     }
 }

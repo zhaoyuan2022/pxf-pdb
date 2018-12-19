@@ -23,9 +23,8 @@ import java.io.IOException;
 import org.apache.hadoop.mapred.*;
 import org.greenplum.pxf.api.OneRow;
 import org.greenplum.pxf.api.utilities.ColumnDescriptor;
-import org.greenplum.pxf.api.utilities.InputData;
+import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.plugins.hdfs.utilities.HdfsUtilities;
-import org.greenplum.pxf.plugins.hive.utilities.HiveUtilities;
 import org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatch;
 import org.apache.hadoop.hive.ql.io.orc.Reader.Options;
 import org.apache.hadoop.hive.ql.io.orc.RecordReader;
@@ -42,16 +41,12 @@ public class HiveORCVectorizedAccessor extends HiveORCAccessor {
     private int batchIndex;
     private VectorizedRowBatch batch;
 
-    public HiveORCVectorizedAccessor(InputData input) throws Exception {
-        super(input);
-    }
-
     @Override
     public boolean openForRead() throws Exception {
         Options options = new Options();
         addColumns(options);
         addFragments(options);
-        orcReader = HiveUtilities.getOrcReader(inputData);
+        orcReader = getOrcReader();
         vrr = orcReader.rowsOptions(options);
         return vrr.hasNext();
     }
@@ -62,7 +57,7 @@ public class HiveORCVectorizedAccessor extends HiveORCAccessor {
      * @param options reader options to modify
      */
     private void addFragments(Options options) {
-        FileSplit fileSplit = HdfsUtilities.parseFileSplit(inputData);
+        FileSplit fileSplit = HdfsUtilities.parseFileSplit(context);
         options.range(fileSplit.getStart(), fileSplit.getLength());
     }
 
@@ -88,8 +83,8 @@ public class HiveORCVectorizedAccessor extends HiveORCAccessor {
      * @throws Exception
      */
     private void addColumns(Options options) throws Exception {
-        boolean[] includeColumns = new boolean[inputData.getColumns() + 1];
-        for (ColumnDescriptor col : inputData.getTupleDescription()) {
+        boolean[] includeColumns = new boolean[context.getColumns() + 1];
+        for (ColumnDescriptor col : context.getTupleDescription()) {
             if (col.isProjected()) {
                 includeColumns[col.columnIndex() + 1] = true;
             }

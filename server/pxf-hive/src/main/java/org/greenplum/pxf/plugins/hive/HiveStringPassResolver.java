@@ -8,9 +8,9 @@ package org.greenplum.pxf.plugins.hive;
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -22,10 +22,9 @@ package org.greenplum.pxf.plugins.hive;
 
 import org.greenplum.pxf.api.OneField;
 import org.greenplum.pxf.api.OneRow;
-import org.greenplum.pxf.api.OutputFormat;
-import org.greenplum.pxf.api.utilities.InputData;
+import org.greenplum.pxf.api.model.OutputFormat;
+import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.plugins.hive.utilities.HiveUtilities;
-import org.greenplum.pxf.api.utilities.ProtocolData;
 
 import java.util.Collections;
 import java.util.List;
@@ -39,12 +38,8 @@ import static org.greenplum.pxf.api.io.DataType.VARCHAR;
 public class HiveStringPassResolver extends HiveResolver {
     private StringBuilder parts;
 
-    public HiveStringPassResolver(InputData input) throws Exception {
-        super(input);
-    }
-
     @Override
-    void parseUserData(InputData input) throws Exception {
+    void parseUserData(RequestContext input) throws Exception {
         HiveUserData hiveUserData = HiveUtilities.parseHiveUserData(input);
         parseDelimiterChar(input);
         parts = new StringBuilder();
@@ -52,21 +47,21 @@ public class HiveStringPassResolver extends HiveResolver {
         serdeClassName = hiveUserData.getSerdeClassName();
 
         /* Needed only for GPDBWritable format*/
-        if (((ProtocolData) inputData).outputFormat() == OutputFormat.GPDBWritable) {
+        if (context.getOutputFormat() == OutputFormat.GPDBWritable) {
             propsString = hiveUserData.getPropertiesString();
         }
     }
 
     @Override
-    void initSerde(InputData input) throws Exception {
-        if (((ProtocolData) inputData).outputFormat() == OutputFormat.GPDBWritable) {
+    void initSerde(RequestContext input) throws Exception {
+        if (context.getOutputFormat() == OutputFormat.GPDBWritable) {
             super.initSerde(input);
         }
     }
 
     @Override
     void initPartitionFields() {
-        if (((ProtocolData) inputData).outputFormat() == OutputFormat.TEXT) {
+        if (context.getOutputFormat() == OutputFormat.TEXT) {
             initTextPartitionFields(parts);
         } else {
             super.initPartitionFields();
@@ -80,7 +75,7 @@ public class HiveStringPassResolver extends HiveResolver {
      */
     @Override
     public List<OneField> getFields(OneRow onerow) throws Exception {
-        if (((ProtocolData) inputData).outputFormat() == OutputFormat.TEXT) {
+        if (context.getOutputFormat() == OutputFormat.TEXT) {
             String line = (onerow.getData()).toString();
             /* We follow Hive convention. Partition fields are always added at the end of the record */
             return Collections.singletonList(new OneField(VARCHAR.getOID(), line + parts));

@@ -21,9 +21,9 @@ package org.greenplum.pxf.plugins.hbase;
 
 
 import org.greenplum.pxf.api.OneRow;
-import org.greenplum.pxf.api.ReadAccessor;
-import org.greenplum.pxf.api.utilities.InputData;
-import org.greenplum.pxf.api.utilities.Plugin;
+import org.greenplum.pxf.api.model.Accessor;
+import org.greenplum.pxf.api.model.RequestContext;
+import org.greenplum.pxf.api.model.BasePlugin;
 import org.greenplum.pxf.plugins.hbase.utilities.HBaseColumnDescriptor;
 import org.greenplum.pxf.plugins.hbase.utilities.HBaseTupleDescription;
 import org.greenplum.pxf.plugins.hbase.utilities.HBaseUtilities;
@@ -55,7 +55,7 @@ import java.io.ObjectInputStream;
  * The class supports filters using the {@link HBaseFilterBuilder}.
  * Regions can be filtered out according to input from {@link HBaseFilterBuilder}.
  */
-public class HBaseAccessor extends Plugin implements ReadAccessor {
+public class HBaseAccessor extends BasePlugin implements Accessor {
     private HBaseTupleDescription tupleDescription;
     private Connection connection;
     private Table table;
@@ -88,15 +88,16 @@ public class HBaseAccessor extends Plugin implements ReadAccessor {
     }
 
     /**
-     * Constructs {@link HBaseTupleDescription} based on GPDB table description and
+     * Initializes HBaseAccessor based on GPDB table description and
      * initializes the scan start and end keys of the HBase table to default values.
      *
-     * @param input query information, contains HBase table name and filter
+     * @param requestContext data provided in the request
      */
-    public HBaseAccessor(InputData input) {
-        super(input);
+    @Override
+    public void initialize(RequestContext requestContext) {
+        super.initialize(requestContext);
 
-        tupleDescription = new HBaseTupleDescription(input);
+        tupleDescription = new HBaseTupleDescription(context);
         split = null;
         scanStartKey = HConstants.EMPTY_START_ROW;
         scanEndKey = HConstants.EMPTY_END_ROW;
@@ -127,6 +128,39 @@ public class HBaseAccessor extends Plugin implements ReadAccessor {
     }
 
     /**
+     * Opens the resource for write.
+     *
+     * @return true if the resource is successfully opened
+     * @throws Exception if opening the resource failed
+     */
+    @Override
+    public boolean openForWrite() throws Exception {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Writes the next object.
+     *
+     * @param onerow the object to be written
+     * @return true if the write succeeded
+     * @throws Exception writing to the resource failed
+     */
+    @Override
+    public boolean writeNextObject(OneRow onerow) throws Exception {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Closes the resource for write.
+     *
+     * @throws Exception if closing the resource failed
+     */
+    @Override
+    public void closeForWrite() throws Exception {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
      * Returns the next row in the HBase table, null if end of fragment.
      */
     @Override
@@ -146,15 +180,15 @@ public class HBaseAccessor extends Plugin implements ReadAccessor {
      * Load hbase table object using ConnectionFactory
      */
     private void openTable() throws IOException {
-        connection = ConnectionFactory.createConnection(HBaseConfiguration.create());
-        table = connection.getTable(TableName.valueOf(inputData.getDataSource()));
+        connection = ConnectionFactory.createConnection(HBaseConfiguration.create(configuration));
+        table = connection.getTable(TableName.valueOf(context.getDataSource()));
     }
 
     /**
      * Creates a {@link SplitBoundary} of the table split
      * this accessor instance is assigned to scan.
      * The table split is constructed from the fragment metadata
-     * passed in {@link InputData#getFragmentMetadata()}.
+     * passed in {@link RequestContext#getFragmentMetadata()}.
      * <p>
      * The function verifies the split is within user supplied range.
      * <p>
@@ -163,7 +197,7 @@ public class HBaseAccessor extends Plugin implements ReadAccessor {
      */
     private void addTableSplit() {
 
-        byte[] serializedMetadata = inputData.getFragmentMetadata();
+        byte[] serializedMetadata = context.getFragmentMetadata();
         if (serializedMetadata == null) {
             throw new IllegalArgumentException("Missing fragment metadata information");
         }
@@ -256,12 +290,12 @@ public class HBaseAccessor extends Plugin implements ReadAccessor {
      * Uses row key ranges to limit split count.
      */
     private void addFilters() throws Exception {
-        if (!inputData.hasFilter()) {
+        if (!context.hasFilter()) {
             return;
         }
 
         HBaseFilterBuilder eval = new HBaseFilterBuilder(tupleDescription);
-        Filter filter = eval.getFilterObject(inputData.getFilterString());
+        Filter filter = eval.getFilterObject(context.getFilterString());
         scanDetails.setFilter(filter);
 
         scanStartKey = eval.startKey();

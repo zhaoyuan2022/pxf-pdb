@@ -19,17 +19,13 @@ package org.greenplum.pxf.plugins.hdfs.utilities;
  * under the License.
  */
 
-import org.greenplum.pxf.api.io.DataType;
-import org.greenplum.pxf.api.OneField;
-import org.greenplum.pxf.api.utilities.FragmentMetadata;
-import org.greenplum.pxf.api.utilities.InputData;
-import org.greenplum.pxf.api.utilities.Utilities;
 import org.apache.avro.Schema;
 import org.apache.avro.file.DataFileReader;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumReader;
 import org.apache.avro.mapred.FsInput;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -40,11 +36,18 @@ import org.apache.hadoop.io.compress.CompressionCodecFactory;
 import org.apache.hadoop.io.compress.SplittableCompressionCodec;
 import org.apache.hadoop.mapred.FileSplit;
 import org.apache.hadoop.util.ReflectionUtils;
-import org.greenplum.pxf.plugins.hdfs.ParquetUserData;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
+import org.greenplum.pxf.api.OneField;
+import org.greenplum.pxf.api.io.DataType;
+import org.greenplum.pxf.api.model.RequestContext;
+import org.greenplum.pxf.api.utilities.FragmentMetadata;
+import org.greenplum.pxf.api.utilities.Utilities;
+import org.greenplum.pxf.plugins.hdfs.ParquetUserData;
 
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.util.List;
 
 /**
@@ -52,28 +55,12 @@ import java.util.List;
  */
 public class HdfsUtilities {
     private static final Log LOG = LogFactory.getLog(HdfsUtilities.class);
-    private static Configuration config = new Configuration();
-    private static CompressionCodecFactory factory = new CompressionCodecFactory(
-            config);
-
-    /**
-     * Hdfs data sources are absolute data paths. Method ensures that dataSource
-     * begins with '/'.
-     *
-     * @param dataSource The HDFS path to a file or directory of interest.
-     *            Retrieved from the client request.
-     * @return an absolute data path
-     */
-    public static String absoluteDataPath(String dataSource) {
-        return (dataSource.charAt(0) == '/') ? dataSource : "/" + dataSource;
-    }
 
     /*
      * Helper routine to get a compression codec class
      */
     private static Class<? extends CompressionCodec> getCodecClass(Configuration conf,
                                                                    String name) {
-
         Class<? extends CompressionCodec> codecClass;
         try {
             codecClass = conf.getClassByName(name).asSubclass(
@@ -102,9 +89,10 @@ public class HdfsUtilities {
      * @param path path of file to get codec for
      * @return matching codec class for the path. null if no codec is needed.
      */
-    private static Class<? extends CompressionCodec> getCodecClassByPath(String path) {
+    private static Class<? extends CompressionCodec> getCodecClassByPath(Configuration config, String path) {
 
         Class<? extends CompressionCodec> codecClass = null;
+        CompressionCodecFactory factory = new CompressionCodecFactory(config);
         CompressionCodec codec = factory.getCodec(new Path(path));
         if (codec != null) {
             codecClass = codec.getClass();
@@ -121,7 +109,7 @@ public class HdfsUtilities {
      * @param path path of the file to be read
      * @return if the codec needed for reading the specified path is splittable.
      */
-    public static boolean isSplittableCodec(Path path) {
+    public static boolean isSplittableCodec(CompressionCodecFactory factory, Path path) {
 
         final CompressionCodec codec = factory.getCodec(path);
         if (null == codec) {
@@ -134,14 +122,16 @@ public class HdfsUtilities {
     /**
      * Checks if requests should be handle in a single thread or not.
      *
-     * @param dataDir hdfs path to the data source
+     * @param config    the configuration parameters object
+     * @param dataDir   hdfs path to the data source
      * @param compCodec the fully qualified name of the compression codec
      * @return if the request can be run in multi-threaded mode.
      */
-    public static boolean isThreadSafe(String dataDir, String compCodec) {
+    public static boolean isThreadSafe(Configuration config, String dataDir, String compCodec) {
 
-        Class<? extends CompressionCodec> codecClass = (compCodec != null) ? HdfsUtilities.getCodecClass(
-                config, compCodec) : HdfsUtilities.getCodecClassByPath(dataDir);
+        Class<? extends CompressionCodec> codecClass = (compCodec != null) ?
+                HdfsUtilities.getCodecClass(config, compCodec) :
+                HdfsUtilities.getCodecClassByPath(config, dataDir);
         /* bzip2 codec is not thread safe */
         return (codecClass == null || !BZip2Codec.class.isAssignableFrom(codecClass));
     }
@@ -183,14 +173,14 @@ public class HdfsUtilities {
     /**
      * Parses fragment metadata and return matching {@link FileSplit}.
      *
-     * @param inputData request input data
+     * @param requestContext request input data
      * @return FileSplit with fragment metadata
      */
-    public static FileSplit parseFileSplit(InputData inputData) {
+    public static FileSplit parseFileSplit(RequestContext requestContext) {
         try {
-            FragmentMetadata fragmentMetadata = Utilities.parseFragmentMetadata(inputData);
+            FragmentMetadata fragmentMetadata = Utilities.parseFragmentMetadata(requestContext);
 
-            FileSplit fileSplit = new FileSplit(new Path(inputData.getDataSource()), fragmentMetadata.getStart(), fragmentMetadata.getEnd(), fragmentMetadata.getHosts());
+            FileSplit fileSplit = new FileSplit(new Path(requestContext.getDataSource()), fragmentMetadata.getStart(), fragmentMetadata.getEnd(), fragmentMetadata.getHosts());
 
             return fileSplit;
 
@@ -205,7 +195,7 @@ public class HdfsUtilities {
      * schema. The splittable API (AvroInputFormat) which is the one we will be
      * using to fetch the records, does not support getting the Avro schema yet.
      *
-     * @param conf Hadoop configuration
+     * @param conf       Hadoop configuration
      * @param dataSource Avro file (i.e fileName.avro) path
      * @return the Avro schema
      * @throws IOException if I/O error occurred while accessing Avro schema file
@@ -227,7 +217,7 @@ public class HdfsUtilities {
      * relayed properly to the DB.
      *
      * @param complexRecord list of fields to be stringified
-     * @param delimiter delimiter between fields
+     * @param delimiter     delimiter between fields
      * @return string of serialized fields using delimiter
      */
     public static String toString(List<OneField> complexRecord, String delimiter) {
@@ -253,8 +243,9 @@ public class HdfsUtilities {
         return userData.toString().getBytes();
     }
 
-    public static ParquetUserData parseParquetUserData(InputData input) {
+    public static ParquetUserData parseParquetUserData(RequestContext input) {
         MessageType schema = MessageTypeParser.parseMessageType(new String(input.getFragmentUserData()));
         return new ParquetUserData(schema);
     }
+
 }

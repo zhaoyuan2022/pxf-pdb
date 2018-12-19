@@ -8,9 +8,9 @@ package org.greenplum.pxf.plugins.hbase.utilities;
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,30 +20,13 @@ package org.greenplum.pxf.plugins.hbase.utilities;
  */
 
 
-import java.io.IOException;
-
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.Connection;
 
-public class HBaseUtilities {
+import java.io.IOException;
 
-    /**
-     * Initializes HBase configuration.
-     * The following parameters are edited:
-     *
-     * hbase.client.retries.number = 1
-     *  - tries to connect to HBase only 2 times before failing.
-     *
-     * @return HBase configuration
-     */
-    public static Configuration initHBaseConfiguration() {
-        Configuration conf = HBaseConfiguration.create();
-        conf.set("hbase.client.retries.number", "3");
-        return conf;
-    }
+public class HBaseUtilities {
 
     /**
      * Returns if given table exists and is enabled.
@@ -60,7 +43,7 @@ public class HBaseUtilities {
     }
 
     /**
-     * Closes HBase admin and connection if they are open.
+     * Closes HBase admin and connection if they are openForWrite.
      *
      * @param hbaseAdmin HBase admin
      * @param hbaseConnection HBase connection

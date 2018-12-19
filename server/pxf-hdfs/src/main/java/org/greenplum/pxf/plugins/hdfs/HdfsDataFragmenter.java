@@ -20,16 +20,12 @@ package org.greenplum.pxf.plugins.hdfs;
  */
 
 
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.FileSplit;
 import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
-import org.greenplum.pxf.api.FileSystemFragmenter;
-import org.greenplum.pxf.api.Fragment;
-import org.greenplum.pxf.api.Fragmenter;
-import org.greenplum.pxf.api.FragmentsStats;
-import org.greenplum.pxf.api.utilities.InputData;
+import org.greenplum.pxf.api.model.*;
+import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.plugins.hdfs.utilities.HdfsUtilities;
 import org.greenplum.pxf.plugins.hdfs.utilities.PxfInputFormat;
 
@@ -44,19 +40,18 @@ import java.util.List;
  * the data into fragments and return a list of them along with a list of
  * host:port locations for each.
  */
-@FileSystemFragmenter
-public class HdfsDataFragmenter extends Fragmenter {
-    private JobConf jobConf;
+public class HdfsDataFragmenter extends BaseFragmenter {
 
-    /**
-     * Constructs an HdfsDataFragmenter object.
-     *
-     * @param md all input parameters coming from the client
-     */
-    public HdfsDataFragmenter(InputData md) {
-        super(md);
+    protected JobConf jobConf;
+    protected HcfsType hcfsType;
 
-        jobConf = new JobConf(new Configuration(), HdfsDataFragmenter.class);
+    @Override
+    public void initialize(RequestContext requestContext) {
+        super.initialize(requestContext);
+        jobConf = new JobConf(configuration, this.getClass());
+
+        // Check if the underlying configuration is for HDFS
+        hcfsType = HcfsType.getHcfsType(configuration, requestContext);
     }
 
     /**
@@ -66,13 +61,13 @@ public class HdfsDataFragmenter extends Fragmenter {
      */
     @Override
     public List<Fragment> getFragments() throws Exception {
-        String absoluteDataPath = HdfsUtilities.absoluteDataPath(inputData.getDataSource());
-        List<InputSplit> splits = getSplits(new Path(absoluteDataPath));
+        Path path = new Path(hcfsType.getDataUri(configuration, context));
+        List<InputSplit> splits = getSplits(path);
 
         for (InputSplit split : splits) {
             FileSplit fsp = (FileSplit) split;
 
-            String filepath = fsp.getPath().toUri().getPath();
+            String filepath = fsp.getPath().toString();
             String[] hosts = fsp.getLocations();
 
             /*
@@ -88,19 +83,19 @@ public class HdfsDataFragmenter extends Fragmenter {
     }
 
     @Override
-    public FragmentsStats getFragmentsStats() throws Exception {
-        String absoluteDataPath = HdfsUtilities.absoluteDataPath(inputData.getDataSource());
+    public FragmentStats getFragmentStats() throws Exception {
+        String absoluteDataPath = hcfsType.getDataUri(configuration, context);
         ArrayList<InputSplit> splits = getSplits(new Path(absoluteDataPath));
 
         if (splits.isEmpty()) {
-            return new FragmentsStats(0, 0, 0);
+            return new FragmentStats(0, 0, 0);
         }
         long totalSize = 0;
         for (InputSplit split: splits) {
             totalSize += split.getLength();
         }
         InputSplit firstSplit = splits.get(0);
-        return new FragmentsStats(splits.size(), firstSplit.getLength(), totalSize);
+        return new FragmentStats(splits.size(), firstSplit.getLength(), totalSize);
     }
 
     private ArrayList<InputSplit> getSplits(Path path) throws IOException {

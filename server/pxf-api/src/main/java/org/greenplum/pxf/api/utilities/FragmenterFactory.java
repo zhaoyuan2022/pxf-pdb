@@ -8,9 +8,9 @@ package org.greenplum.pxf.api.utilities;
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,18 +20,26 @@ package org.greenplum.pxf.api.utilities;
  */
 
 
-import org.greenplum.pxf.api.Fragmenter;
-import org.greenplum.pxf.api.utilities.InputData;
-import org.greenplum.pxf.api.utilities.Utilities;
+import org.greenplum.pxf.api.model.Fragmenter;
+import org.greenplum.pxf.api.model.RequestContext;
 
 /**
- * Factory class for creation of {@link Fragmenter} objects. The actual {@link Fragmenter} object is "hidden" behind
- * an {@link Fragmenter} abstract class which is returned by the FragmenterFactory. 
+ * Factory class for creation of {@link Fragmenter} objects.
  */
-public class FragmenterFactory {
-    static public Fragmenter create(InputData inputData) throws Exception {
-    	String fragmenterName = inputData.getFragmenter();
-    	
-        return (Fragmenter) Utilities.createAnyInstance(InputData.class, fragmenterName, inputData);
+public class FragmenterFactory extends BasePluginFactory<Fragmenter> {
+
+    private static final FragmenterFactory instance = new FragmenterFactory();
+
+    /**
+     * Returns a singleton instance of the factory.
+     * @return a singleton instance of the factory.
+     */
+    public static FragmenterFactory getInstance() {
+        return instance;
+    }
+
+    @Override
+    protected String getPluginClassName(RequestContext requestContext) {
+        return requestContext.getFragmenter();
     }
 }

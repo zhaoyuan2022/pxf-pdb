@@ -19,49 +19,32 @@ package org.greenplum.pxf.plugins.ignite;
  * under the License.
  */
 
-import org.greenplum.pxf.api.OneRow;
+import com.google.gson.JsonArray;
+import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.codec.binary.Hex;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.greenplum.pxf.api.OneField;
+import org.greenplum.pxf.api.OneRow;
 import org.greenplum.pxf.api.io.DataType;
+import org.greenplum.pxf.api.model.RequestContext;
+import org.greenplum.pxf.api.model.Resolver;
 import org.greenplum.pxf.api.utilities.ColumnDescriptor;
-import org.greenplum.pxf.api.utilities.InputData;
-import org.greenplum.pxf.api.ReadResolver;
-import org.greenplum.pxf.api.WriteResolver;
-
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.codec.binary.Hex;
-
-import com.google.gson.JsonArray;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * PXF-Ignite resolver class
  */
-public class IgniteResolver extends IgnitePlugin implements ReadResolver, WriteResolver {
-    /**
-     * Class constructor
-     *
-     * @param input Input
-     * @throws Exception when there is an exception
-     */
-    public IgniteResolver(InputData input) throws Exception {
-        super(input);
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Constructor started");
-        }
+public class IgniteResolver extends IgniteBasePlugin implements Resolver {
 
-        columns = input.getTupleDescription();
-
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Constructor successful");
-        }
+    @Override
+    public void initialize(RequestContext requestContext) {
+        super.initialize(requestContext);
+        columns = requestContext.getTupleDescription();
     }
 
     /**
@@ -225,5 +208,5 @@ public class IgniteResolver extends IgnitePlugin implements ReadResolver, WriteR
     };
 
     // GPDB column descriptors
-    private ArrayList<ColumnDescriptor> columns = null;
+    private List<ColumnDescriptor> columns = null;
 }

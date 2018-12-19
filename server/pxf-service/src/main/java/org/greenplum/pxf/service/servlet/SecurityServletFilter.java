@@ -19,9 +19,14 @@ package org.greenplum.pxf.service.servlet;
  * under the License.
  */
 
-import java.io.IOException;
-import java.lang.reflect.UndeclaredThrowableException;
-import java.security.PrivilegedExceptionAction;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.security.UserGroupInformation;
+import org.greenplum.pxf.api.utilities.Utilities;
+import org.greenplum.pxf.service.SessionId;
+import org.greenplum.pxf.service.UGICache;
+import org.greenplum.pxf.service.utilities.SecuredHDFS;
 
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
@@ -30,16 +35,9 @@ import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
-
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.security.UserGroupInformation;
-import org.greenplum.pxf.api.utilities.Utilities;
-import org.greenplum.pxf.service.SessionId;
-import org.greenplum.pxf.service.UGICache;
-import org.greenplum.pxf.service.utilities.SecureLogin;
-import org.greenplum.pxf.service.utilities.SecuredHDFS;
+import java.io.IOException;
+import java.lang.reflect.UndeclaredThrowableException;
+import java.security.PrivilegedExceptionAction;
 
 /**
  * Listener on lifecycle events of our webapp
@@ -81,7 +79,16 @@ public class SecurityServletFilter implements Filter {
     public void doFilter(final ServletRequest request, final ServletResponse response, final FilterChain chain)
             throws IOException, ServletException {
 
-        if (Utilities.isUserImpersonationEnabled()) {
+        boolean isUserImpersonation;
+        String impersonationHeaderValue = getHeaderValue(request, "X-GP-OPTIONS-IMPERSONATION", false);
+        if (StringUtils.isBlank(impersonationHeaderValue)) {
+            isUserImpersonation = Utilities.isUserImpersonationEnabled();
+        } else {
+            isUserImpersonation = StringUtils.equals("true", impersonationHeaderValue);
+        }
+
+        if (isUserImpersonation) {
+            LOG.info("User Impersonation is enabled");
             // retrieve user header and make sure header is present and is not empty
             final String gpdbUser = getHeaderValue(request, USER_HEADER, true);
             final String transactionId = getHeaderValue(request, TRANSACTION_ID_HEADER, true);

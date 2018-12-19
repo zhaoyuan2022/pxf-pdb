@@ -8,9 +8,9 @@ package org.greenplum.pxf.api;
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -23,7 +23,7 @@ package org.greenplum.pxf.api;
 import org.greenplum.pxf.api.examples.DemoAccessor;
 import org.greenplum.pxf.api.examples.DemoResolver;
 import org.greenplum.pxf.api.examples.DemoTextResolver;
-import org.greenplum.pxf.api.utilities.InputData;
+import org.greenplum.pxf.api.model.RequestContext;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -45,7 +45,8 @@ public class DemoResolverTest {
 
     private static final String DATA = "value1,value2";
 
-    @Mock InputData inputData;
+    @Mock
+    RequestContext requestContext;
     DemoResolver customResolver;
     DemoTextResolver textResolver;
     OneRow row;
@@ -53,8 +54,12 @@ public class DemoResolverTest {
 
     @Before
     public void setup() throws Exception {
-        customResolver = new DemoResolver(inputData);
-        textResolver = new DemoTextResolver(inputData);
+        customResolver = new DemoResolver();
+        textResolver = new DemoTextResolver();
+
+        customResolver.initialize(requestContext);
+        textResolver.initialize(requestContext);
+
         row = new OneRow("0.0", DATA);
         field = new OneField(VARCHAR.getOID(), DATA.getBytes());
     }

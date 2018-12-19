@@ -8,9 +8,9 @@ package org.greenplum.pxf.api.examples;
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,9 +19,8 @@ package org.greenplum.pxf.api.examples;
  * under the License.
  */
 
-import org.greenplum.pxf.api.Fragmenter;
-import org.greenplum.pxf.api.Fragment;
-import org.greenplum.pxf.api.utilities.InputData;
+import org.greenplum.pxf.api.model.BaseFragmenter;
+import org.greenplum.pxf.api.model.Fragment;
 
 import java.util.List;
 
@@ -32,15 +31,7 @@ import java.util.List;
  * Demo implementation
  */
 
-public class DemoFragmenter extends Fragmenter{
-    /**
-     * Constructs the DemoFragmenter
-     *
-     * @param metaData the InputData
-     */
-    public DemoFragmenter(InputData metaData) {
-        super(metaData);
-    }
+public class DemoFragmenter extends BaseFragmenter {
 
     /**
      * Provide metadata for each data partition of the given datasource
@@ -51,10 +42,9 @@ public class DemoFragmenter extends Fragmenter{
     public List<Fragment> getFragments() throws Exception {
         String localhostname = java.net.InetAddress.getLocalHost().getHostName();
         String[] localHosts = new String[]{localhostname, localhostname};
-        fragments.add(new Fragment(inputData.getDataSource() + ".1", localHosts, "fragment1".getBytes()));
-        fragments.add(new Fragment(inputData.getDataSource() + ".2", localHosts, "fragment2".getBytes()));
-        fragments.add(new Fragment(inputData.getDataSource() + ".3", localHosts, "fragment3".getBytes()));
+        fragments.add(new Fragment(context.getDataSource() + ".1", localHosts, "fragment1".getBytes()));
+        fragments.add(new Fragment(context.getDataSource() + ".2", localHosts, "fragment2".getBytes()));
+        fragments.add(new Fragment(context.getDataSource() + ".3", localHosts, "fragment3".getBytes()));
         return fragments;
     }
-
 }

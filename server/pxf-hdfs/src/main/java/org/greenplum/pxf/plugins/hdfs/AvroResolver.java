@@ -8,9 +8,9 @@ package org.greenplum.pxf.plugins.hdfs;
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,16 +20,6 @@ package org.greenplum.pxf.plugins.hdfs;
  */
 
 
-import org.greenplum.pxf.api.OneField;
-import org.greenplum.pxf.api.OneRow;
-import org.greenplum.pxf.api.ReadResolver;
-import org.greenplum.pxf.api.io.DataType;
-import org.greenplum.pxf.api.utilities.InputData;
-import org.greenplum.pxf.api.utilities.Plugin;
-import org.greenplum.pxf.plugins.hdfs.utilities.DataSchemaException;
-import org.greenplum.pxf.plugins.hdfs.utilities.HdfsUtilities;
-import org.greenplum.pxf.plugins.hdfs.utilities.RecordkeyAdapter;
-
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumReader;
@@ -37,8 +27,16 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.BinaryDecoder;
 import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.DecoderFactory;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.BytesWritable;
+import org.greenplum.pxf.api.OneField;
+import org.greenplum.pxf.api.OneRow;
+import org.greenplum.pxf.api.io.DataType;
+import org.greenplum.pxf.api.model.BasePlugin;
+import org.greenplum.pxf.api.model.RequestContext;
+import org.greenplum.pxf.api.model.Resolver;
+import org.greenplum.pxf.plugins.hdfs.utilities.DataSchemaException;
+import org.greenplum.pxf.plugins.hdfs.utilities.HdfsUtilities;
+import org.greenplum.pxf.plugins.hdfs.utilities.RecordkeyAdapter;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -51,7 +49,7 @@ import java.util.Map;
  * Class AvroResolver handles deserialization of records that were serialized
  * using the AVRO serialization framework.
  */
-public class AvroResolver extends Plugin implements ReadResolver {
+public class AvroResolver extends BasePlugin implements Resolver {
     private GenericRecord avroRecord = null;
     private DatumReader<GenericRecord> reader = null;
     // member kept to enable reuse, and thus avoid repeated allocation
@@ -65,40 +63,45 @@ public class AvroResolver extends Plugin implements ReadResolver {
     private String mapkeyDelim;
     private String recordkeyDelim;
 
-    /**
-     * Constructs an AvroResolver. Initializes Avro data structure: the Avro
+    /*
+     * Initializes an AvroResolver. Initializes Avro data structure: the Avro
      * record - fields information and the Avro record reader. All Avro data is
      * build from the Avro schema, which is based on the *.avsc file that was
      * passed by the user
      *
-     * @param input all input parameters coming from the client
-     * @throws IOException if Avro schema could not be retrieved or parsed
+     * throws RuntimeException if Avro schema could not be retrieved or parsed
      */
-    public AvroResolver(InputData input) throws IOException {
-        super(input);
+
+    @Override
+    public void initialize(RequestContext requestContext) {
+        super.initialize(requestContext);
 
         Schema schema;
 
-        if (isAvroFile()) {
-            schema = HdfsUtilities.getAvroSchema(new Configuration(), input.getDataSource());
-        } else {
-            InputStream externalSchema = openExternalSchema();
-            try {
-                schema = (new Schema.Parser()).parse(externalSchema);
-            } finally {
-                externalSchema.close();
+        try {
+            if (isAvroFile()) {
+                schema = HdfsUtilities.getAvroSchema(configuration, context.getDataSource());
+            } else {
+                InputStream externalSchema = openExternalSchema();
+                try {
+                    schema = (new Schema.Parser()).parse(externalSchema);
+                } finally {
+                    externalSchema.close();
+                }
             }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to initialize AvroResolver: " + e.getMessage(), e);
         }
 
         reader = new GenericDatumReader<>(schema);
         fields = schema.getFields();
 
-        collectionDelim = input.getUserProperty("COLLECTION_DELIM") == null ? COLLECTION_DELIM
-                : input.getUserProperty("COLLECTION_DELIM");
-        mapkeyDelim = input.getUserProperty("MAPKEY_DELIM") == null ? MAPKEY_DELIM
-                : input.getUserProperty("MAPKEY_DELIM");
-        recordkeyDelim = input.getUserProperty("RECORDKEY_DELIM") == null ? RECORDKEY_DELIM
-                : input.getUserProperty("RECORDKEY_DELIM");
+        collectionDelim = context.getOption("COLLECTION_DELIM") == null ? COLLECTION_DELIM
+                : context.getOption("COLLECTION_DELIM");
+        mapkeyDelim = context.getOption("MAPKEY_DELIM") == null ? MAPKEY_DELIM
+                : context.getOption("MAPKEY_DELIM");
+        recordkeyDelim = context.getOption("RECORDKEY_DELIM") == null ? RECORDKEY_DELIM
+                : context.getOption("RECORDKEY_DELIM");
     }
 
     /**
@@ -112,8 +115,8 @@ public class AvroResolver extends Plugin implements ReadResolver {
         avroRecord = makeAvroRecord(row.getData(), avroRecord);
         List<OneField> record = new LinkedList<OneField>();
 
-        int recordkeyIndex = (inputData.getRecordkeyColumn() == null) ? -1
-                : inputData.getRecordkeyColumn().columnIndex();
+        int recordkeyIndex = (context.getRecordkeyColumn() == null) ? -1
+                : context.getRecordkeyColumn().columnIndex();
         int currentIndex = 0;
 
         for (Schema.Field field : fields) {
@@ -122,7 +125,7 @@ public class AvroResolver extends Plugin implements ReadResolver {
              */
             if (currentIndex == recordkeyIndex) {
                 currentIndex += recordkeyAdapter.appendRecordkeyField(record,
-                        inputData, row);
+                        context, row);
             }
 
             currentIndex += populateRecord(record,
@@ -133,6 +136,18 @@ public class AvroResolver extends Plugin implements ReadResolver {
     }
 
     /**
+     * Constructs and sets the fields of a {@link OneRow}.
+     *
+     * @param record list of {@link OneField}
+     * @return the constructed {@link OneRow}
+     * @throws Exception if constructing a row from the fields failed
+     */
+    @Override
+    public OneRow setFields(List<OneField> record) throws Exception {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
      * Tests if the Avro records are residing inside an AVRO file. If the Avro
      * records are not residing inside an AVRO file, then they may reside inside
      * a sequence file, regular file, ...
@@ -140,7 +155,7 @@ public class AvroResolver extends Plugin implements ReadResolver {
      * @return whether the resource is an Avro file
      */
     boolean isAvroFile() {
-        return inputData.getAccessor().toLowerCase().contains("avro");
+        return context.getAccessor().toLowerCase().contains("avro");
     }
 
     /**
@@ -392,7 +407,7 @@ public class AvroResolver extends Plugin implements ReadResolver {
      */
     InputStream openExternalSchema() {
 
-        String schemaName = inputData.getUserProperty("DATA-SCHEMA");
+        String schemaName = context.getOption("DATA-SCHEMA");
 
         /**
          * Testing that the schema name was supplied by the user - schema is an

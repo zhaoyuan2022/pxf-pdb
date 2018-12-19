@@ -8,9 +8,9 @@ package org.greenplum.pxf.plugins.hbase;
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,7 +20,7 @@ package org.greenplum.pxf.plugins.hbase;
  */
 
 
-import org.greenplum.pxf.api.utilities.InputData;
+import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.plugins.hbase.utilities.HBaseTupleDescription;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.*;
@@ -44,7 +44,7 @@ import static org.mockito.Mockito.*;
 public class HBaseAccessorTest {
     static final String tableName = "fishy_HBase_table";
 
-    InputData inputData;
+    RequestContext requestContext;
     HBaseTupleDescription tupleDescription;
     Table table;
     Scan scanDetails;
@@ -78,8 +78,9 @@ public class HBaseAccessorTest {
     @Test
     public void construction() throws Exception {
         prepareConstruction();
-        HBaseAccessor accessor = new HBaseAccessor(inputData);
-        PowerMockito.verifyNew(HBaseTupleDescription.class).withArguments(inputData);
+        HBaseAccessor accessor = new HBaseAccessor();
+        accessor.initialize(requestContext);
+        PowerMockito.verifyNew(HBaseTupleDescription.class).withArguments(requestContext);
     }
 
 	/*
@@ -97,9 +98,11 @@ public class HBaseAccessorTest {
         prepareTableOpen();
         prepareEmptyScanner();
 
-        when(inputData.getFragmentMetadata()).thenReturn(null);
+        when(requestContext.getFragmentMetadata()).thenReturn(null);
 
-        accessor = new HBaseAccessor(inputData);
+        accessor = new HBaseAccessor();
+        accessor.initialize(requestContext);
+
         try {
             accessor.openForRead();
             fail("should throw no metadata exception");
@@ -112,12 +115,12 @@ public class HBaseAccessorTest {
 
     /*
      * Helper for test setup.
-     * Creates a mock for HBaseTupleDescription and InputData
+     * Creates a mock for HBaseTupleDescription and RequestContext
      */
     private void prepareConstruction() throws Exception {
-        inputData = mock(InputData.class);
+        requestContext = mock(RequestContext.class);
         tupleDescription = mock(HBaseTupleDescription.class);
-        PowerMockito.whenNew(HBaseTupleDescription.class).withArguments(inputData).thenReturn(tupleDescription);
+        PowerMockito.whenNew(HBaseTupleDescription.class).withArguments(requestContext).thenReturn(tupleDescription);
     }
 
     /*
@@ -126,7 +129,7 @@ public class HBaseAccessorTest {
      */
     private void prepareTableOpen() throws Exception {
         // Set table name
-        when(inputData.getDataSource()).thenReturn(tableName);
+        when(requestContext.getDataSource()).thenReturn(tableName);
 
         // Make sure we mock static functions in HBaseConfiguration
         PowerMockito.mockStatic(HBaseConfiguration.class);
@@ -151,7 +154,7 @@ public class HBaseAccessorTest {
         PowerMockito.whenNew(Scan.class).withNoArguments().thenReturn(scanDetails);
 
         when(tupleDescription.columns()).thenReturn(0);
-        when(inputData.hasFilter()).thenReturn(false);
+        when(requestContext.hasFilter()).thenReturn(false);
     }
 
     /*

@@ -8,9 +8,9 @@ package org.greenplum.pxf.plugins.hive;
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,8 +20,7 @@ package org.greenplum.pxf.plugins.hive;
  */
 
 
-import org.greenplum.pxf.api.utilities.InputData;
-import org.greenplum.pxf.plugins.hive.utilities.HiveUtilities;
+import org.greenplum.pxf.api.model.RequestContext;
 import org.apache.hadoop.mapred.*;
 
 import java.io.IOException;
@@ -34,12 +33,14 @@ public class HiveLineBreakAccessor extends HiveAccessor {
 
     /**
      * Constructs a HiveLineBreakAccessor.
-     *
-     * @param input input containing user data
-     * @throws Exception if user data was wrong
      */
-    public HiveLineBreakAccessor(InputData input) throws Exception {
-        super(input, new TextInputFormat());
+    public HiveLineBreakAccessor() {
+        super(new TextInputFormat());
+    }
+
+    @Override
+    public void initialize(RequestContext requestContext) {
+        super.initialize(requestContext);
         ((TextInputFormat) inputFormat).configure(jobConf);
     }
 

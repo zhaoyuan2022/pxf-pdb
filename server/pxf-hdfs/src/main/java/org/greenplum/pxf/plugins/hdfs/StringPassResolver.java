@@ -20,13 +20,12 @@ package org.greenplum.pxf.plugins.hdfs;
  */
 
 
-import org.greenplum.pxf.api.io.DataType;
 import org.greenplum.pxf.api.OneField;
 import org.greenplum.pxf.api.OneRow;
-import org.greenplum.pxf.api.ReadResolver;
-import org.greenplum.pxf.api.WriteResolver;
-import org.greenplum.pxf.api.utilities.InputData;
-import org.greenplum.pxf.api.utilities.Plugin;
+import org.greenplum.pxf.api.model.Resolver;
+import org.greenplum.pxf.api.io.DataType;
+import org.greenplum.pxf.api.model.RequestContext;
+import org.greenplum.pxf.api.model.BasePlugin;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -35,23 +34,12 @@ import static org.greenplum.pxf.api.io.DataType.VARCHAR;
 
 /**
  * StringPassResolver handles "deserialization" and serialization of
- * String records. StringPassResolver implements {@link ReadResolver} and
- * {@link WriteResolver} interfaces. Returns strings as-is.
+ * String records. StringPassResolver implements {@link Resolver}
+ * interface. Returns strings as-is.
  */
-public class StringPassResolver extends Plugin implements ReadResolver, WriteResolver {
+public class StringPassResolver extends BasePlugin implements Resolver {
     // for write
-    private OneRow oneRow;
-
-    /**
-     * Constructs a StringPassResolver.
-     *
-     * @param inputData input all input parameters coming from the client request
-     */
-    public StringPassResolver(InputData inputData) {
-        super(inputData);
-        oneRow = new OneRow();
-        this.inputData = inputData;
-    }
+    private OneRow oneRow = new OneRow();
 
     /**
      * Returns a list of the fields of one record.

@@ -8,9 +8,9 @@ package org.greenplum.pxf.plugins.hive;
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,6 +20,24 @@ package org.greenplum.pxf.plugins.hive;
  */
 
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hive.metastore.HiveMetaStoreClient;
+import org.apache.hadoop.hive.metastore.api.Partition;
+import org.apache.hadoop.hive.metastore.api.Table;
+import org.apache.hadoop.mapred.InputFormat;
+import org.apache.hadoop.mapred.JobConf;
+import org.greenplum.pxf.api.UnsupportedTypeException;
+import org.greenplum.pxf.api.model.BaseConfigurationFactory;
+import org.greenplum.pxf.api.model.BasePlugin;
+import org.greenplum.pxf.api.model.ConfigurationFactory;
+import org.greenplum.pxf.api.model.Metadata;
+import org.greenplum.pxf.api.model.MetadataFetcher;
+import org.greenplum.pxf.api.model.OutputFormat;
+import org.greenplum.pxf.api.model.RequestContext;
+import org.greenplum.pxf.plugins.hive.utilities.HiveUtilities;
+import org.greenplum.pxf.plugins.hive.utilities.ProfileFactory;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -27,40 +45,28 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hive.metastore.HiveMetaStoreClient;
-import org.apache.hadoop.hive.metastore.api.Partition;
-import org.apache.hadoop.hive.metastore.api.Table;
-import org.apache.hadoop.mapred.JobConf;
-import org.apache.hadoop.mapred.InputFormat;
-import org.greenplum.pxf.api.Metadata;
-import org.greenplum.pxf.api.MetadataFetcher;
-import org.greenplum.pxf.api.OutputFormat;
-import org.greenplum.pxf.api.UnsupportedTypeException;
-import org.greenplum.pxf.api.utilities.InputData;
-import org.greenplum.pxf.api.utilities.ProfilesConf;
-import org.greenplum.pxf.plugins.hive.utilities.HiveUtilities;
-import org.greenplum.pxf.plugins.hive.utilities.ProfileFactory;
-
 /**
  * Class for connecting to Hive's MetaStore and getting schema of Hive tables.
  */
-public class HiveMetadataFetcher extends MetadataFetcher {
+public class HiveMetadataFetcher extends BasePlugin implements MetadataFetcher {
 
-    private static final String DELIM_FIELD = InputData.DELIMITER_KEY;
+    private static final String DELIM_FIELD = RequestContext.DELIMITER_KEY;
 
     private static final Log LOG = LogFactory.getLog(HiveMetadataFetcher.class);
     private HiveMetaStoreClient client;
     private JobConf jobConf;
 
-    public HiveMetadataFetcher(InputData md) {
-        super(md);
+    public HiveMetadataFetcher(RequestContext context) {
+        this(context, BaseConfigurationFactory.getInstance());
+    }
+
+    HiveMetadataFetcher(RequestContext context, ConfigurationFactory configurationFactory) {
+        this.configurationFactory = configurationFactory;
+        initialize(context);
 
         // init hive metastore client connection.
-        client = HiveUtilities.initHiveClient();
-        jobConf = new JobConf(new Configuration());
+        client = HiveUtilities.initHiveClient(configuration);
+        jobConf = new JobConf(configuration);
     }
 
     /**
@@ -131,12 +137,10 @@ public class HiveMetadataFetcher extends MetadataFetcher {
     }
 
     private OutputFormat getOutputFormat(String inputFormat, boolean hasComplexTypes) throws Exception {
-        OutputFormat outputFormat = null;
         InputFormat<?, ?> fformat = HiveDataFragmenter.makeInputFormat(inputFormat, jobConf);
         String profile = ProfileFactory.get(fformat, hasComplexTypes);
-        String outputFormatClassName = ProfilesConf.getProfilePluginsMap(profile).get("X-GP-OPTIONS-OUTPUTFORMAT");
-        outputFormat = OutputFormat.getOutputFormat(outputFormatClassName);
-        return outputFormat;
+        String outputFormatClassName = context.getPluginConf().getPlugins(profile).get("OUTPUTFORMAT");
+        return OutputFormat.getOutputFormat(outputFormatClassName);
     }
 
 }

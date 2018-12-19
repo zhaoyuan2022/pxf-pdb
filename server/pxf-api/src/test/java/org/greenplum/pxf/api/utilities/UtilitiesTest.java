@@ -20,30 +20,31 @@ package org.greenplum.pxf.api.utilities;
  */
 
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.fail;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
-import java.io.ByteArrayOutputStream;
-import java.io.ObjectOutputStream;
-import java.util.List;
-
 import org.greenplum.pxf.api.OneField;
 import org.greenplum.pxf.api.OneRow;
-import org.greenplum.pxf.api.ReadAccessor;
-import org.greenplum.pxf.api.ReadResolver;
 import org.greenplum.pxf.api.ReadVectorizedResolver;
 import org.greenplum.pxf.api.StatsAccessor;
+import org.greenplum.pxf.api.model.Accessor;
+import org.greenplum.pxf.api.model.RequestContext;
+import org.greenplum.pxf.api.model.Resolver;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
+
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectOutputStream;
+import java.util.List;
+
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({Class.class})
@@ -68,6 +69,21 @@ public class UtilitiesTest {
         }
 
         @Override
+        public boolean openForWrite() throws Exception {
+            return false;
+        }
+
+        @Override
+        public boolean writeNextObject(OneRow onerow) throws Exception {
+            return false;
+        }
+
+        @Override
+        public void closeForWrite() throws Exception {
+
+        }
+
+        @Override
         public void retrieveStats() throws Exception {
         }
 
@@ -75,9 +91,18 @@ public class UtilitiesTest {
         public OneRow emitAggObject() {
             return null;
         }
+
+        @Override
+        public void initialize(RequestContext requestContext) {
+        }
+
+        @Override
+        public boolean isThreadSafe() {
+            return false;
+        }
     }
 
-    class NonStatsAccessorImpl implements ReadAccessor {
+    class NonStatsAccessorImpl implements Accessor {
 
         @Override
         public boolean openForRead() throws Exception {
@@ -92,6 +117,29 @@ public class UtilitiesTest {
         @Override
         public void closeForRead() throws Exception {
         }
+
+        @Override
+        public boolean openForWrite() throws Exception {
+            return false;
+        }
+
+        @Override
+        public boolean writeNextObject(OneRow onerow) throws Exception {
+            return false;
+        }
+
+        @Override
+        public void closeForWrite() throws Exception {
+        }
+
+        @Override
+        public void initialize(RequestContext requestContext) {
+        }
+
+        @Override
+        public boolean isThreadSafe() {
+            return false;
+        }
     }
 
     class ReadVectorizedResolverImpl implements ReadVectorizedResolver {
@@ -102,12 +150,45 @@ public class UtilitiesTest {
         }
     }
 
-    class ReadResolverImpl implements ReadResolver {
+    class ReadResolverImpl implements Resolver {
 
         @Override
         public List<OneField> getFields(OneRow row) throws Exception {
             return null;
         }
+
+        @Override
+        public OneRow setFields(List<OneField> record) throws Exception {
+            return null;
+        }
+
+        @Override
+        public void initialize(RequestContext requestContext) {
+        }
+
+        @Override
+        public boolean isThreadSafe() {
+            return false;
+        }
+    }
+
+    @Test
+    public void invalidDirectoryName() {
+        assertFalse(Utilities.isValidDirectoryName(null));
+        assertFalse(Utilities.isValidDirectoryName("\0"));
+        assertFalse(Utilities.isValidDirectoryName("a/a"));
+        assertFalse(Utilities.isValidDirectoryName("."));
+        assertFalse(Utilities.isValidDirectoryName(".."));
+        assertFalse(Utilities.isValidDirectoryName("abc ac"));
+        assertFalse(Utilities.isValidDirectoryName("abc;ac"));
+        assertFalse(Utilities.isValidDirectoryName("\\"));
+        assertFalse(Utilities.isValidDirectoryName("a,b"));
+    }
+
+    @Test
+    public void validDirectoryName() {
+        assertTrue(Utilities.isValidDirectoryName("pxf"));
+        assertTrue(Utilities.isValidDirectoryName("\uD83D\uDE0A"));
     }
 
     @Test
@@ -146,14 +227,14 @@ public class UtilitiesTest {
     @Test
     public void createAnyInstanceOldPackageName() throws Exception {
 
-        InputData metaData = mock(InputData.class);
+        RequestContext metaData = mock(RequestContext.class);
         String className = "com.pivotal.pxf.Lucy";
         ClassNotFoundException exception = new ClassNotFoundException(className);
         PowerMockito.mockStatic(Class.class);
         when(Class.forName(className)).thenThrow(exception);
 
         try {
-            Utilities.createAnyInstance(InputData.class,
+            Utilities.createAnyInstance(RequestContext.class,
                     className, metaData);
             fail("creating an instance should fail because the class doesn't exist in classpath");
         } catch (Exception e) {
@@ -190,7 +271,7 @@ public class UtilitiesTest {
 
     @Test
     public void parseFragmentMetadata() throws Exception {
-        InputData metaData = mock(InputData.class);
+        RequestContext metaData = mock(RequestContext.class);
         ByteArrayOutputStream bas = new ByteArrayOutputStream();
         ObjectOutputStream os = new ObjectOutputStream(bas);
         os.writeLong(10);
@@ -207,51 +288,61 @@ public class UtilitiesTest {
 
     @Test
     public void useAggBridge() {
-        InputData metaData = mock(InputData.class);
+        RequestContext metaData = mock(RequestContext.class);
         when(metaData.getAccessor()).thenReturn(StatsAccessorImpl.class.getName());
         when(metaData.getAggType()).thenReturn(EnumAggregationType.COUNT);
         when(metaData.getAccessor()).thenReturn("org.greenplum.pxf.api.utilities.UtilitiesTest$StatsAccessorImpl");
-        assertTrue(Utilities.useAggBridge(metaData));
+        assertTrue(Utilities.aggregateOptimizationsSupported(metaData));
 
         when(metaData.getAccessor()).thenReturn(UtilitiesTest.class.getName());
         when(metaData.getAggType()).thenReturn(EnumAggregationType.COUNT);
-        assertFalse(Utilities.useAggBridge(metaData));
+        assertFalse(Utilities.aggregateOptimizationsSupported(metaData));
 
         //Do not use AggBridge when input data has filter
         when(metaData.getAccessor()).thenReturn(StatsAccessorImpl.class.getName());
         when(metaData.getAggType()).thenReturn(EnumAggregationType.COUNT);
         when(metaData.hasFilter()).thenReturn(true);
-        assertFalse(Utilities.useAggBridge(metaData));
+        assertFalse(Utilities.aggregateOptimizationsSupported(metaData));
     }
 
     @Test
     public void useStats() {
-        InputData metaData = mock(InputData.class);
-        ReadAccessor accessor = new StatsAccessorImpl();
-        when(metaData.getAggType()).thenReturn(EnumAggregationType.COUNT);
-        when(metaData.getAccessor()).thenReturn("org.greenplum.pxf.api.utilities.UtilitiesTest$StatsAccessorImpl");
-        assertTrue(Utilities.useStats(accessor, metaData));
-        ReadAccessor nonStatusAccessor = new NonStatsAccessorImpl();
-        assertFalse(Utilities.useStats(nonStatusAccessor, metaData));
+        RequestContext mockCtxSupporting = mock(RequestContext.class);
+        when(mockCtxSupporting.getAggType()).thenReturn(EnumAggregationType.COUNT);
+        when(mockCtxSupporting.getAccessor()).thenReturn("org.greenplum.pxf.api.utilities.UtilitiesTest$StatsAccessorImpl");
+        assertTrue(Utilities.aggregateOptimizationsSupported(mockCtxSupporting));
+
+        RequestContext mockCtxNonSupporting = mock(RequestContext.class);
+        when(mockCtxNonSupporting.getAggType()).thenReturn(EnumAggregationType.COUNT);
+        when(mockCtxNonSupporting.getAccessor()).thenReturn("org.greenplum.pxf.api.utilities.UtilitiesTest$NonStatsAccessorImpl");
+        assertFalse(Utilities.aggregateOptimizationsSupported(mockCtxNonSupporting));
 
         //Do not use stats when input data has filter
-        when(metaData.hasFilter()).thenReturn(true);
-        assertFalse(Utilities.useStats(accessor, metaData));
+        RequestContext mockCtxFilter = mock(RequestContext.class);
+        when(mockCtxFilter.getAggType()).thenReturn(EnumAggregationType.COUNT);
+        when(mockCtxFilter.getAccessor()).thenReturn("org.greenplum.pxf.api.utilities.UtilitiesTest$StatsAccessorImpl");
+        when(mockCtxFilter.hasFilter()).thenReturn(true);
+        assertFalse(Utilities.aggregateOptimizationsSupported(mockCtxFilter));
 
         //Do not use stats when more than one column is projected
-        when(metaData.hasFilter()).thenReturn(false);
-        when(metaData.getNumAttrsProjected()).thenReturn(1);
-        assertFalse(Utilities.useStats(accessor, metaData));
+        RequestContext mockCtxProjection = mock(RequestContext.class);
+        when(mockCtxProjection.getAggType()).thenReturn(EnumAggregationType.COUNT);
+        when(mockCtxProjection.getAccessor()).thenReturn("org.greenplum.pxf.api.utilities.UtilitiesTest$StatsAccessorImpl");
+        when(mockCtxProjection.hasFilter()).thenReturn(false);
+        when(mockCtxProjection.getNumAttrsProjected()).thenReturn(1);
+        assertFalse(Utilities.aggregateOptimizationsSupported(mockCtxProjection));
     }
 
+    /* TODO move to the proper class
     @Test
     public void useVectorization() {
-        InputData metaData = mock(InputData.class);
+        RequestContext metaData = mock(RequestContext.class);
         when(metaData.getResolver()).thenReturn("org.greenplum.pxf.api.utilities.UtilitiesTest$ReadVectorizedResolverImpl");
         assertTrue(Utilities.useVectorization(metaData));
         when(metaData.getResolver()).thenReturn("org.greenplum.pxf.api.utilities.UtilitiesTest$ReadResolverImpl");
         assertFalse(Utilities.useVectorization(metaData));
     }
+    */
 
     @Test
     public void testImpersonationPropertyAbsent() {

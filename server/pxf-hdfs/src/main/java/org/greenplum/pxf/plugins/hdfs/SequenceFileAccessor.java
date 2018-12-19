@@ -20,14 +20,6 @@ package org.greenplum.pxf.plugins.hdfs;
  */
 
 
-import org.greenplum.pxf.api.OneRow;
-import org.greenplum.pxf.api.WriteAccessor;
-import org.greenplum.pxf.api.utilities.InputData;
-import org.greenplum.pxf.plugins.hdfs.utilities.HdfsUtilities;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CreateFlag;
 import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.FileSystem;
@@ -37,18 +29,26 @@ import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.SequenceFile.CompressionType;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.compress.CompressionCodec;
-import org.apache.hadoop.mapred.*;
+import org.apache.hadoop.mapred.FileSplit;
+import org.apache.hadoop.mapred.InputSplit;
+import org.apache.hadoop.mapred.JobConf;
+import org.apache.hadoop.mapred.SequenceFileInputFormat;
+import org.apache.hadoop.mapred.SequenceFileRecordReader;
+import org.greenplum.pxf.api.OneRow;
+import org.greenplum.pxf.api.model.BaseConfigurationFactory;
+import org.greenplum.pxf.api.model.ConfigurationFactory;
+import org.greenplum.pxf.api.model.RequestContext;
+import org.greenplum.pxf.plugins.hdfs.utilities.HdfsUtilities;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.EnumSet;
 
 /**
  * A PXF Accessor for reading and writing Sequence File records
  */
-public class SequenceFileAccessor extends HdfsSplittableDataAccessor implements
-        WriteAccessor {
+public class SequenceFileAccessor extends HdfsSplittableDataAccessor {
 
-    private Configuration conf;
     private FileContext fc;
     private Path file;
     private CompressionCodec codec;
@@ -56,50 +56,52 @@ public class SequenceFileAccessor extends HdfsSplittableDataAccessor implements
     private SequenceFile.Writer writer;
     private LongWritable defaultKey; // used when recordkey is not defined
 
-    private static final Log LOG = LogFactory.getLog(SequenceFileAccessor.class);;
-
     /**
      * Constructs a SequenceFileAccessor.
-     *
-     * @param input all input parameters coming from the client request
      */
-    public SequenceFileAccessor(InputData input) {
-        super(input, new SequenceFileInputFormat<Writable, Writable>());
+    public SequenceFileAccessor() {
+        this(BaseConfigurationFactory.getInstance());
+    }
+
+    SequenceFileAccessor(ConfigurationFactory configurationFactory) {
+        super(new SequenceFileInputFormat<Writable, Writable>());
+        this.configurationFactory = configurationFactory;
     }
 
     /**
      * Overrides virtual method to create specialized record reader
      */
     @Override
-    protected Object getReader(JobConf jobConf, InputSplit split)
-            throws IOException {
-        return new SequenceFileRecordReader<Object, Object>(jobConf, (FileSplit) split);
+    protected Object getReader(JobConf jobConf, InputSplit split) throws IOException {
+        return new SequenceFileRecordReader<>(jobConf, (FileSplit) split);
     }
 
     @Override
     public boolean openForWrite() throws Exception {
-        FileSystem fs;
-        Path parent;
-        String fileName = inputData.getDataSource();
-        conf = new Configuration();
+        LOG.debug("openForWrite");
+        String filename = hcfsType.getDataUri(configuration, context);
+        LOG.debug("Filename for write without updated file extension: {}", filename);
+        getCompressionCodec(context);
+        filename = updateFileExtension(filename, codec);
 
-        getCompressionCodec(inputData);
-        fileName = updateFileExtension(fileName, codec);
 
         // construct the output stream
-        file = new Path(fileName);
-        fs = file.getFileSystem(conf);
-        fc = FileContext.getFileContext();
-        defaultKey = new LongWritable(inputData.getSegmentId());
+        file = new Path(filename);
+        FileSystem fs = file.getFileSystem(configuration);
+        fc = FileContext.getFileContext(configuration);
+        defaultKey = new LongWritable(context.getSegmentId());
 
         if (fs.exists(file)) {
-            throw new IOException("file " + file
+            throw new IOException("file " + file.toString()
                     + " already exists, can't write data");
         }
-        parent = file.getParent();
+
+        Path parent = file.getParent();
         if (!fs.exists(parent)) {
             fs.mkdirs(parent);
-            LOG.debug("Created new dir " + parent);
+            LOG.debug("Created new dir {}", parent);
+        } else {
+            LOG.debug("Directory {} already exists. Skip creating", parent);
         }
 
         writer = null;
@@ -111,18 +113,18 @@ public class SequenceFileAccessor extends HdfsSplittableDataAccessor implements
      * value RECORD). If there is no codec, compression type is ignored, and
      * NONE is used.
      *
-     * @param inputData - container where compression codec and type are held
+     * @param context - container where compression codec and type are held
      */
-    private void getCompressionCodec(InputData inputData) {
+    private void getCompressionCodec(RequestContext context) {
 
-        String userCompressCodec = inputData.getUserProperty("COMPRESSION_CODEC");
-        String userCompressType = inputData.getUserProperty("COMPRESSION_TYPE");
+        String userCompressCodec = context.getOption("COMPRESSION_CODEC");
+        String userCompressType = context.getOption("COMPRESSION_TYPE");
         String parsedCompressType = parseCompressionType(userCompressType);
 
-        compressionType = SequenceFile.CompressionType.NONE;
+        compressionType = CompressionType.NONE;
         codec = null;
         if (userCompressCodec != null) {
-            codec = HdfsUtilities.getCodec(conf, userCompressCodec);
+            codec = HdfsUtilities.getCodec(configuration, userCompressCodec);
 
             try {
                 compressionType = CompressionType.valueOf(parsedCompressType);
@@ -136,9 +138,8 @@ public class SequenceFileAccessor extends HdfsSplittableDataAccessor implements
                         "Compression type must be defined");
             }
 
-            LOG.debug("Compression ON: " + "compression codec: "
-                    + userCompressCodec + ", compression type: "
-                    + compressionType);
+            LOG.debug("Compression ON: compression codec: {}, compression type: {}",
+                    userCompressCodec, compressionType);
         }
     }
 
@@ -178,7 +179,7 @@ public class SequenceFileAccessor extends HdfsSplittableDataAccessor implements
         if (codec != null) {
             fileName += codec.getDefaultExtension();
         }
-        LOG.debug("File name for write: " + fileName);
+        LOG.debug("File name for write: {}", fileName);
         return fileName;
     }
 
@@ -194,7 +195,7 @@ public class SequenceFileAccessor extends HdfsSplittableDataAccessor implements
             Class<? extends Writable> keyClass = (key == null) ? LongWritable.class
                     : key.getClass();
             // create writer - do not allow overwriting existing file
-            writer = SequenceFile.createWriter(fc, conf, file, keyClass,
+            writer = SequenceFile.createWriter(fc, configuration, file, keyClass,
                     valueClass, compressionType, codec,
                     new SequenceFile.Metadata(), EnumSet.of(CreateFlag.CREATE));
         }
@@ -202,7 +203,7 @@ public class SequenceFileAccessor extends HdfsSplittableDataAccessor implements
         try {
             writer.append((key == null) ? defaultKey : key, value);
         } catch (IOException e) {
-            LOG.error("Failed to write data to file: " + e.getMessage());
+            LOG.error("Failed to write data to file: {}", e.getMessage());
             return false;
         }
 

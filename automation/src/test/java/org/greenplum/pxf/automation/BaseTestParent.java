@@ -19,6 +19,7 @@ import org.greenplum.pxf.automation.components.gpdb.Gpdb;
 import org.greenplum.pxf.automation.components.hdfs.Hdfs;
 import org.greenplum.pxf.automation.components.tinc.Tinc;
 import org.greenplum.pxf.automation.structures.tables.pxf.ReadableExternalTable;
+import org.greenplum.pxf.automation.utils.system.ProtocolUtils;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
@@ -31,7 +32,7 @@ import reporters.CustomAutomationReport;
  * PXF Automation tests Base class, using {@link CustomAutomationLogger} testNG listener for custom
  * logging
  */
-@Listeners({ CustomAutomationLogger.class, CustomAutomationReport.class })
+@Listeners({CustomAutomationLogger.class, CustomAutomationReport.class})
 public abstract class BaseTestParent {
     // Objects used in the tests
     protected PhdCluster cluster;
@@ -64,8 +65,9 @@ public abstract class BaseTestParent {
         try {
 
             cluster = (PhdCluster) SystemManagerImpl.getInstance().getSystemObject("cluster");
+
             // Initialize HDFS system object
-            hdfs = (Hdfs) SystemManagerImpl.getInstance().getSystemObject("hdfs");
+            hdfs = (Hdfs) SystemManagerImpl.getInstance().getSystemObject(ProtocolUtils.getProtocol().value());
 
             trySecureLogin();
 
@@ -139,6 +141,14 @@ public abstract class BaseTestParent {
         } finally {
             // anyways revert System.out to original stream
             CustomAutomationLogger.revertStdoutStream();
+        }
+        // Remove hdfs workingDirectory
+        try {
+            if (hdfs != null) {
+                hdfs.removeDirectory(hdfs.getWorkingDirectory());
+            }
+        } catch (Exception e) {
+            e.printStackTrace(System.err);
         }
     }
 
@@ -245,7 +255,7 @@ public abstract class BaseTestParent {
         Method[] methods = getClass().getDeclaredMethods();
         // array of not allowed in test class annotations
         @SuppressWarnings("rawtypes")
-        Class[] notAllowedAnnotations = new Class[] { BeforeMethod.class, AfterMethod.class, BeforeClass.class, AfterClass.class };
+        Class[] notAllowedAnnotations = new Class[]{BeforeMethod.class, AfterMethod.class, BeforeClass.class, AfterClass.class};
         // go over test class methods
         for (Method method : methods) {
             // check if not allowed annotations appear in current method

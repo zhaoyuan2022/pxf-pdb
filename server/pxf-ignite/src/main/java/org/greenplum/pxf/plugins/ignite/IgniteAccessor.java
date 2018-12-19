@@ -19,48 +19,52 @@ package org.greenplum.pxf.plugins.ignite;
  * under the License.
  */
 
-import org.greenplum.pxf.api.OneRow;
-import org.greenplum.pxf.api.ReadAccessor;
-import org.greenplum.pxf.api.WriteAccessor;
-import org.greenplum.pxf.api.UserDataException;
-import org.greenplum.pxf.api.utilities.ColumnDescriptor;
-import org.greenplum.pxf.api.utilities.InputData;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.io.InputStreamReader;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.net.URL;
-import java.net.URLEncoder;
-import java.net.MalformedURLException;
-import java.net.ProtocolException;
-
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.greenplum.pxf.api.OneRow;
+import org.greenplum.pxf.api.model.Accessor;
+import org.greenplum.pxf.api.utilities.ColumnDescriptor;
 
-import com.google.gson.JsonParser;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonArray;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
+import java.net.ProtocolException;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * PXF-Ignite accessor class
  */
-public class IgniteAccessor extends IgnitePlugin implements ReadAccessor, WriteAccessor {
-    /**
-     * Class constructor
-     * @param inputData Input
-     *
-     * @throws UserDataException if there is a user data exception
-     */
-    public IgniteAccessor(InputData inputData) throws UserDataException {
-        super(inputData);
-    }
+public class IgniteAccessor extends IgniteBasePlugin implements Accessor {
+
+    private static final Log LOG = LogFactory.getLog(IgniteAccessor.class);
+    // A pattern to cut extra parameters from 'RequestContext.dataSource' when write operation is performed. See {@link openForWrite()} for the details
+    private static final Pattern writeAddressPattern = Pattern.compile("/(.*)/[0-9]*-[0-9]*_[0-9]*");
+    // Prepared URLs to send to Ignite when reading data
+    private String urlReadStart = null;
+    private String urlReadFetch = null;
+    private String urlReadClose = null;
+    // Set to true when Ignite reported all the data for the SELECT query was retreived
+    private boolean isLastReadFinished = false;
+    // A buffer to store the SELECT query results (without Ignite metadata)
+    private LinkedList<JsonArray> bufferRead = new LinkedList<JsonArray>();
+    // A template for the INSERT
+    private String queryWrite = null;
+    // Set to true when the INSERT operation is in progress
+    private boolean isWriteActive = false;
+    // A buffer to store prepared values for the INSERT query
+    private LinkedList<OneRow> bufferWrite = new LinkedList<OneRow>();
 
     /**
      * openForRead() implementation
@@ -74,9 +78,9 @@ public class IgniteAccessor extends IgnitePlugin implements ReadAccessor, WriteA
         StringBuilder sb = new StringBuilder();
 
         // Insert a list of fields to be selected
-        ArrayList<ColumnDescriptor> columns = inputData.getTupleDescription();
+        List<ColumnDescriptor> columns = context.getTupleDescription();
         if (columns == null) {
-            throw new UserDataException("Tuple description must be present.");
+            throw new IllegalArgumentException("Tuple description must be present.");
         }
         sb.append("SELECT ");
         for (int i = 0; i < columns.size(); i++) {
@@ -89,17 +93,17 @@ public class IgniteAccessor extends IgnitePlugin implements ReadAccessor, WriteA
 
         // Insert the name of the table to select values from
         sb.append(" FROM ");
-        String tableName = inputData.getDataSource();
+        String tableName = context.getDataSource();
         if (tableName == null) {
-            throw new UserDataException("Table name must be set as DataSource.");
+            throw new IllegalArgumentException("Table name must be set as DataSource.");
         }
         sb.append(tableName);
 
         // Insert query constraints
         // Note: Filter constants may be passed to Ignite separately from the WHERE expression, primarily for the safety of the SQL queries. However, at the moment they are passed in the query.
         ArrayList<String> filterConstants = null;
-        if (inputData.hasFilter()) {
-            WhereSQLBuilder filterBuilder = new WhereSQLBuilder(inputData);
+        if (context.hasFilter()) {
+            WhereSQLBuilder filterBuilder = new WhereSQLBuilder(context);
             String whereSql = filterBuilder.buildWhereSQL();
 
             if (whereSql != null) {
@@ -108,7 +112,7 @@ public class IgniteAccessor extends IgnitePlugin implements ReadAccessor, WriteA
         }
 
         // Insert partition constraints
-        IgnitePartitionFragmenter.buildFragmenterSql(inputData, sb);
+        IgnitePartitionFragmenter.buildFragmenterSql(context, sb);
 
         // Format URL
         urlReadStart = buildQueryFldexe(sb.toString(), filterConstants);
@@ -178,8 +182,7 @@ public class IgniteAccessor extends IgnitePlugin implements ReadAccessor, WriteA
         if (urlReadClose != null) {
             try {
                 sendRestRequest(urlReadClose);
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("closeForRead() Exception: " + e.getClass().getSimpleName());
                 }
@@ -197,30 +200,30 @@ public class IgniteAccessor extends IgnitePlugin implements ReadAccessor, WriteA
      * No queries are sent to Ignite by this procedure, so if there are some problems (for example, with connection), they will be revealed only during the execution of 'writeNextObject()'
      */
     @Override
-    public boolean openForWrite() throws UserDataException {
+    public boolean openForWrite() throws Exception {
         // This is a temporary solution. At the moment there is no other way (except for the usage of user-defined parameters) to get the correct name of Ignite table: GPDB inserts extra data into the address, as required by Hadoop.
         // Note that if no extra data is present, the 'definedSource' will be left unchanged
-        String definedSource = inputData.getDataSource();
+        String definedSource = context.getDataSource();
         Matcher matcher = writeAddressPattern.matcher(definedSource);
         if (matcher.find()) {
-            inputData.setDataSource(matcher.group(1));
+            context.setDataSource(matcher.group(1));
         }
 
         StringBuilder sb = new StringBuilder();
         sb.append("INSERT INTO ");
 
         // Insert the table name
-        String tableName = inputData.getDataSource();
+        String tableName = context.getDataSource();
         if (tableName == null) {
-            throw new UserDataException("Table name must be set as DataSource.");
+            throw new IllegalArgumentException("Table name must be set as DataSource.");
         }
         sb.append(tableName);
 
         // Insert the column names
         sb.append("(");
-        ArrayList<ColumnDescriptor> columns = inputData.getTupleDescription();
+        List<ColumnDescriptor> columns = context.getTupleDescription();
         if (columns == null) {
-            throw new UserDataException("Tuple description must be present.");
+            throw new IllegalArgumentException("Tuple description must be present.");
         }
         String fieldDivisor = "";
         for (int i = 0; i < columns.size(); i++) {
@@ -283,37 +286,13 @@ public class IgniteAccessor extends IgnitePlugin implements ReadAccessor, WriteA
         }
     }
 
-
-    private static final Log LOG = LogFactory.getLog(IgniteAccessor.class);
-
-    // A pattern to cut extra parameters from 'InputData.dataSource' when write operation is performed. See {@link openForWrite()} for the details
-    private static final Pattern writeAddressPattern = Pattern.compile("/(.*)/[0-9]*-[0-9]*_[0-9]*");
-
-    // Prepared URLs to send to Ignite when reading data
-    private String urlReadStart = null;
-    private String urlReadFetch = null;
-    private String urlReadClose = null;
-    // Set to true when Ignite reported all the data for the SELECT query was retreived
-    private boolean isLastReadFinished = false;
-    // A buffer to store the SELECT query results (without Ignite metadata)
-    private LinkedList<JsonArray> bufferRead = new LinkedList<JsonArray>();
-
-    // A template for the INSERT
-    private String queryWrite = null;
-    // Set to true when the INSERT operation is in progress
-    private boolean isWriteActive = false;
-    // A buffer to store prepared values for the INSERT query
-    private LinkedList<OneRow> bufferWrite = new LinkedList<OneRow>();
-
     /**
      * Build HTTP GET query for Ignite REST API with command 'qryfldexe'
      *
-     * @param querySql SQL query
+     * @param querySql        SQL query
      * @param filterConstants A list of Constraints' constants. Must be null in this version.
-     *
      * @return Prepared HTTP query. The query will be properly encoded with {@link java.net.URLEncoder}
-     *
-     * @throws UnsupportedEncodingException from {@link java.net.URLEncoder.encode()}
+     * @throws UnsupportedEncodingException from {@link java.net.URLEncoder#encode(String, String)}
      */
     private String buildQueryFldexe(String querySql, List<String> filterConstants) throws UnsupportedEncodingException {
         StringBuilder sb = new StringBuilder();
@@ -358,7 +337,6 @@ public class IgniteAccessor extends IgnitePlugin implements ReadAccessor, WriteA
      * This query is used to retrieve data after the 'qryfldexe' command started
      *
      * @param queryId ID of the query assigned by Ignite when the query started
-     *
      * @return Prepared HTTP query
      */
     private String buildQueryFetch(int queryId) {
@@ -383,7 +361,6 @@ public class IgniteAccessor extends IgnitePlugin implements ReadAccessor, WriteA
      * This query is used to close query resources on Ignite side
      *
      * @param queryId ID of the query assigned by Ignite when the query started
-     *
      * @return Prepared HTTP query
      */
     private String buildQueryCls(int queryId) {
@@ -404,13 +381,11 @@ public class IgniteAccessor extends IgnitePlugin implements ReadAccessor, WriteA
      * Send a REST request to the Ignite server
      *
      * @param query A prepared and properly encoded HTTP GET request
-     *
      * @return "response" field from the received JSON object
      * (See Ignite REST API documentation for details)
-     *
-     * @throws ProtocolException if Ignite reports error in it's JSON response
+     * @throws ProtocolException     if Ignite reports error in it's JSON response
      * @throws MalformedURLException if URL is malformed
-     * @throws IOException in case of connection failure
+     * @throws IOException           in case of connection failure
      */
     private JsonElement sendRestRequest(String query) throws ProtocolException, MalformedURLException, IOException {
         // Create URL object. This operation may throw 'MalformedURLException'
@@ -430,12 +405,10 @@ public class IgniteAccessor extends IgnitePlugin implements ReadAccessor, WriteA
             if (LOG.isDebugEnabled()) {
                 LOG.debug("sendRestRequest(): URL: '" + query + "'; Result: '" + responseRaw + "'");
             }
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             LOG.error("sendRestRequest(): Failed (connection failure). URL is '" + query + "'");
             throw e;
-        }
-        finally {
+        } finally {
             if (reader != null) {
                 reader.close();
             }
@@ -453,8 +426,7 @@ public class IgniteAccessor extends IgnitePlugin implements ReadAccessor, WriteA
                 error = response.getAsJsonObject().get("error").getAsString();
             }
             successStatus = response.getAsJsonObject().get("successStatus").getAsInt();
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             LOG.error("sendRestRequest(): Failed (JSON parsing failure). URL is '" + query + "'");
             throw e;
         }
@@ -468,8 +440,7 @@ public class IgniteAccessor extends IgnitePlugin implements ReadAccessor, WriteA
         // Return response without metadata
         try {
             return response.getAsJsonObject().get("response");
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             LOG.error("sendRestRequest(): Failed (JSON parsing failure). URL is '" + query + "'");
             throw e;
         }
@@ -477,13 +448,14 @@ public class IgniteAccessor extends IgnitePlugin implements ReadAccessor, WriteA
 
     /**
      * Send an INSERT REST request to the Ignite server.
-     *
+     * <p>
      * Note that
+     * <p>
+     * The {@link #sendRestRequest(String)} is used to handle network operations, thus all its exceptions may be thrown. They are:
      *
-     * The {@link sendRestRequest()} is used to handle network operations, thus all its exceptions may be thrown. They are:
-     * @throws ProtocolException if Ignite reports error in it's JSON response
+     * @throws ProtocolException     if Ignite reports error in it's JSON response
      * @throws MalformedURLException if URL is malformed
-     * @throws IOException in case of connection failure
+     * @throws IOException           in case of connection failure
      */
     private void sendInsertRestRequest(String query) throws ProtocolException, MalformedURLException, IOException {
         if (query == null) {
@@ -499,7 +471,7 @@ public class IgniteAccessor extends IgnitePlugin implements ReadAccessor, WriteA
         for (OneRow row : bufferWrite) {
             sb.append(fieldDivisor);
             fieldDivisor = ", ";
-            sb.append((String)row.getData());
+            sb.append((String) row.getData());
         }
         bufferWrite.clear();
 

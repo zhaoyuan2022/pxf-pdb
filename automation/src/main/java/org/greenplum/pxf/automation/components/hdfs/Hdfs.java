@@ -12,6 +12,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import org.apache.avro.Schema;
 import org.apache.avro.file.CodecFactory;
@@ -39,6 +40,8 @@ import org.greenplum.pxf.automation.components.common.BaseSystemObject;
 import org.greenplum.pxf.automation.fileformats.IAvroSchema;
 import org.greenplum.pxf.automation.structures.tables.basic.Table;
 import org.greenplum.pxf.automation.utils.jsystem.report.ReportUtils;
+import org.greenplum.pxf.automation.utils.system.ProtocolEnum;
+import org.greenplum.pxf.automation.utils.system.ProtocolUtils;
 
 /**
  * Represents HDFS, holds HdfsFunctionality interface as a member, the
@@ -61,11 +64,13 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
     private String workingDirectory;
     private String haNameservice;
 
+    private String scheme;
+
     public Hdfs() {
 
     }
 
-    public Hdfs(FileSystem fileSystem, Configuration conf, boolean silentReport) throws Exception{
+    public Hdfs(FileSystem fileSystem, Configuration conf, boolean silentReport) throws Exception {
         super(silentReport);
         ReportUtils.startLevel(report, getClass(), "Init");
         fs = fileSystem;
@@ -89,17 +94,25 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
         ReportUtils.startLevel(report, getClass(), "Init");
         config = new Configuration();
 
-        if (StringUtils.isEmpty(host)) {
-            throw new Exception("host in hdfs component not configured in SUT");
-        }
-
         // if hadoop root exists in the SUT file, load configuration from it
         if (StringUtils.isNotEmpty(hadoopRoot)) {
-            config.addResource(new Path(getHadoopRoot() + "/conf/core-site.xml"));
-            config.addResource(new Path(getHadoopRoot() + "/conf/hdfs-site.xml"));
-            config.addResource(new Path(getHadoopRoot()
-                    + "/conf/mapred-site.xml"));
+            ProtocolEnum protocol = ProtocolUtils.getProtocol();
+            if (protocol == ProtocolEnum.HDFS) {
+                config.addResource(new Path(getHadoopRoot() + "/conf/core-site.xml"));
+                config.addResource(new Path(getHadoopRoot() + "/conf/hdfs-site.xml"));
+                config.addResource(new Path(getHadoopRoot() + "/conf/mapred-site.xml"));
+            } else {
+                // (i.e) For s3 protocol the file should be s3-site.xml
+                config.addResource(new Path(getHadoopRoot() + "/" + protocol.value() + "-site.xml"));
+                config.addResource(new Path(getHadoopRoot() + "/mapred-site.xml"));
+                config.set("fs.defaultFS", getScheme() + "://" + getWorkingDirectory());
+            }
         } else {
+
+            if (StringUtils.isEmpty(host)) {
+                throw new Exception("host in hdfs component not configured in SUT");
+            }
+
             if (StringUtils.isNotEmpty(haNameservice)) {
                 if (StringUtils.isEmpty(hostStandby)) {
                     throw new Exception(
@@ -145,11 +158,22 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
         bufferSize = Integer.valueOf(config.get("io.file.buffer.size"));
     }
 
+    private Path getDatapath(String path) {
+        if (path.matches("^[a-zA-Z].*://.*$"))
+            return new Path(path);
+        else {
+            if(ProtocolUtils.getProtocol() != ProtocolEnum.HDFS) {
+                return new Path(getScheme() + "://" + path);
+            } else {
+                return new Path("/" + path);
+            }
+        }
+    }
+
     @Override
     public ArrayList<String> list(String path) throws Exception {
         ReportUtils.startLevel(report, getClass(), "List From " + path);
-        RemoteIterator<LocatedFileStatus> list = fs.listFiles(new Path("/"
-                + path), true);
+        RemoteIterator<LocatedFileStatus> list = fs.listFiles(getDatapath(path), true);
         ArrayList<String> filesList = new ArrayList<String>();
         while (list.hasNext()) {
             filesList.add(list.next().getPath().toString());
@@ -184,7 +208,7 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
     public void copyFromLocal(String srcPath, String destPath) throws Exception {
         ReportUtils.startLevel(report, getClass(), "Copy From " + srcPath
                 + " to " + destPath);
-        fs.copyFromLocalFile(new Path(srcPath), new Path("/" + destPath));
+        fs.copyFromLocalFile(new Path(srcPath), getDatapath(destPath));
         ReportUtils.stopLevel(report);
     }
 
@@ -199,21 +223,21 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
     @Override
     public void createDirectory(String path) throws Exception {
         ReportUtils.startLevel(report, getClass(), "Create Directory " + path);
-        fs.mkdirs(new Path("/" + path));
+        fs.mkdirs(getDatapath(path));
         ReportUtils.stopLevel(report);
     }
 
     @Override
     public void removeDirectory(String path) throws Exception {
         ReportUtils.startLevel(report, getClass(), "Remove Directory " + path);
-        fs.delete(new Path("/" + path), true);
+        fs.delete(getDatapath(path), true);
         ReportUtils.stopLevel(report);
     }
 
     @Override
     public String getFileContent(String path) throws Exception {
         ReportUtils.startLevel(report, getClass(), "Get file content");
-        FSDataInputStream fsdis = fs.open(new Path("/" + path));
+        FSDataInputStream fsdis = fs.open(getDatapath(path));
         StringWriter writer = new StringWriter();
         IOUtils.copy(fsdis, writer, "UTF-8");
         ReportUtils.report(report, getClass(), writer.toString());
@@ -229,7 +253,7 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
                         + writableData[0].getClass().getName() + " array to "
                         + pathToFile);
         IntWritable key = new IntWritable();
-        Path path = new Path("/" + pathToFile);
+        Path path = getDatapath(pathToFile);
         Writer.Option optPath = SequenceFile.Writer.file(path);
         Writer.Option optKey = SequenceFile.Writer.keyClass(key.getClass());
         Writer.Option optVal = SequenceFile.Writer.valueClass(writableData[0].getClass());
@@ -247,7 +271,7 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
                                         IAvroSchema[] data) throws Exception {
         IntWritable key = new IntWritable();
         BytesWritable val = new BytesWritable();
-        Path path = new Path("/" + pathToFile);
+        Path path = getDatapath(pathToFile);
 
         Writer.Option optPath = SequenceFile.Writer.file(path);
         Writer.Option optKey = SequenceFile.Writer.keyClass(key.getClass());
@@ -269,7 +293,7 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
     public void writeAvroFile(String pathToFile, String schemaName,
                               String codecName, IAvroSchema[] data)
             throws Exception {
-        Path path = new Path("/" + pathToFile);
+        Path path = getDatapath(pathToFile);
         OutputStream outStream = fs.create(path, true, bufferSize,
                 replicationSize, blockSize);
         Schema schema = new Schema.Parser().parse(new FileInputStream(
@@ -309,7 +333,7 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
             args.add(codecName);
         }
 
-        FSDataOutputStream out = fs.create(new Path("/" + pathToFile), true,
+        FSDataOutputStream out = fs.create(getDatapath(pathToFile), true,
                 bufferSize, replicationSize, blockSize);
         PrintStream printStream = new PrintStream(out);
 
@@ -325,7 +349,7 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
     public void writeProtocolBufferFile(String filePath,
                                         com.google.protobuf.GeneratedMessage data)
             throws Exception {
-        Path path = new Path("/" + filePath);
+        Path path = getDatapath(filePath);
         OutputStream out_stream = fs.create(path, true, bufferSize,
                 replicationSize, blockSize);
         data.writeTo(out_stream);
@@ -368,7 +392,7 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
                         + pathToFile
                         + ((encoding != null) ? " encoding: " + encoding : ""));
 
-        FSDataOutputStream out = fs.create(new Path("/" + pathToFile), true,
+        FSDataOutputStream out = fs.create(getDatapath(pathToFile), true,
                 bufferSize, replicationSize, blockSize);
         writeTableToStream(out, dataTable, delimiter, encoding);
         ReportUtils.stopLevel(report);
@@ -385,13 +409,13 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
                         + ((encoding != null) ? " encoding: " + encoding : ""));
 
 
-        FSDataOutputStream out = fs.append(new Path("/" + pathToFile));
+        FSDataOutputStream out = fs.append(getDatapath(pathToFile));
         out.writeBytes("\n"); // Need to start on a new line
         writeTableToStream(out, dataTable, delimiter, encoding);
         ReportUtils.stopLevel(report);
     }
 
-    private void writeTableToStream(FSDataOutputStream stream, Table dataTable, String delimiter, Charset encoding) throws Exception{
+    private void writeTableToStream(FSDataOutputStream stream, Table dataTable, String delimiter, Charset encoding) throws Exception {
         BufferedWriter bufferedWriter = new BufferedWriter(
                 new OutputStreamWriter(stream, encoding));
         List<List<String>> data = dataTable.getData();
@@ -445,6 +469,10 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
 
     public void setWorkingDirectory(String workingDirectory) {
         this.workingDirectory = workingDirectory;
+
+        if (workingDirectory != null) {
+            this.workingDirectory = workingDirectory.replace("__UUID__", UUID.randomUUID().toString());
+        }
     }
 
     public String getPort() {
@@ -469,5 +497,13 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
 
     public void setHaNameservice(String haNameservice) {
         this.haNameservice = haNameservice;
+    }
+
+    public String getScheme() {
+        return scheme;
+    }
+
+    public void setScheme(String scheme) {
+        this.scheme = scheme;
     }
 }

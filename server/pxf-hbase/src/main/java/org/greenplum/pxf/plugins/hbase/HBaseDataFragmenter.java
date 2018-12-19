@@ -20,7 +20,7 @@ package org.greenplum.pxf.plugins.hbase;
  */
 
 
-import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.ServerName;
@@ -31,11 +31,10 @@ import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.RegionLocator;
-import org.greenplum.pxf.api.FileSystemFragmenter;
-import org.greenplum.pxf.api.Fragment;
-import org.greenplum.pxf.api.Fragmenter;
-import org.greenplum.pxf.api.FragmentsStats;
-import org.greenplum.pxf.api.utilities.InputData;
+import org.greenplum.pxf.api.model.BaseFragmenter;
+import org.greenplum.pxf.api.model.Fragment;
+import org.greenplum.pxf.api.model.FragmentStats;
+import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.plugins.hbase.utilities.HBaseLookupTable;
 import org.greenplum.pxf.plugins.hbase.utilities.HBaseUtilities;
 
@@ -48,34 +47,29 @@ import java.util.Map;
 /**
  * Fragmenter class for HBase data resources.
  *
- * Extends the {@link Fragmenter} abstract class, with the purpose of transforming
+ * Extends the {@link BaseFragmenter} abstract class, with the purpose of transforming
  * an input data path (an HBase table name in this case) into a list of regions
  * that belong to this table.
  *
  * This class also puts HBase lookup table information for the given
  * table (if exists) in each fragment's user data field.
  */
-@FileSystemFragmenter
-public class HBaseDataFragmenter extends Fragmenter {
+public class HBaseDataFragmenter extends BaseFragmenter {
 
-    private static final Configuration hbaseConfiguration = HBaseUtilities.initHBaseConfiguration();
-    private Admin hbaseAdmin;
     private Connection connection;
 
-    /**
-     * Constructor for HBaseDataFragmenter.
-     *
-     * @param inConf input data such as which HBase table to scan
-     */
-    public HBaseDataFragmenter(InputData inConf) {
-        super(inConf);
+    @Override
+    public void initialize(RequestContext requestContext) {
+        super.initialize(requestContext);
+        configuration = HBaseConfiguration.create(configuration);
+        configuration.set("hbase.client.retries.number", "3");
     }
 
     /**
      * Returns statistics for HBase table. Currently it's not implemented.
      */
     @Override
-    public FragmentsStats getFragmentsStats() throws Exception {
+    public FragmentStats getFragmentStats() throws Exception {
         throw new UnsupportedOperationException("ANALYZE for HBase plugin is not supported");
     }
 
@@ -92,12 +86,12 @@ public class HBaseDataFragmenter extends Fragmenter {
     public List<Fragment> getFragments() throws Exception {
 
         // check that Zookeeper and HBase master are available
-        HBaseAdmin.checkHBaseAvailable(hbaseConfiguration);
-        connection = ConnectionFactory.createConnection(hbaseConfiguration);
-        hbaseAdmin = connection.getAdmin();
-        if (!HBaseUtilities.isTableAvailable(hbaseAdmin, inputData.getDataSource())) {
+        HBaseAdmin.checkHBaseAvailable(configuration);
+        connection = ConnectionFactory.createConnection(configuration);
+        Admin hbaseAdmin = connection.getAdmin();
+        if (!HBaseUtilities.isTableAvailable(hbaseAdmin, context.getDataSource())) {
             HBaseUtilities.closeConnection(hbaseAdmin, connection);
-            throw new TableNotFoundException(inputData.getDataSource());
+            throw new TableNotFoundException(context.getDataSource());
         }
 
         byte[] userData = prepareUserData();
@@ -116,8 +110,8 @@ public class HBaseDataFragmenter extends Fragmenter {
      * or serialization fails
      */
     private byte[] prepareUserData() throws Exception {
-        HBaseLookupTable lookupTable = new HBaseLookupTable(hbaseConfiguration);
-        Map<String, byte[]> mappings = lookupTable.getMappings(inputData.getDataSource());
+        HBaseLookupTable lookupTable = new HBaseLookupTable(configuration);
+        Map<String, byte[]> mappings = lookupTable.getMappings(context.getDataSource());
         lookupTable.close();
 
         if (mappings != null) {
@@ -146,7 +140,7 @@ public class HBaseDataFragmenter extends Fragmenter {
     }
 
     private void addTableFragments(byte[] userData) throws IOException {
-        RegionLocator regionLocator = connection.getRegionLocator(TableName.valueOf(inputData.getDataSource()));
+        RegionLocator regionLocator = connection.getRegionLocator(TableName.valueOf(context.getDataSource()));
         List <HRegionLocation> locations = regionLocator.getAllRegionLocations();
 
         for (HRegionLocation location : locations) {
@@ -162,7 +156,7 @@ public class HBaseDataFragmenter extends Fragmenter {
         String[] hosts = new String[] {serverInfo.getHostname()};
         HRegionInfo region = location.getRegionInfo();
         byte[] fragmentMetadata = prepareFragmentMetadata(region);
-        Fragment fragment = new Fragment(inputData.getDataSource(), hosts, fragmentMetadata, userData);
+        Fragment fragment = new Fragment(context.getDataSource(), hosts, fragmentMetadata, userData);
         fragments.add(fragment);
     }
 

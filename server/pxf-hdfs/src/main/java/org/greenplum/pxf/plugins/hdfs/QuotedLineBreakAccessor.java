@@ -8,9 +8,9 @@ package org.greenplum.pxf.plugins.hdfs;
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -21,7 +21,8 @@ package org.greenplum.pxf.plugins.hdfs;
 
 
 import org.greenplum.pxf.api.OneRow;
-import org.greenplum.pxf.api.utilities.InputData;
+import org.greenplum.pxf.api.model.RequestContext;
+
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -34,15 +35,6 @@ import java.io.InputStreamReader;
  */
 public class QuotedLineBreakAccessor extends HdfsAtomicDataAccessor {
     private BufferedReader reader;
-
-    /**
-     * Constructs a QuotedLineBreakAccessor.
-     *
-     * @param input all input parameters coming from the client request
-     */
-    public QuotedLineBreakAccessor(InputData input) {
-        super(input);
-    }
 
     @Override
     public boolean openForRead() throws Exception {
@@ -68,5 +60,38 @@ public class QuotedLineBreakAccessor extends HdfsAtomicDataAccessor {
         }
 
         return new OneRow(null, next_line);
+    }
+
+    /**
+     * Opens the resource for write.
+     *
+     * @return true if the resource is successfully opened
+     * @throws Exception if opening the resource failed
+     */
+    @Override
+    public boolean openForWrite() throws Exception {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Writes the next object.
+     *
+     * @param onerow the object to be written
+     * @return true if the write succeeded
+     * @throws Exception writing to the resource failed
+     */
+    @Override
+    public boolean writeNextObject(OneRow onerow) throws Exception {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Closes the resource for write.
+     *
+     * @throws Exception if closing the resource failed
+     */
+    @Override
+    public void closeForWrite() throws Exception {
+        throw new UnsupportedOperationException();
     }
 }

@@ -20,9 +20,6 @@ package org.greenplum.pxf.api.examples;
  */
 
 import org.greenplum.pxf.api.OneRow;
-import org.greenplum.pxf.api.WriteAccessor;
-import org.greenplum.pxf.api.utilities.InputData;
-import org.greenplum.pxf.api.utilities.Plugin;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
@@ -37,18 +34,9 @@ import java.nio.file.Path;
  * Demo implementation.
  */
 
-public class DemoFileWritableAccessor extends Plugin implements WriteAccessor {
+public class DemoFileWritableAccessor extends DemoAccessor {
 
     private OutputStream out;
-
-    /**
-     * Constructs a DemoFileWritableAccessor.
-     *
-     * @param input all input parameters coming from the client request
-     */
-    public DemoFileWritableAccessor(InputData input) {
-        super(input);
-    }
 
     /**
      * Opens the resource for write.
@@ -58,7 +46,7 @@ public class DemoFileWritableAccessor extends Plugin implements WriteAccessor {
      */
     @Override
     public boolean openForWrite() throws Exception {
-        String fileName = inputData.getDataSource();
+        String fileName = context.getDataSource();
 
         Path file = FileSystems.getDefault().getPath(fileName);
         if (Files.exists(file)) {

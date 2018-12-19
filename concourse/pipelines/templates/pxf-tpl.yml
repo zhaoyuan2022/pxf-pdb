@@ -274,6 +274,9 @@ jobs:
     file: pxf_src/concourse/tasks/test_pxf.yml
     image: gpdb-pxf-dev-centos6-hdp-server
     params:
+      AWS_ACCESS_KEY_ID: {{tf-machine-access-key-id}}
+      AWS_SECRET_ACCESS_KEY: {{tf-machine-secret-access-key}}
+      AWS_DEFAULT_REGION: {{aws-region}}
       GROUP: gpdb,proxy,profile
       TEST_ENV: {{test-env}}
       HADOOP_CLIENT: HDP
@@ -312,6 +315,9 @@ jobs:
     file: pxf_src/concourse/tasks/test_pxf.yml
     image: gpdb-pxf-dev-ubuntu16-hdp-server
     params:
+      AWS_ACCESS_KEY_ID: {{tf-machine-access-key-id}}
+      AWS_SECRET_ACCESS_KEY: {{tf-machine-secret-access-key}}
+      AWS_DEFAULT_REGION: {{aws-region}}
       GROUP: gpdb,proxy,profile
       TEST_ENV: {{test-env}}
       HADOOP_CLIENT: HDP
@@ -353,6 +359,9 @@ jobs:
     privileged: true
     attempts: 2
     params:
+      AWS_ACCESS_KEY_ID: {{tf-machine-access-key-id}}
+      AWS_SECRET_ACCESS_KEY: {{tf-machine-secret-access-key}}
+      AWS_DEFAULT_REGION: {{aws-region}}
       GROUP: gpdb,proxy
       TEST_ENV: {{test-env}}
       TARGET_OS: centos
@@ -433,6 +442,9 @@ jobs:
     image: gpdb-pxf-dev-centos6-hdp-server
     file: pxf_src/concourse/tasks/test_pxf_multinode.yml
     params:
+      AWS_ACCESS_KEY_ID: {{tf-machine-access-key-id}}
+      AWS_SECRET_ACCESS_KEY: {{tf-machine-secret-access-key}}
+      AWS_DEFAULT_REGION: {{aws-region}}
       GROUP: gpdb,proxy
       TARGET_OS: centos
 {% if acceptance %}
@@ -468,10 +480,135 @@ jobs:
     image: gpdb-pxf-dev-centos6-cdh-server
     attempts: 2
     params:
+      AWS_ACCESS_KEY_ID: {{tf-machine-access-key-id}}
+      AWS_SECRET_ACCESS_KEY: {{tf-machine-secret-access-key}}
+      AWS_DEFAULT_REGION: {{aws-region}}
       GROUP: gpdb,proxy,profile
       TEST_ENV: {{test-env}}
       TARGET_OS: centos
       HADOOP_CLIENT: CDH
+{% if acceptance %}
+      ACCEPTANCE: true
+{% endif %}
+
+- name: test_pxf_s3
+  plan:
+  - aggregate:
+    - get: gpdb_src
+      passed:
+      - compile_pxf
+{% if compile_gpdb %}
+      - compile_gpdb_centos6
+{% endif %}
+    - get: bin_gpdb
+      resource: bin_gpdb_centos6
+{% if compile_gpdb %}
+      passed:
+      - compile_gpdb_centos6
+{% endif %}
+    - get: pxf_src
+      passed:
+      - compile_pxf
+      trigger: true
+    - get: pxf_tarball
+      passed:
+      - compile_pxf
+      trigger: true
+    - get: gpdb-pxf-dev-centos6-cdh-server
+  - task: test_pxf
+    file: pxf_src/concourse/tasks/test_pxf.yml
+    image: gpdb-pxf-dev-centos6-cdh-server
+    params:
+      AWS_ACCESS_KEY_ID: {{tf-machine-access-key-id}}
+      AWS_SECRET_ACCESS_KEY: {{tf-machine-secret-access-key}}
+      AWS_DEFAULT_REGION: {{aws-region}}
+      GROUP: hcfs
+      IMPERSONATION: false
+      PROTOCOL: s3
+      TEST_ENV: {{test-env}}
+      TEST_OS: centos
+      TARGET_OS: centos
+{% if acceptance %}
+      ACCEPTANCE: true
+{% endif %}
+
+- name: test_pxf_adl
+  plan:
+  - aggregate:
+    - get: gpdb_src
+      passed:
+      - compile_pxf
+{% if compile_gpdb %}
+      - compile_gpdb_centos6
+{% endif %}
+    - get: bin_gpdb
+      resource: bin_gpdb_centos6
+{% if compile_gpdb %}
+      passed:
+      - compile_gpdb_centos6
+{% endif %}
+    - get: pxf_src
+      passed:
+      - compile_pxf
+      trigger: true
+    - get: pxf_tarball
+      passed:
+      - compile_pxf
+      trigger: true
+    - get: gpdb-pxf-dev-centos6-cdh-server
+  - task: test_pxf
+    file: pxf_src/concourse/tasks/test_pxf.yml
+    image: gpdb-pxf-dev-centos6-cdh-server
+    params:
+      ADL_ACCOUNT: {{adl-account}}
+      ADL_CLIENT_ID: {{adl-client-id}}
+      ADL_CREDENTIAL: {{adl-credential}}
+      ADL_REFRESH_URL: {{adl-refresh-url}}
+      GROUP: hcfs
+      IMPERSONATION: false
+      PROTOCOL: adl
+      TEST_ENV: {{test-env}}
+      TEST_OS: centos
+      TARGET_OS: centos
+{% if acceptance %}
+      ACCEPTANCE: true
+{% endif %}
+
+- name: test_pxf_gs
+  plan:
+  - aggregate:
+    - get: gpdb_src
+      passed:
+      - compile_pxf
+{% if compile_gpdb %}
+      - compile_gpdb_centos6
+{% endif %}
+    - get: bin_gpdb
+      resource: bin_gpdb_centos6
+{% if compile_gpdb %}
+      passed:
+      - compile_gpdb_centos6
+{% endif %}
+    - get: pxf_src
+      passed:
+      - compile_pxf
+      trigger: true
+    - get: pxf_tarball
+      passed:
+      - compile_pxf
+      trigger: true
+    - get: gpdb-pxf-dev-centos6-cdh-server
+  - task: test_pxf
+    file: pxf_src/concourse/tasks/test_pxf.yml
+    image: gpdb-pxf-dev-centos6-cdh-server
+    params:
+      GOOGLE_CREDENTIALS: {{data-gpdb-ud-google-json-key}}
+      GROUP: hcfs
+      IMPERSONATION: false
+      PROTOCOL: gs
+      TEST_ENV: {{test-env}}
+      TEST_OS: centos
+      TARGET_OS: centos
 {% if acceptance %}
       ACCEPTANCE: true
 {% endif %}
@@ -520,6 +657,9 @@ jobs:
     passed:
     - test_pxf_hdp_centos6
     - test_pxf_cdh_centos6
+    - test_pxf_adl
+    - test_pxf_gs
+    - test_pxf_s3
     - test_pxf_hdp_secure
     - test_pxf_no_impersonation
     - test_pxf_hdp_multinode_gpdb
@@ -536,6 +676,9 @@ jobs:
     passed:
     - test_pxf_hdp_centos6
     - test_pxf_cdh_centos6
+    - test_pxf_adl
+    - test_pxf_gs
+    - test_pxf_s3
     - test_pxf_hdp_secure
     - test_pxf_no_impersonation
     - test_pxf_hdp_multinode_gpdb
@@ -545,6 +688,9 @@ jobs:
     passed:
     - test_pxf_hdp_centos6
     - test_pxf_cdh_centos6
+    - test_pxf_adl
+    - test_pxf_gs
+    - test_pxf_s3
     - test_pxf_hdp_secure
     - test_pxf_no_impersonation
     - test_pxf_hdp_multinode_gpdb

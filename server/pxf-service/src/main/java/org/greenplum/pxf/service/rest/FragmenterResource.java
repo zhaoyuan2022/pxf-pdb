@@ -19,17 +19,16 @@ package org.greenplum.pxf.service.rest;
  * under the License.
  */
 
-import org.greenplum.pxf.api.Fragment;
-import org.greenplum.pxf.api.Fragmenter;
-import org.greenplum.pxf.api.FragmentsStats;
+import org.greenplum.pxf.api.model.Fragment;
+import org.greenplum.pxf.api.model.FragmentStats;
+import org.greenplum.pxf.api.model.Fragmenter;
+import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.api.utilities.FragmenterFactory;
 import org.greenplum.pxf.api.utilities.FragmentsResponse;
 import org.greenplum.pxf.api.utilities.FragmentsResponseFormatter;
+import org.greenplum.pxf.service.HttpRequestParser;
+import org.greenplum.pxf.service.RequestParser;
 import org.greenplum.pxf.service.utilities.AnalyzeUtils;
-import org.greenplum.pxf.api.utilities.ProtocolData;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 
 import javax.servlet.ServletContext;
 import javax.ws.rs.GET;
@@ -40,9 +39,7 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-
 import java.util.List;
-import java.util.Map;
 
 /**
  * Class enhances the API of the WEBHDFS REST server. Returns the data fragments
@@ -53,8 +50,18 @@ import java.util.Map;
  * name in tomcat.
  */
 @Path("/" + Version.PXF_PROTOCOL_VERSION + "/Fragmenter/")
-public class FragmenterResource extends RestResource {
-    private static final Log LOG = LogFactory.getLog(FragmenterResource.class);
+public class FragmenterResource extends BaseResource {
+
+    private FragmenterFactory fragmenterFactory;
+
+    public FragmenterResource() {
+        this(HttpRequestParser.getInstance(), FragmenterFactory.getInstance());
+    }
+
+    FragmenterResource(RequestParser<HttpHeaders> parser, FragmenterFactory fragmenterFactory) {
+        super(parser);
+        this.fragmenterFactory = fragmenterFactory;
+    }
 
     /**
      * The function is called when
@@ -75,17 +82,16 @@ public class FragmenterResource extends RestResource {
                                  @QueryParam("path") final String path)
             throws Exception {
 
-        ProtocolData protData = getProtocolData(servletContext, headers, path);
+        LOG.debug("FRAGMENTER started for path \"{}\"", path);
+
+        RequestContext context = parseRequest(headers);
 
         /* Create a fragmenter instance with API level parameters */
-        final Fragmenter fragmenter = FragmenterFactory.create(protData);
+        final Fragmenter fragmenter = fragmenterFactory.getPlugin(context);
 
         List<Fragment> fragments = fragmenter.getFragments();
-
-        fragments = AnalyzeUtils.getSampleFragments(fragments, protData);
-
-        FragmentsResponse fragmentsResponse = FragmentsResponseFormatter.formatResponse(
-                fragments, path);
+        fragments = AnalyzeUtils.getSampleFragments(fragments, context);
+        FragmentsResponse fragmentsResponse = FragmentsResponseFormatter.formatResponse(fragments, path);
 
         return Response.ok(fragmentsResponse, MediaType.APPLICATION_JSON_TYPE).build();
     }
@@ -110,43 +116,18 @@ public class FragmenterResource extends RestResource {
                                       @QueryParam("path") final String path)
             throws Exception {
 
-        ProtocolData protData = getProtocolData(servletContext, headers, path);
+        RequestContext context = parseRequest(headers);
 
         /* Create a fragmenter instance with API level parameters */
-        final Fragmenter fragmenter = FragmenterFactory.create(protData);
+        final Fragmenter fragmenter = fragmenterFactory.getPlugin(context);
 
-        FragmentsStats fragmentsStats = fragmenter.getFragmentsStats();
-        String response = FragmentsStats.dataToJSON(fragmentsStats);
+        FragmentStats fragmentStats = fragmenter.getFragmentStats();
+        String response = FragmentStats.dataToJSON(fragmentStats);
         if (LOG.isDebugEnabled()) {
-            LOG.debug(FragmentsStats.dataToString(fragmentsStats, path));
+            LOG.debug(FragmentStats.dataToString(fragmentStats, path));
         }
 
         return Response.ok(response, MediaType.APPLICATION_JSON_TYPE).build();
     }
 
-    private ProtocolData getProtocolData(final ServletContext servletContext,
-                                         final HttpHeaders headers,
-                                         final String path) throws Exception {
-
-        if (LOG.isDebugEnabled()) {
-            StringBuilder startMsg = new StringBuilder(
-                    "FRAGMENTER started for path \"" + path + "\"");
-            for (String header : headers.getRequestHeaders().keySet()) {
-                startMsg.append(" Header: ").append(header).append(" Value: ").append(
-                        headers.getRequestHeader(header));
-            }
-            LOG.debug(startMsg);
-        }
-
-        /* Convert headers into a case-insensitive regular map */
-        Map<String, String> params = convertToCaseInsensitiveMap(headers.getRequestHeaders());
-
-        /* Store protocol level properties and verify */
-        ProtocolData protData = new ProtocolData(params);
-        if (protData.getFragmenter() == null) {
-            protData.protocolViolation("fragmenter");
-        }
-
-        return protData;
-    }
 }

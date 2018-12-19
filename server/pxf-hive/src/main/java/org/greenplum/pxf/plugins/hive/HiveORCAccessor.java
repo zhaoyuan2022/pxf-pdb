@@ -8,9 +8,9 @@ package org.greenplum.pxf.plugins.hive;
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,6 +20,7 @@ package org.greenplum.pxf.plugins.hive;
  */
 
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hive.ql.io.orc.OrcInputFormat;
@@ -31,11 +32,9 @@ import org.greenplum.pxf.api.BasicFilter;
 import org.greenplum.pxf.api.LogicalFilter;
 import org.greenplum.pxf.api.OneRow;
 import org.greenplum.pxf.api.StatsAccessor;
+import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.api.utilities.ColumnDescriptor;
-import org.greenplum.pxf.api.utilities.InputData;
 import org.greenplum.pxf.api.utilities.Utilities;
-import org.greenplum.pxf.plugins.hive.utilities.HiveUtilities;
-import org.apache.commons.lang.StringUtils;
 
 import java.sql.Date;
 import java.util.ArrayList;
@@ -66,19 +65,21 @@ public class HiveORCAccessor extends HiveAccessor implements StatsAccessor {
 
     /**
      * Constructs a HiveORCFileAccessor.
-     *
-     * @param input input containing user data
-     * @throws Exception if user data was wrong
      */
-    public HiveORCAccessor(InputData input) throws Exception {
-        super(input, new OrcInputFormat());
-        useStats = Utilities.useStats(this, inputData);
+    public HiveORCAccessor() {
+        super(new OrcInputFormat());
+    }
+
+    @Override
+    public void initialize(RequestContext requestContext) {
+        super.initialize(requestContext);
+        useStats = Utilities.aggregateOptimizationsSupported(context);
     }
 
     @Override
     public boolean openForRead() throws Exception {
         if (useStats) {
-            orcReader = HiveUtilities.getOrcReader(inputData);
+            orcReader = getOrcReader();
             if (orcReader == null) {
                 return false;
             }
@@ -98,7 +99,7 @@ public class HiveORCAccessor extends HiveAccessor implements StatsAccessor {
 
         List<Integer> colIds = new ArrayList<Integer>();
         List<String> colNames = new ArrayList<String>();
-        for(ColumnDescriptor col: inputData.getTupleDescription()) {
+        for(ColumnDescriptor col: context.getTupleDescription()) {
             if(col.isProjected()) {
                 colIds.add(col.columnIndex());
                 colNames.add(col.columnName());
@@ -115,13 +116,13 @@ public class HiveORCAccessor extends HiveAccessor implements StatsAccessor {
      * JobConf object
      */
     private void addFilters() throws Exception {
-        if (!inputData.hasFilter()) {
+        if (!context.hasFilter()) {
             return;
         }
 
         /* Predicate pushdown configuration */
-        String filterStr = inputData.getFilterString();
-        HiveFilterBuilder eval = new HiveFilterBuilder(inputData);
+        String filterStr = context.getFilterString();
+        HiveFilterBuilder eval = new HiveFilterBuilder(context);
         Object filter = eval.getFilterObject(filterStr);
         SearchArgument.Builder filterBuilder = SearchArgumentFactory.newBuilder();
 
@@ -180,7 +181,7 @@ public class HiveORCAccessor extends HiveAccessor implements StatsAccessor {
         int filterColumnIndex = filter.getColumn().index();
         // filter value might be null for unary operations
         Object filterValue = filter.getConstant() == null ? null : filter.getConstant().constant();
-        ColumnDescriptor filterColumn = inputData.getColumn(filterColumnIndex);
+        ColumnDescriptor filterColumn = context.getColumn(filterColumnIndex);
         String filterColumnName = filterColumn.columnName();
 
         /* Need to convert java.sql.Date to Hive's DateWritable Format */
@@ -242,7 +243,7 @@ public class HiveORCAccessor extends HiveAccessor implements StatsAccessor {
          * it's enough to return count for a first split in file.
          * In case file has multiple splits - we don't want to duplicate counts.
          */
-        if (inputData.getFragmentIndex() == 0) {
+        if (context.getFragmentIndex() == 0) {
             this.count = this.orcReader.getNumberOfRows();
             rowToEmitCount = readNextObject();
         }
@@ -259,9 +260,9 @@ public class HiveORCAccessor extends HiveAccessor implements StatsAccessor {
             throw new IllegalStateException("retrieveStats() should be called before calling emitAggObject()");
         }
         OneRow row = null;
-        if (inputData.getAggType() == null)
+        if (context.getAggType() == null)
             throw new UnsupportedOperationException("Aggregate opration is required");
-        switch (inputData.getAggType()) {
+        switch (context.getAggType()) {
             case COUNT:
                 if (objectsEmitted < count) {
                     objectsEmitted++;

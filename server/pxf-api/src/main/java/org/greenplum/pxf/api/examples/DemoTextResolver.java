@@ -8,9 +8,9 @@ package org.greenplum.pxf.api.examples;
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -21,10 +21,6 @@ package org.greenplum.pxf.api.examples;
 
 import org.greenplum.pxf.api.OneField;
 import org.greenplum.pxf.api.OneRow;
-import org.greenplum.pxf.api.ReadResolver;
-import org.greenplum.pxf.api.WriteResolver;
-import org.greenplum.pxf.api.utilities.InputData;
-import org.greenplum.pxf.api.utilities.Plugin;
 import org.greenplum.pxf.api.io.DataType;
 
 import java.util.LinkedList;
@@ -35,16 +31,7 @@ import java.util.List;
  *
  * Demo implementation of resolver that returns text format
  */
-public class DemoTextResolver extends Plugin implements ReadResolver, WriteResolver {
-
-    /**
-     * Constructs the DemoResolver
-     *
-     * @param metaData the InputData
-     */
-    public DemoTextResolver(InputData metaData) {
-        super(metaData);
-    }
+public class DemoTextResolver extends DemoResolver {
 
     /**
      * Read the next record

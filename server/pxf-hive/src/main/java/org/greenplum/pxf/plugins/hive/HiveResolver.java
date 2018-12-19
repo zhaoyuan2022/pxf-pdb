@@ -21,18 +21,16 @@ package org.greenplum.pxf.plugins.hive;
 
 import org.apache.hadoop.io.BytesWritable;
 import org.greenplum.pxf.api.*;
-import org.greenplum.pxf.api.*;
 import org.greenplum.pxf.api.io.DataType;
+import org.greenplum.pxf.api.model.RequestContext;
+import org.greenplum.pxf.api.model.Resolver;
 import org.greenplum.pxf.api.utilities.ColumnDescriptor;
-import org.greenplum.pxf.api.utilities.InputData;
-import org.greenplum.pxf.api.utilities.Plugin;
 import org.greenplum.pxf.api.utilities.Utilities;
 import org.greenplum.pxf.plugins.hdfs.utilities.HdfsUtilities;
 import org.greenplum.pxf.plugins.hive.utilities.HiveUtilities;
 import org.apache.commons.lang.CharUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.common.JavaUtils;
 import org.apache.hadoop.hive.common.type.HiveDecimal;
 import org.apache.hadoop.hive.conf.HiveConf;
@@ -68,7 +66,7 @@ import java.util.Properties;
  * this bit of juggling has been necessary.
  */
 @SuppressWarnings("deprecation")
-public class HiveResolver extends Plugin implements ReadResolver {
+public class HiveResolver extends HivePlugin implements Resolver {
     private static final Log LOG = LogFactory.getLog(HiveResolver.class);
     protected static final String MAPKEY_DELIM = ":";
     protected static final String COLLECTION_DELIM = ",";
@@ -81,31 +79,29 @@ public class HiveResolver extends Plugin implements ReadResolver {
     String partitionKeys;
     protected char delimiter;
     String nullChar = "\\N";
-    private Configuration conf;
     private String hiveDefaultPartName;
     private int numberOfPartitions;
 
     /**
-     * Constructs the HiveResolver by parsing the userdata in the input and
+     * Initializes the HiveResolver by parsing the request context and
      * obtaining the serde class name, the serde properties string and the
      * partition keys.
-     *
-     * @param input contains the Serde class name, the serde properties string
-     *            and the partition keys
-     * @throws Exception if user data was wrong or serde failed to be
-     *             instantiated
+     * @param requestContext request context
      */
-    public HiveResolver(InputData input) throws Exception {
-        super(input);
+    @Override
+    public void initialize(RequestContext requestContext) {
+        super.initialize(requestContext);
 
-        conf = new Configuration();
-        hiveDefaultPartName = HiveConf.getVar(conf,
-                HiveConf.ConfVars.DEFAULTPARTITIONNAME);
+        hiveDefaultPartName = HiveConf.getVar(configuration, HiveConf.ConfVars.DEFAULTPARTITIONNAME);
         LOG.debug("Hive's default partition name is " + hiveDefaultPartName);
 
-        parseUserData(input);
-        initPartitionFields();
-        initSerde(input);
+        try {
+            parseUserData(context);
+            initPartitionFields();
+            initSerde(context);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to initialize HiveResolver", e);
+        }
     }
 
     @Override
@@ -123,6 +119,18 @@ public class HiveResolver extends Plugin implements ReadResolver {
         return record;
     }
 
+    /**
+     * Constructs and sets the fields of a {@link OneRow}.
+     *
+     * @param record list of {@link OneField}
+     * @return the constructed {@link OneRow}
+     * @throws Exception if constructing a row from the fields failed
+     */
+    @Override
+    public OneRow setFields(List<OneField> record) throws Exception {
+        throw new UnsupportedOperationException();
+    }
+
     public List<OneField> getPartitionFields() {
         return partitionFields;
     }
@@ -132,36 +140,36 @@ public class HiveResolver extends Plugin implements ReadResolver {
     }
 
     /* Parses user data string (arrived from fragmenter). */
-    void parseUserData(InputData input) throws Exception {
+    void parseUserData(RequestContext input) throws Exception {
         HiveUserData hiveUserData = HiveUtilities.parseHiveUserData(input);
 
         serdeClassName = hiveUserData.getSerdeClassName();
         propsString = hiveUserData.getPropertiesString();
         partitionKeys = hiveUserData.getPartitionKeys();
 
-        collectionDelim = input.getUserProperty("COLLECTION_DELIM") == null ? COLLECTION_DELIM
-                : input.getUserProperty("COLLECTION_DELIM");
-        mapkeyDelim = input.getUserProperty("MAPKEY_DELIM") == null ? MAPKEY_DELIM
-                : input.getUserProperty("MAPKEY_DELIM");
+        collectionDelim = input.getOption("COLLECTION_DELIM") == null ? COLLECTION_DELIM
+                : input.getOption("COLLECTION_DELIM");
+        mapkeyDelim = input.getOption("MAPKEY_DELIM") == null ? MAPKEY_DELIM
+                : input.getOption("MAPKEY_DELIM");
     }
 
     /*
      * Gets and init the deserializer for the records of this Hive data
      * fragment.
      */
-    void initSerde(InputData inputData) throws Exception {
+    void initSerde(RequestContext requestContext) throws Exception {
         Properties serdeProperties;
 
         Class<?> c = Class.forName(serdeClassName, true, JavaUtils.getClassLoader());
         deserializer = (SerDe) c.newInstance();
         serdeProperties = new Properties();
-        if (propsString != null ) {
+        if (propsString != null) {
             ByteArrayInputStream inStream = new ByteArrayInputStream(propsString.getBytes());
             serdeProperties.load(inStream);
         } else {
             throw new IllegalArgumentException("propsString is mandatory to initialize serde.");
         }
-        deserializer.initialize(new JobConf(conf, HiveResolver.class), serdeProperties);
+        deserializer.initialize(new JobConf(configuration, HiveResolver.class), serdeProperties);
     }
 
     /*
@@ -330,7 +338,7 @@ public class HiveResolver extends Plugin implements ReadResolver {
      * Returns true if the partition value is Hive's default partition name
      * (defined in hive.exec.default.partition.name).
      *
-     * @param partitionType partition field type
+     * @param partitionType  partition field type
      * @param partitionValue partition value
      * @return true if the partition value is Hive's default partition
      */
@@ -363,7 +371,7 @@ public class HiveResolver extends Plugin implements ReadResolver {
                         record, toFlatten);
                 break;
             case LIST:
-                if(obj == null) {
+                if (obj == null) {
                     addOneFieldToRecord(record, DataType.TEXT, null);
                 } else {
                     List<OneField> listRecord = traverseList(obj,
@@ -373,7 +381,7 @@ public class HiveResolver extends Plugin implements ReadResolver {
                 }
                 break;
             case MAP:
-                if(obj == null) {
+                if (obj == null) {
                     addOneFieldToRecord(record, DataType.TEXT, null);
                 } else {
                     List<OneField> mapRecord = traverseMap(obj,
@@ -383,7 +391,7 @@ public class HiveResolver extends Plugin implements ReadResolver {
                 }
                 break;
             case STRUCT:
-                if(obj == null) {
+                if (obj == null) {
                     addOneFieldToRecord(record, DataType.TEXT, null);
                 } else {
                     List<OneField> structRecord = traverseStruct(obj,
@@ -393,7 +401,7 @@ public class HiveResolver extends Plugin implements ReadResolver {
                 }
                 break;
             case UNION:
-                if(obj == null) {
+                if (obj == null) {
                     addOneFieldToRecord(record, DataType.TEXT, null);
                 } else {
                     List<OneField> unionRecord = traverseUnion(obj,
@@ -437,8 +445,8 @@ public class HiveResolver extends Plugin implements ReadResolver {
     }
 
     protected List<OneField> traverseStruct(Object struct,
-                                          StructObjectInspector soi,
-                                          boolean toFlatten)
+                                            StructObjectInspector soi,
+                                            boolean toFlatten)
             throws BadRecordException, IOException {
         List<? extends StructField> fields = soi.getAllStructFieldRefs();
         List<Object> structFields = soi.getStructFieldsDataAsList(struct);
@@ -448,7 +456,7 @@ public class HiveResolver extends Plugin implements ReadResolver {
         }
         List<OneField> structRecord = new LinkedList<>();
         List<OneField> complexRecord = new LinkedList<>();
-        List<ColumnDescriptor> colData = inputData.getTupleDescription();
+        List<ColumnDescriptor> colData = context.getTupleDescription();
         for (int i = 0; i < structFields.size(); i++) {
             if (toFlatten) {
                 complexRecord.add(new OneField(DataType.TEXT.getOID(), String.format(
@@ -511,9 +519,9 @@ public class HiveResolver extends Plugin implements ReadResolver {
                 break;
             }
             case SHORT: {
-                if(o == null) {
+                if (o == null) {
                     val = null;
-                } else if( o.getClass().getSimpleName().equals("ByteWritable") ) {
+                } else if (o.getClass().getSimpleName().equals("ByteWritable")) {
                     val = new Short(((ByteWritable) o).get());
                 } else {
                     val = ((ShortObjectInspector) oi).get(o);
@@ -612,25 +620,21 @@ public class HiveResolver extends Plugin implements ReadResolver {
                                      DataType gpdbWritableType, Object val) {
         record.add(new OneField(gpdbWritableType.getOID(), val));
     }
+
     /*
      * Gets the delimiter character from the URL, verify and store it. Must be a
      * single ascii character (same restriction as Gpdb's). If a hex
      * representation was passed, convert it to its char.
      */
-    void parseDelimiterChar(InputData input) {
+    void parseDelimiterChar(RequestContext input) {
 
-        String userDelim = input.getUserProperty(InputData.DELIMITER_KEY);
+        String userDelim = input.getOption(RequestContext.DELIMITER_KEY);
 
         if (userDelim == null) {
             /* No DELIMITER in URL, try to get it from fragment's user data*/
-            HiveUserData hiveUserData = null;
-            try {
-                hiveUserData = HiveUtilities.parseHiveUserData(input);
-            } catch (UserDataException ude) {
-                throw new IllegalArgumentException("Couldn't parse user data to get " + InputData.DELIMITER_KEY);
-            }
+            HiveUserData hiveUserData = HiveUtilities.parseHiveUserData(input);
             if (hiveUserData.getDelimiter() == null) {
-                throw new IllegalArgumentException(InputData.DELIMITER_KEY + " is a required option");
+                throw new IllegalArgumentException(RequestContext.DELIMITER_KEY + " is a required option");
             }
             delimiter = (char) Integer.valueOf(hiveUserData.getDelimiter()).intValue();
         } else {

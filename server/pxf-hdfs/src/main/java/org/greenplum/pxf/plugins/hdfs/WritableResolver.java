@@ -8,9 +8,9 @@ package org.greenplum.pxf.plugins.hdfs;
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,18 +20,20 @@ package org.greenplum.pxf.plugins.hdfs;
  */
 
 
-import org.greenplum.pxf.api.*;
-import org.greenplum.pxf.api.*;
-import org.greenplum.pxf.api.io.DataType;
-import org.greenplum.pxf.api.utilities.InputData;
-import org.greenplum.pxf.api.utilities.Plugin;
-import org.greenplum.pxf.api.utilities.Utilities;
-import org.greenplum.pxf.plugins.hdfs.utilities.RecordkeyAdapter;
-import org.greenplum.pxf.plugins.hdfs.utilities.DataSchemaException;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.io.Writable;
+import org.greenplum.pxf.api.BadRecordException;
+import org.greenplum.pxf.api.OneField;
+import org.greenplum.pxf.api.OneRow;
+import org.greenplum.pxf.api.UnsupportedTypeException;
+import org.greenplum.pxf.api.io.DataType;
+import org.greenplum.pxf.api.model.BasePlugin;
+import org.greenplum.pxf.api.model.RequestContext;
+import org.greenplum.pxf.api.model.Resolver;
+import org.greenplum.pxf.api.utilities.Utilities;
+import org.greenplum.pxf.plugins.hdfs.utilities.DataSchemaException;
+import org.greenplum.pxf.plugins.hdfs.utilities.RecordkeyAdapter;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
@@ -46,27 +48,25 @@ import java.util.List;
  * A field named 'recordkey' is treated as a key of the given row, and not as
  * part of the data schema. See {@link RecordkeyAdapter}.
  */
-public class WritableResolver extends Plugin implements ReadResolver, WriteResolver {
+public class WritableResolver extends BasePlugin implements Resolver {
     private static final int RECORDKEY_UNDEFINED = -1;
     private static final Log LOG = LogFactory.getLog(WritableResolver.class);
     private RecordkeyAdapter recordkeyAdapter = new RecordkeyAdapter();
     private int recordkeyIndex;
     // reflection fields
-    private Object userObject = null;
-    private Field[] fields = null;
-
+    private Object userObject;
+    private Field[] fields;
 
     /**
-     * Constructs a WritableResolver.
+     * Initialize the plugin for the incoming request
      *
-     * @param input all input parameters coming from the client
-     * @throws Exception if schema file is missing, cannot be found in
-     *                   classpath or fails to instantiate
+     * @param requestContext data provided in the request
      */
-    public WritableResolver(InputData input) throws Exception {
-        super(input);
+    @Override
+    public void initialize(RequestContext requestContext) {
+        super.initialize(requestContext);
 
-        String schemaName = inputData.getUserProperty("DATA-SCHEMA");
+        String schemaName = context.getOption("DATA-SCHEMA");
 
         /** Testing that the schema name was supplied by the user - schema is an optional property. */
         if (schemaName == null) {
@@ -78,11 +78,15 @@ public class WritableResolver extends Plugin implements ReadResolver, WriteResol
             throw new DataSchemaException(DataSchemaException.MessageFmt.SCHEMA_NOT_ON_CLASSPATH, schemaName);
         }
 
-        userObject = Utilities.createAnyInstance(schemaName);
+        try {
+            userObject = Utilities.createAnyInstance(schemaName);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create an instance of " + schemaName, e);
+        }
         fields = userObject.getClass().getDeclaredFields();
-        recordkeyIndex = (inputData.getRecordkeyColumn() == null)
+        recordkeyIndex = (context.getRecordkeyColumn() == null)
                 ? RECORDKEY_UNDEFINED
-                        : inputData.getRecordkeyColumn().columnIndex();
+                : context.getRecordkeyColumn().columnIndex();
 
         // fields details:
         if (LOG.isDebugEnabled()) {
@@ -111,7 +115,7 @@ public class WritableResolver extends Plugin implements ReadResolver, WriteResol
         int currentIdx = 0;
         for (Field field : fields) {
             if (currentIdx == recordkeyIndex) {
-                currentIdx += recordkeyAdapter.appendRecordkeyField(record, inputData, onerow);
+                currentIdx += recordkeyAdapter.appendRecordkeyField(record, context, onerow);
             }
 
             if (Modifier.isPrivate(field.getModifiers())) {

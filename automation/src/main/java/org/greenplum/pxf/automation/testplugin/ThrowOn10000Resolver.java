@@ -1,14 +1,13 @@
 package org.greenplum.pxf.automation.testplugin;
 
-import java.util.List;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
-import org.greenplum.pxf.api.OneRow;
 import org.greenplum.pxf.api.OneField;
-import org.greenplum.pxf.api.utilities.InputData;
+import org.greenplum.pxf.api.OneRow;
+import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.plugins.hdfs.StringPassResolver;
+
+import java.util.List;
 
 /**
  * Test resolver, based on StringPassResolver.
@@ -19,17 +18,6 @@ public class ThrowOn10000Resolver extends StringPassResolver {
 
 	private static Log Log = LogFactory.getLog(ThrowOn10000Resolver.class);
 	private int rowCount;
-
-    /**
-     * Constructs a StringPassResolver
-     *
-     * @param inputData input all input parameters coming from the client request
-     */
-    public ThrowOn10000Resolver(InputData inputData) {
-    	super(inputData);
-
-        rowCount = 0;
-    }
 
     /**
      * Resolves next row using StringPassResolver.getFields().

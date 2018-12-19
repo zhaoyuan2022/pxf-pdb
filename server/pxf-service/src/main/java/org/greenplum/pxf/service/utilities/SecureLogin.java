@@ -20,13 +20,16 @@ package org.greenplum.pxf.service.utilities;
  */
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.security.UserGroupInformation;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.SecurityUtil;
+import org.apache.hadoop.security.UserGroupInformation;
+import org.greenplum.pxf.api.model.BaseConfigurationFactory;
+import org.greenplum.pxf.api.model.ConfigurationFactory;
 import org.greenplum.pxf.api.utilities.Utilities;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
 
 /**
  * This class relies heavily on Hadoop API to
@@ -36,31 +39,51 @@ import org.greenplum.pxf.api.utilities.Utilities;
  * <li>Do a Kerberos login with a kaytab file</li>
  * <li>convert _HOST in Kerberos principal to current hostname</li>
  * </ul>
- *
+ * <p>
  * It uses Hadoop Configuration to parse XML configuration files.<br>
  * It uses Hadoop Security to modify principal and perform the login.
- *
+ * <p>
  * The major limitation in this class is its dependency on Hadoop. If Hadoop
  * security is off, no login will be performed regardless of connector being
  * used.
  */
 public class SecureLogin {
-    private static final Log LOG = LogFactory.getLog(SecureLogin.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SecureLogin.class);
 
     private static final String CONFIG_KEY_SERVICE_PRINCIPAL = "pxf.service.kerberos.principal";
     private static final String CONFIG_KEY_SERVICE_KEYTAB = "pxf.service.kerberos.keytab";
+    private final ConfigurationFactory configurationFactory;
+
+    public SecureLogin() {
+        this(BaseConfigurationFactory.getInstance());
+    }
+
+    SecureLogin(ConfigurationFactory configurationFactory) {
+        this.configurationFactory = configurationFactory;
+    }
 
     /**
      * Establishes Login Context for the PXF service principal using Kerberos keytab.
      */
-    public static void login() {
+    public void login() {
         try {
             boolean isUserImpersonationEnabled = Utilities.isUserImpersonationEnabled();
-            LOG.info("User impersonation is " + (isUserImpersonationEnabled ? "enabled" : "disabled"));
+            LOG.info("User impersonation is {}", (isUserImpersonationEnabled ? "enabled" : "disabled"));
+
+            Configuration configuration = configurationFactory.initConfiguration("default", null);
+            UserGroupInformation.setConfiguration(configuration);
 
             if (!UserGroupInformation.isSecurityEnabled()) {
                 LOG.info("Kerberos Security is not enabled");
                 return;
+            }
+
+            File serverDirectory = new File(ConfigurationFactory.DEFAULT_SERVER_CONFIG_DIR);
+            if (!serverDirectory.exists() || !serverDirectory.isDirectory() || !serverDirectory.canRead()) {
+                // Fail to start PXF webapp if default directory does not exist.
+                throw new RuntimeException(String.format(
+                        "Directory %s does not exist, unable to create configuration for default server.",
+                        ConfigurationFactory.DEFAULT_SERVER_CONFIG_DIR));
             }
 
             LOG.info("Kerberos Security is enabled");
@@ -76,16 +99,13 @@ public class SecureLogin {
                 throw new RuntimeException("Kerberos Security requires a valid keytab file name.");
             }
 
-            Configuration config = new Configuration();
-            config.set(CONFIG_KEY_SERVICE_PRINCIPAL, principal);
-            config.set(CONFIG_KEY_SERVICE_KEYTAB, keytabFilename);
+            configuration.set(CONFIG_KEY_SERVICE_PRINCIPAL, principal);
+            configuration.set(CONFIG_KEY_SERVICE_KEYTAB, keytabFilename);
 
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Kerberos principal: " + config.get(CONFIG_KEY_SERVICE_PRINCIPAL));
-                LOG.debug("Kerberos keytab: " + config.get(CONFIG_KEY_SERVICE_KEYTAB));
-            }
+            LOG.debug("Kerberos principal: {}", configuration.get(CONFIG_KEY_SERVICE_PRINCIPAL));
+            LOG.debug("Kerberos keytab: {}", configuration.get(CONFIG_KEY_SERVICE_KEYTAB));
 
-            SecurityUtil.login(config, CONFIG_KEY_SERVICE_KEYTAB, CONFIG_KEY_SERVICE_PRINCIPAL);
+            SecurityUtil.login(configuration, CONFIG_KEY_SERVICE_KEYTAB, CONFIG_KEY_SERVICE_PRINCIPAL);
 
         } catch (Exception e) {
             LOG.error("PXF service login failed: " + e.getMessage());

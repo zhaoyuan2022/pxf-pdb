@@ -37,13 +37,12 @@ import org.apache.hadoop.hive.ql.io.orc.Reader;
 import org.apache.hadoop.hive.serde.serdeConstants;
 import org.apache.hadoop.hive.serde2.*;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.greenplum.pxf.api.Metadata;
-import org.greenplum.pxf.api.Metadata.Field;
 import org.greenplum.pxf.api.UnsupportedTypeException;
-import org.greenplum.pxf.api.UserDataException;
 import org.greenplum.pxf.api.io.DataType;
+import org.greenplum.pxf.api.model.Metadata;
+import org.greenplum.pxf.api.model.Metadata.Field;
+import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.api.utilities.EnumGpdbType;
-import org.greenplum.pxf.api.utilities.InputData;
 import org.greenplum.pxf.api.utilities.Utilities;
 import org.greenplum.pxf.plugins.hive.HiveDataFragmenter;
 import org.greenplum.pxf.plugins.hive.HiveInputFormatFragmenter;
@@ -85,19 +84,15 @@ public class HiveUtilities {
      *
      * @return initialized client
      */
-    public static HiveMetaStoreClient initHiveClient() {
+    public static HiveMetaStoreClient initHiveClient(Configuration configuration) {
         try {
             if (UserGroupInformation.isSecurityEnabled() && Utilities.isUserImpersonationEnabled()) {
-                return UserGroupInformation.getLoginUser().doAs(new PrivilegedExceptionAction<HiveMetaStoreClient>() {
-                    @Override
-                    public HiveMetaStoreClient run() throws Exception {
-                        return new HiveMetaStoreClient(new HiveConf());
-                    }
-                });
+                return UserGroupInformation.getLoginUser().
+                        doAs((PrivilegedExceptionAction<HiveMetaStoreClient>) () ->
+                                new HiveMetaStoreClient(new HiveConf(configuration, HiveConf.class)));
             } else {
-                return new HiveMetaStoreClient(new HiveConf());
+                return new HiveMetaStoreClient(new HiveConf(configuration, HiveConf.class));
             }
-
         } catch (MetaException | InterruptedException | IOException e) {
             throw new RuntimeException("Failed connecting to Hive MetaStore service: " + e.getMessage(), e);
         }
@@ -462,16 +457,16 @@ public class HiveUtilities {
     /**
      * The method parses raw user data into HiveUserData class
      *
-     * @param input input data
+     * @param context input data
      * @return instance of HiveUserData class
-     * @throws UserDataException when incorrect number of tokens in Hive user data received
+     * @throws IllegalArgumentException when incorrect number of tokens in Hive user data received
      */
-    public static HiveUserData parseHiveUserData(InputData input) throws UserDataException {
-        String userData = new String(input.getFragmentUserData());
+    public static HiveUserData parseHiveUserData(RequestContext context) throws IllegalArgumentException {
+        String userData = new String(context.getFragmentUserData());
         String[] toks = userData.split(HiveUserData.HIVE_UD_DELIM, HiveUserData.getNumOfTokens());
 
         if (toks.length != (HiveUserData.getNumOfTokens())) {
-            throw new UserDataException("HiveInputFormatFragmenter expected "
+            throw new IllegalArgumentException("HiveInputFormatFragmenter expected "
                     + HiveUserData.getNumOfTokens() + " tokens, but got " + toks.length);
         }
 
@@ -587,16 +582,13 @@ public class HiveUtilities {
 
     /**
      * Creates ORC file reader.
-     * @param inputData input data with given data source
+     * @param requestContext input data with given data source
      * @return ORC file reader
      */
-    public static Reader getOrcReader(InputData inputData) {
+    public static Reader getOrcReader(Configuration configuration, RequestContext requestContext) {
         try {
-            Path path = new Path(inputData.getDataSource());
-            Reader reader = OrcFile.createReader(path.getFileSystem(new Configuration()), path);
-
-            return reader;
-
+            Path path = new Path(requestContext.getDataSource());
+            return OrcFile.createReader(path.getFileSystem(configuration), path);
         } catch (Exception e) {
             throw new RuntimeException("Exception while getting orc reader", e);
         }

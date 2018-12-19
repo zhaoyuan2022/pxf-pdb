@@ -8,9 +8,9 @@ package org.greenplum.pxf.plugins.hdfs.utilities;
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,9 +19,8 @@ package org.greenplum.pxf.plugins.hdfs.utilities;
  * under the License.
  */
 
-
 import org.greenplum.pxf.api.OneField;
-import org.greenplum.pxf.api.utilities.InputData;
+import org.greenplum.pxf.api.model.RequestContext;
 import org.apache.commons.logging.Log;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -52,14 +51,14 @@ import static org.mockito.Mockito.when;
 @PrepareForTest({HdfsUtilities.class, ReflectionUtils.class})
 public class HdfsUtilitiesTest {
 
-    Configuration conf;
-    CompressionCodecFactory factory;
-    Log Log;
+    private Configuration conf;
+    private CompressionCodecFactory factory;
+    private Log Log;
 
     @Before
     public void SetupCompressionFactory() {
+        conf = PowerMockito.mock(Configuration.class);
         factory = mock(CompressionCodecFactory.class);
-        Whitebox.setInternalState(HdfsUtilities.class, factory);
         Log = mock(Log.class);
         Whitebox.setInternalState(HdfsUtilities.class, Log);
     }
@@ -151,13 +150,12 @@ public class HdfsUtilitiesTest {
     private void testIsThreadSafe(String testDescription, String path, String codecStr, CompressionCodec codec, boolean expectedResult) {
         prepareDataForIsThreadSafe(path, codecStr, codec);
 
-        boolean result = HdfsUtilities.isThreadSafe(path, codecStr);
-        assertTrue(testDescription, result == expectedResult);
+        boolean result = HdfsUtilities.isThreadSafe(conf, path, codecStr);
+        assertEquals(testDescription, expectedResult, result);
     }
 
     private void prepareDataForIsThreadSafe(String dataDir, String codecStr, CompressionCodec codec) {
         try {
-            conf = PowerMockito.mock(Configuration.class);
             PowerMockito.whenNew(Configuration.class).withNoArguments().thenReturn(conf);
         } catch (Exception e) {
             fail("new Configuration mocking failed");
@@ -188,7 +186,7 @@ public class HdfsUtilitiesTest {
         Path path = new Path(pathName);
         when(factory.getCodec(path)).thenReturn(codec);
 
-        boolean result = HdfsUtilities.isSplittableCodec(path);
+        boolean result = HdfsUtilities.isSplittableCodec(factory, path);
         assertEquals(description, result, expected);
     }
 
@@ -205,16 +203,16 @@ public class HdfsUtilitiesTest {
 
     @Test
     public void testParseFileSplit() throws Exception {
-        InputData inputData = mock(InputData.class);
-        when(inputData.getDataSource()).thenReturn("/abc/path/to/data/source");
+        RequestContext requestContext = mock(RequestContext.class);
+        when(requestContext.getDataSource()).thenReturn("/abc/path/to/data/source");
         ByteArrayOutputStream bas = new ByteArrayOutputStream();
         ObjectOutputStream os = new ObjectOutputStream(bas);
         os.writeLong(10);
         os.writeLong(100);
         os.writeObject(new String[] { "hostname" });
         os.close();
-        when(inputData.getFragmentMetadata()).thenReturn(bas.toByteArray());
-        FileSplit fileSplit = HdfsUtilities.parseFileSplit(inputData);
+        when(requestContext.getFragmentMetadata()).thenReturn(bas.toByteArray());
+        FileSplit fileSplit = HdfsUtilities.parseFileSplit(requestContext);
         assertEquals(fileSplit.getStart(), 10);
         assertEquals(fileSplit.getLength(), 100);
         assertEquals(fileSplit.getPath().toString(), "/abc/path/to/data/source");

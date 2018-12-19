@@ -19,15 +19,17 @@ package org.greenplum.pxf.api.utilities;
  * under the License.
  */
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.ArrayUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.greenplum.pxf.api.ReadAccessor;
-import org.greenplum.pxf.api.ReadVectorizedResolver;
+import org.apache.commons.lang.StringUtils;
 import org.greenplum.pxf.api.StatsAccessor;
+import org.greenplum.pxf.api.model.RequestContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -36,9 +38,52 @@ import java.lang.reflect.InvocationTargetException;
  * Utilities class exposes helper method for PXF classes
  */
 public class Utilities {
-    private static final Log LOG = LogFactory.getLog(Utilities.class);
 
+    private static final Logger LOG = LoggerFactory.getLogger(Utilities.class);
     private static final String PROPERTY_KEY_USER_IMPERSONATION = "pxf.service.user.impersonation.enabled";
+    private static final char[] PROHIBITED_CHARS = new char[]{'/', '\\', '.', ' ', ',', ';'};
+
+    /**
+     * Returns a decoded base64 byte[], or throws an error if the base64 string is invalid
+     *
+     * @param encoded the base64 encoded string
+     * @param paramName the name of the parameter
+     * @return the decoded base64 string
+     */
+    public static byte[] parseBase64(String encoded, String paramName) {
+        if (encoded == null) {
+            return null;
+        }
+        if (!Base64.isArrayByteBase64(encoded.getBytes())) {
+            String message = String.format("%s must be Base64 encoded. (Bad value: %s)", paramName, encoded);
+            throw new IllegalArgumentException(message);
+        }
+        byte[] parsed = Base64.decodeBase64(encoded);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Decoded value: {}", new String(parsed));
+        }
+        return parsed;
+    }
+
+    /**
+     * Validation for directory names that can be created
+     * for the server configuration directory.
+     *
+     * @param name
+     * @return true if valid, false otherwise
+     */
+    public static boolean isValidDirectoryName(String name) {
+        if (StringUtils.isBlank(name) || StringUtils.containsAny(name, PROHIBITED_CHARS)) {
+            return false;
+        }
+        File file = new File(name);
+        try {
+            file.getCanonicalPath();
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
+    }
 
     /**
      * Creates an object using the class name. The class name has to be a class
@@ -54,10 +99,10 @@ public class Utilities {
      *             instantiated
      */
     public static Object createAnyInstance(Class<?> confClass,
-                                           String className, InputData metaData)
+                                           String className, RequestContext metaData)
             throws Exception {
 
-        Class<?> cls = null;
+        Class<?> cls;
         try {
             cls = Class.forName(className);
         } catch (ClassNotFoundException e) {
@@ -163,13 +208,13 @@ public class Utilities {
     /**
      * Parses input data and returns fragment metadata.
      *
-     * @param inputData input data which has protocol information
+     * @param requestContext input data which has protocol information
      * @return fragment metadata
      * @throws IllegalArgumentException if fragment metadata information wasn't found in input data
      * @throws Exception when error occurred during metadata parsing
      */
-    public static FragmentMetadata parseFragmentMetadata(InputData inputData) throws Exception {
-        byte[] serializedLocation = inputData.getFragmentMetadata();
+    public static FragmentMetadata parseFragmentMetadata(RequestContext requestContext) throws Exception {
+        byte[] serializedLocation = requestContext.getFragmentMetadata();
         if (serializedLocation == null) {
             throw new IllegalArgumentException("Missing fragment location information");
         }
@@ -180,7 +225,7 @@ public class Utilities {
             if (LOG.isDebugEnabled()) {
                 StringBuilder sb = new StringBuilder();
                 sb.append("parsed file split: path ");
-                sb.append(inputData.getDataSource());
+                sb.append(requestContext.getDataSource());
                 sb.append(", start ");
                 sb.append(start);
                 sb.append(", end ");
@@ -198,58 +243,35 @@ public class Utilities {
     }
 
     /**
-     * Based on accessor information determines whether to use AggBridge
+     * Determines whether components can use aggregate optimized implementations.
      *
-     * @param inputData input protocol data
-     * @return true if AggBridge is applicable for current context
+     * @param requestContext input protocol data
+     * @return true if aggregate optimizations can be applicable to the current context
      */
-    public static boolean useAggBridge(InputData inputData) {
-        boolean isStatsAccessor = false;
-        try {
-            if (inputData == null || inputData.getAccessor() == null) {
-                throw new IllegalArgumentException("Missing accessor information");
-            }
-            isStatsAccessor = ArrayUtils.contains(Class.forName(inputData.getAccessor()).getInterfaces(), StatsAccessor.class);
-        } catch (ClassNotFoundException e) {
-            LOG.error("Unable to load accessor class: " + e.getMessage());
-            return false;
-        }
+    public static boolean aggregateOptimizationsSupported(RequestContext requestContext) {
+        boolean isStatsAccessor = implementsInterface(requestContext.getAccessor(), StatsAccessor.class);
         /* Make sure filter is not present, aggregate operation supports optimization and accessor implements StatsAccessor interface */
-        return (inputData != null) && !inputData.hasFilter()
-                && (inputData.getAggType() != null)
-                && inputData.getAggType().isOptimizationSupported()
-                && inputData.getNumAttrsProjected() == 0
-                && isStatsAccessor;
+        return (isStatsAccessor
+                && !requestContext.hasFilter()
+                && (requestContext.getAggType() != null)
+                && requestContext.getAggType().isOptimizationSupported()
+                && requestContext.getNumAttrsProjected() == 0);
     }
 
     /**
-     * Determines whether accessor should use statistics to optimize reading results
-     *
-     * @param accessor accessor instance
-     * @param inputData input data which has protocol information
-     * @return true if this accessor should use statistic information
+     * Determines whether a class with a given name implements a specific interface.
+     * @param className name of the class
+     * @param iface class of the interface
+     * @return true if the class implements the interface, false otherwise
      */
-    public static boolean useStats(ReadAccessor accessor, InputData inputData) {
-        if (accessor instanceof StatsAccessor && useAggBridge(inputData)) {
-                return true;
-        } else {
-            return false;
-        }
-    }
-
-    /**
-     * Determines whether use vectorization
-     * @param inputData input protocol data
-     * @return true if vectorization is applicable in a current context
-     */
-    public static boolean useVectorization(InputData inputData) {
-        boolean isVectorizedResolver = false;
+    public static boolean implementsInterface(String className, Class<?> iface) {
+        boolean result = false;
         try {
-            isVectorizedResolver = ArrayUtils.contains(Class.forName(inputData.getResolver()).getInterfaces(), ReadVectorizedResolver.class);
+            result = iface.isAssignableFrom(Class.forName(className));
         } catch (ClassNotFoundException e) {
-            LOG.error("Unable to load resolver class: " + e.getMessage());
+            LOG.error("Unable to load class: {}", e.getMessage());
         }
-        return isVectorizedResolver;
+        return result;
     }
 
     /**
@@ -259,5 +281,17 @@ public class Utilities {
      */
     public static boolean isUserImpersonationEnabled() {
         return StringUtils.equalsIgnoreCase(System.getProperty(PROPERTY_KEY_USER_IMPERSONATION, ""), "true");
+    }
+
+    /**
+     * Data sources are absolute data paths. Method ensures that dataSource
+     * begins with '/' unless the path includes the protocol as a prefix
+     *
+     * @param dataSource The path to a file or directory of interest.
+     *                   Retrieved from the client request.
+     * @return an absolute data path
+     */
+    public static String absoluteDataPath(String dataSource) {
+        return (dataSource.charAt(0) == '/') ? dataSource : "/" + dataSource;
     }
 }

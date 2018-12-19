@@ -8,9 +8,9 @@ package org.greenplum.pxf.plugins.hive;
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,20 +19,8 @@ package org.greenplum.pxf.plugins.hive;
  * under the License.
  */
 
-import org.greenplum.pxf.api.BadRecordException;
-import org.greenplum.pxf.api.OneField;
-import org.greenplum.pxf.api.OneRow;
-import org.greenplum.pxf.api.OutputFormat;
-import org.greenplum.pxf.api.UnsupportedTypeException;
-import org.greenplum.pxf.api.io.DataType;
-import org.greenplum.pxf.api.utilities.ColumnDescriptor;
-import org.greenplum.pxf.api.utilities.InputData;
-import org.greenplum.pxf.api.utilities.Utilities;
-import org.greenplum.pxf.plugins.hive.utilities.HiveUtilities;
-import org.greenplum.pxf.api.utilities.ProtocolData;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.serde.serdeConstants;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
@@ -41,6 +29,16 @@ import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.*;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapred.JobConf;
+import org.greenplum.pxf.api.BadRecordException;
+import org.greenplum.pxf.api.OneField;
+import org.greenplum.pxf.api.OneRow;
+import org.greenplum.pxf.api.UnsupportedTypeException;
+import org.greenplum.pxf.api.io.DataType;
+import org.greenplum.pxf.api.model.OutputFormat;
+import org.greenplum.pxf.api.model.RequestContext;
+import org.greenplum.pxf.api.utilities.ColumnDescriptor;
+import org.greenplum.pxf.api.utilities.Utilities;
+import org.greenplum.pxf.plugins.hive.utilities.HiveUtilities;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -60,13 +58,9 @@ public class HiveColumnarSerdeResolver extends HiveResolver {
     private StringBuilder parts;
     private String serdeType;
 
-    public HiveColumnarSerdeResolver(InputData input) throws Exception {
-        super(input);
-    }
-
     /* read the data supplied by the fragmenter: inputformat name, serde name, partition keys */
     @Override
-    void parseUserData(InputData input) throws Exception {
+    void parseUserData(RequestContext input) throws Exception {
         HiveUserData hiveUserData = HiveUtilities.parseHiveUserData(input);
 
         serdeType = hiveUserData.getSerdeClassName();
@@ -77,7 +71,7 @@ public class HiveColumnarSerdeResolver extends HiveResolver {
 
     @Override
     void initPartitionFields() {
-        if (((ProtocolData) inputData).outputFormat() == OutputFormat.TEXT) {
+        if (context.getOutputFormat() == OutputFormat.TEXT) {
             initTextPartitionFields(parts);
         } else {
             super.initPartitionFields();
@@ -91,12 +85,12 @@ public class HiveColumnarSerdeResolver extends HiveResolver {
      */
     @Override
     public List<OneField> getFields(OneRow onerow) throws Exception {
-        if (((ProtocolData) inputData).outputFormat() == OutputFormat.TEXT) {
+        if (context.getOutputFormat() == OutputFormat.TEXT) {
             firstColumn = true;
             builder = new StringBuilder();
             Object tuple = deserializer.deserialize((Writable) onerow.getData());
             ObjectInspector oi = deserializer.getObjectInspector();
-    
+
             traverseTuple(tuple, oi);
             /* We follow Hive convention. Partition fields are always added at the end of the record */
             builder.append(parts);
@@ -113,7 +107,7 @@ public class HiveColumnarSerdeResolver extends HiveResolver {
      */
     @SuppressWarnings("deprecation")
 	@Override
-    void initSerde(InputData input) throws Exception {
+    void initSerde(RequestContext input) throws Exception {
         Properties serdeProperties = new Properties();
         int numberOfDataColumns = input.getColumns() - getNumberOfPartitions();
 
@@ -137,7 +131,7 @@ public class HiveColumnarSerdeResolver extends HiveResolver {
         serdeProperties.put(serdeConstants.LIST_COLUMN_TYPES, columnTypes.toString());
 
         deserializer = HiveUtilities.createDeserializer(serdeType);
-        deserializer.initialize(new JobConf(new Configuration(), HiveColumnarSerdeResolver.class), serdeProperties);
+        deserializer.initialize(new JobConf(configuration, HiveColumnarSerdeResolver.class), serdeProperties);
     }
 
     /**

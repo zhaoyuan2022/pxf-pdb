@@ -3,6 +3,7 @@ package org.greenplum.pxf.automation.features.hdfs;
 import org.greenplum.pxf.automation.features.BaseFeature;
 
 import org.greenplum.pxf.automation.structures.tables.pxf.ReadableExternalTable;
+import org.greenplum.pxf.automation.utils.system.ProtocolUtils;
 import org.testng.annotations.Test;
 
 public class ParquetReadableTest extends BaseFeature {
@@ -21,13 +22,7 @@ public class ParquetReadableTest extends BaseFeature {
         hdfs.copyFromLocal(resourcePath + parquetPrimitiveTypes, hdfsPath + parquetPrimitiveTypes);
     }
 
-    @Override
-    public void afterClass() throws Exception {
-        hdfs.removeDirectory(hdfsPath);
-    }
-
-
-    @Test(groups = {"features", "gpdb"})
+    @Test(groups = {"features", "gpdb", "hcfs"})
     public void parquetSupportedPrimitives() throws Exception {
 
         exTable = new ReadableExternalTable("pxf_parquet_primitive_types",
@@ -51,7 +46,7 @@ public class ParquetReadableTest extends BaseFeature {
         exTable.setHost(pxfHost);
         exTable.setPort(pxfPort);
         exTable.setFormatter("pxfwritable_import");
-        exTable.setProfile("Parquet");
+        exTable.setProfile(ProtocolUtils.getProtocol().value() + ":parquet");
 
         gpdb.createTableAndVerify(exTable);
         runTincTest("pxf.features.hdfs.readable.parquet.primitive_types.runTest");

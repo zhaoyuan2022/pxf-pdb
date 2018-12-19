@@ -1,7 +1,11 @@
 package org.greenplum.pxf.plugins.hive;
 
-import org.apache.hadoop.mapred.*;
-import org.greenplum.pxf.api.utilities.InputData;
+import org.apache.hadoop.mapred.InputFormat;
+import org.apache.hadoop.mapred.InputSplit;
+import org.apache.hadoop.mapred.JobConf;
+import org.apache.hadoop.mapred.RecordReader;
+import org.apache.hadoop.mapred.Reporter;
+import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.plugins.hdfs.utilities.HdfsUtilities;
 import org.greenplum.pxf.plugins.hive.utilities.HiveUtilities;
 import org.junit.Before;
@@ -13,14 +17,17 @@ import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({HiveAccessor.class, HiveUtilities.class, HdfsUtilities.class, HiveDataFragmenter.class})
 public class HiveAccessorTest {
 
     @Mock
-    InputData inputData;
+    RequestContext requestContext;
     @Mock
     InputFormat inputFormat;
     @Mock
@@ -41,7 +48,7 @@ public class HiveAccessorTest {
         PowerMockito.mockStatic(HiveDataFragmenter.class);
 
         when(inputFormat.getRecordReader(any(InputSplit.class), any(JobConf.class), any(Reporter.class))).thenReturn(reader);
-        PowerMockito.when(inputData.getAccessor()).thenReturn(HiveORCAccessor.class.getName());
+        PowerMockito.when(requestContext.getAccessor()).thenReturn(HiveORCAccessor.class.getName());
 
         @SuppressWarnings("unchecked")
         OngoingStubbing ongoingStubbing = when(HiveDataFragmenter.makeInputFormat(any(String.class), any(JobConf.class))).thenReturn(inputFormat);
@@ -50,11 +57,11 @@ public class HiveAccessorTest {
     @Test
     public void testSkipHeaderCountGreaterThanZero() throws Exception {
         HiveUserData userData = userDataBuilder.withSkipHeader(2).build();
-        PowerMockito.when(HiveUtilities.parseHiveUserData(inputData)).thenReturn(userData);
-        when(inputData.hasFilter()).thenReturn(false);
+        PowerMockito.when(HiveUtilities.parseHiveUserData(requestContext)).thenReturn(userData);
+        when(requestContext.hasFilter()).thenReturn(false);
 
-        accessor = new HiveAccessor(inputData);
-
+        accessor = new HiveAccessor();
+        accessor.initialize(requestContext);
         accessor.openForRead();
         accessor.readNextObject();
 
@@ -64,12 +71,12 @@ public class HiveAccessorTest {
     @Test
     public void testSkipHeaderCountGreaterThanZeroFirstFragment() throws Exception {
         HiveUserData userData = userDataBuilder.withSkipHeader(2).build();
-        PowerMockito.when(HiveUtilities.parseHiveUserData(inputData)).thenReturn(userData);
-        when(inputData.hasFilter()).thenReturn(false);
-        when(inputData.getFragmentIndex()).thenReturn(0);
+        PowerMockito.when(HiveUtilities.parseHiveUserData(requestContext)).thenReturn(userData);
+        when(requestContext.hasFilter()).thenReturn(false);
+        when(requestContext.getFragmentIndex()).thenReturn(0);
 
-        accessor = new HiveAccessor(inputData);
-
+        accessor = new HiveAccessor();
+        accessor.initialize(requestContext);
         accessor.openForRead();
         accessor.readNextObject();
 
@@ -79,12 +86,12 @@ public class HiveAccessorTest {
     @Test
     public void testSkipHeaderCountGreaterThanZeroNotFirstFragment() throws Exception {
         HiveUserData userData = userDataBuilder.withSkipHeader(2).build();
-        PowerMockito.when(HiveUtilities.parseHiveUserData(inputData)).thenReturn(userData);
-        when(inputData.hasFilter()).thenReturn(false);
-        when(inputData.getFragmentIndex()).thenReturn(2);
+        PowerMockito.when(HiveUtilities.parseHiveUserData(requestContext)).thenReturn(userData);
+        when(requestContext.hasFilter()).thenReturn(false);
+        when(requestContext.getFragmentIndex()).thenReturn(2);
 
-        accessor = new HiveAccessor(inputData);
-
+        accessor = new HiveAccessor();
+        accessor.initialize(requestContext);
         accessor.openForRead();
         accessor.readNextObject();
 
@@ -94,12 +101,12 @@ public class HiveAccessorTest {
     @Test
     public void testSkipHeaderCountZeroFirstFragment() throws Exception {
         HiveUserData userData = userDataBuilder.withSkipHeader(0).build();
-        PowerMockito.when(HiveUtilities.parseHiveUserData(inputData)).thenReturn(userData);
-        when(inputData.hasFilter()).thenReturn(false);
-        when(inputData.getFragmentIndex()).thenReturn(0);
+        PowerMockito.when(HiveUtilities.parseHiveUserData(requestContext)).thenReturn(userData);
+        when(requestContext.hasFilter()).thenReturn(false);
+        when(requestContext.getFragmentIndex()).thenReturn(0);
 
-        accessor = new HiveAccessor(inputData);
-
+        accessor = new HiveAccessor();
+        accessor.initialize(requestContext);
         accessor.openForRead();
         accessor.readNextObject();
 
@@ -109,12 +116,12 @@ public class HiveAccessorTest {
     @Test
     public void testSkipHeaderCountNegativeFirstFragment() throws Exception {
         HiveUserData userData = userDataBuilder.withSkipHeader(-1).build();
-        PowerMockito.when(HiveUtilities.parseHiveUserData(inputData)).thenReturn(userData);
-        when(inputData.hasFilter()).thenReturn(false);
-        when(inputData.getFragmentIndex()).thenReturn(0);
+        PowerMockito.when(HiveUtilities.parseHiveUserData(requestContext)).thenReturn(userData);
+        when(requestContext.hasFilter()).thenReturn(false);
+        when(requestContext.getFragmentIndex()).thenReturn(0);
 
-        accessor = new HiveAccessor(inputData);
-
+        accessor = new HiveAccessor();
+        accessor.initialize(requestContext);
         accessor.openForRead();
         accessor.readNextObject();
 

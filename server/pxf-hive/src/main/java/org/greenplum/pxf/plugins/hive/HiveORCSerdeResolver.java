@@ -8,9 +8,9 @@ package org.greenplum.pxf.plugins.hive;
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -21,15 +21,14 @@ package org.greenplum.pxf.plugins.hive;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.serde.serdeConstants;
 import org.apache.hadoop.mapred.JobConf;
 import org.greenplum.pxf.api.io.DataType;
+import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.api.utilities.ColumnDescriptor;
-import org.greenplum.pxf.api.utilities.InputData;
 import org.greenplum.pxf.plugins.hive.utilities.HiveUtilities;
 
-import java.util.*;
+import java.util.Properties;
 
 /**
  * Specialized HiveResolver for a Hive table stored as RC file.
@@ -40,21 +39,17 @@ public class HiveORCSerdeResolver extends HiveResolver {
     private String serdeType;
     private String typesString;
 
-    public HiveORCSerdeResolver(InputData input) throws Exception {
-        super(input);
-    }
-
     /* read the data supplied by the fragmenter: inputformat name, serde name, partition keys */
     @Override
-    void parseUserData(InputData input) throws Exception {
+    void parseUserData(RequestContext input) throws Exception {
         HiveUserData hiveUserData = HiveUtilities.parseHiveUserData(input);
         serdeType = hiveUserData.getSerdeClassName();
         partitionKeys = hiveUserData.getPartitionKeys();
         typesString = hiveUserData.getColTypes();
-        collectionDelim = input.getUserProperty("COLLECTION_DELIM") == null ? COLLECTION_DELIM
-                : input.getUserProperty("COLLECTION_DELIM");
-        mapkeyDelim = input.getUserProperty("MAPKEY_DELIM") == null ? MAPKEY_DELIM
-                : input.getUserProperty("MAPKEY_DELIM");
+        collectionDelim = input.getOption("COLLECTION_DELIM") == null ? COLLECTION_DELIM
+                : input.getOption("COLLECTION_DELIM");
+        mapkeyDelim = input.getOption("MAPKEY_DELIM") == null ? MAPKEY_DELIM
+                : input.getOption("MAPKEY_DELIM");
     }
 
     /*
@@ -64,7 +59,7 @@ public class HiveORCSerdeResolver extends HiveResolver {
      */
     @SuppressWarnings("deprecation")
     @Override
-    void initSerde(InputData input) throws Exception {
+    void initSerde(RequestContext input) throws Exception {
         Properties serdeProperties = new Properties();
         int numberOfDataColumns = input.getColumns() - getNumberOfPartitions();
 
@@ -85,7 +80,7 @@ public class HiveORCSerdeResolver extends HiveResolver {
             if (!columnType.equals(hiveColTypes[i])) {
                 columnType = hiveColTypes[i];
             }
-            if(i > 0) {
+            if (i > 0) {
                 columnNames.append(delim);
                 columnTypes.append(delim);
             }
@@ -96,7 +91,7 @@ public class HiveORCSerdeResolver extends HiveResolver {
         serdeProperties.put(serdeConstants.LIST_COLUMN_TYPES, columnTypes.toString());
 
         deserializer = HiveUtilities.createDeserializer(serdeType);
-        deserializer.initialize(new JobConf(new Configuration(), HiveORCSerdeResolver.class), serdeProperties);
+        deserializer.initialize(new JobConf(configuration, HiveORCSerdeResolver.class), serdeProperties);
     }
 
     private void parseColTypes(String[] cols, String[] output) {

@@ -21,7 +21,6 @@ package org.greenplum.pxf.plugins.hive;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.common.JavaUtils;
 import org.apache.hadoop.hive.conf.HiveConf;
@@ -39,16 +38,16 @@ import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.TextInputFormat;
 import org.greenplum.pxf.api.BasicFilter;
-import org.greenplum.pxf.api.FileSystemFragmenter;
 import org.greenplum.pxf.api.FilterParser;
-import org.greenplum.pxf.api.Fragment;
-import org.greenplum.pxf.api.Fragmenter;
-import org.greenplum.pxf.api.FragmentsStats;
 import org.greenplum.pxf.api.LogicalFilter;
-import org.greenplum.pxf.api.Metadata;
+import org.greenplum.pxf.api.model.BaseConfigurationFactory;
+import org.greenplum.pxf.api.model.ConfigurationFactory;
+import org.greenplum.pxf.api.model.Fragment;
+import org.greenplum.pxf.api.model.FragmentStats;
+import org.greenplum.pxf.api.model.Metadata;
+import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.api.utilities.ColumnDescriptor;
-import org.greenplum.pxf.api.utilities.InputData;
-import org.greenplum.pxf.api.utilities.ProfilesConf;
+import org.greenplum.pxf.plugins.hdfs.HdfsDataFragmenter;
 import org.greenplum.pxf.plugins.hdfs.utilities.HdfsUtilities;
 import org.greenplum.pxf.plugins.hive.utilities.HiveUtilities;
 import org.greenplum.pxf.plugins.hive.utilities.ProfileFactory;
@@ -73,8 +72,7 @@ import java.util.TreeSet;
  * file_input_format_name_DELIM_serde_name_DELIM_serialization_properties</li>
  * </ol>
  */
-@FileSystemFragmenter
-public class HiveDataFragmenter extends Fragmenter {
+public class HiveDataFragmenter extends HdfsDataFragmenter {
     private static final Log LOG = LogFactory.getLog(HiveDataFragmenter.class);
     private static final short ALL_PARTS = -1;
 
@@ -82,15 +80,14 @@ public class HiveDataFragmenter extends Fragmenter {
     public static final String HIVE_PARTITIONS_DELIM = "!HPAD!";
     public static final String HIVE_NO_PART_TBL = "!HNPT!";
 
-    static final String HIVE_API_EQ = " = ";
-    static final String HIVE_API_LT = " < ";
-    static final String HIVE_API_GT = " > ";
-    static final String HIVE_API_LTE = " <= ";
-    static final String HIVE_API_GTE = " >= ";
-    static final String HIVE_API_NE = " != ";
-    static final String HIVE_API_DQUOTE = "\"";
+    private static final String HIVE_API_EQ = " = ";
+    private static final String HIVE_API_LT = " < ";
+    private static final String HIVE_API_GT = " > ";
+    private static final String HIVE_API_LTE = " <= ";
+    private static final String HIVE_API_GTE = " >= ";
+    private static final String HIVE_API_NE = " != ";
+    private static final String HIVE_API_DQUOTE = "\"";
 
-    private JobConf jobConf;
     private HiveMetaStoreClient client;
 
     protected boolean filterInFragmenter = false;
@@ -102,33 +99,27 @@ public class HiveDataFragmenter extends Fragmenter {
     private Map<String, String> partitionkeyTypes = new HashMap<>();
     private boolean canPushDownIntegral;
 
-    /**
-     * Constructs a HiveDataFragmenter object.
-     *
-     * @param inputData all input parameters coming from the client
-     */
-    public HiveDataFragmenter(InputData inputData) {
-        this(inputData, HiveDataFragmenter.class);
+    public HiveDataFragmenter() {
+        this(BaseConfigurationFactory.getInstance());
     }
 
-    /**
-     * Constructs a HiveDataFragmenter object.
-     *
-     * @param inputData all input parameters coming from the client
-     * @param clazz Class for JobConf
-     */
-    public HiveDataFragmenter(InputData inputData, Class<?> clazz) {
-        super(inputData);
-        jobConf = new JobConf(new Configuration(), clazz);
-        client = HiveUtilities.initHiveClient();
+    HiveDataFragmenter(ConfigurationFactory configurationFactory) {
+        this.configurationFactory = configurationFactory;
+    }
+
+    @Override
+    public void initialize(RequestContext requestContext) {
+        super.initialize(requestContext);
+        client = HiveUtilities.initHiveClient(configuration);
         // canPushDownIntegral represents hive.metastore.integral.jdo.pushdown property in hive-site.xml
-        canPushDownIntegral =
-                HiveConf.getBoolVar(new HiveConf(), HiveConf.ConfVars.METASTORE_INTEGER_JDO_PUSHDOWN);
+        canPushDownIntegral = HiveConf.getBoolVar(
+                new HiveConf(configuration, HiveConf.class),
+                HiveConf.ConfVars.METASTORE_INTEGER_JDO_PUSHDOWN);
     }
 
     @Override
     public List<Fragment> getFragments() throws Exception {
-        Metadata.Item tblDesc = HiveUtilities.extractTableFromName(inputData.getDataSource());
+        Metadata.Item tblDesc = HiveUtilities.extractTableFromName(context.getDataSource());
 
         fetchTableMetaData(tblDesc);
 
@@ -139,7 +130,7 @@ public class HiveDataFragmenter extends Fragmenter {
      * Creates the partition InputFormat.
      *
      * @param inputFormatName input format class name
-     * @param jobConf configuration data for the Hadoop framework
+     * @param jobConf         configuration data for the Hadoop framework
      * @return a {@link org.apache.hadoop.mapred.InputFormat} derived object
      * @throws Exception if failed to create input format
      */
@@ -177,12 +168,12 @@ public class HiveDataFragmenter extends Fragmenter {
 
         // If query has filter and hive table has partitions, prepare the filter
         // string for hive metastore and retrieve only the matched partitions
-        if (inputData.hasFilter() && tbl.getPartitionKeysSize() > 0) {
+        if (context.hasFilter() && tbl.getPartitionKeysSize() > 0) {
 
             // Save all hive partition names in a set for later filter match
             for (FieldSchema fs : tbl.getPartitionKeys()) {
                 setPartitions.add(fs.getName());
-				partitionkeyTypes.put(fs.getName(), fs.getType());
+                partitionkeyTypes.put(fs.getName(), fs.getType());
             }
 
             LOG.debug("setPartitions :" + setPartitions);
@@ -290,7 +281,7 @@ public class HiveDataFragmenter extends Fragmenter {
         InputFormat<?, ?> fformat = makeInputFormat(
                 tablePartition.storageDesc.getInputFormat(), jobConf);
         String profile = null;
-        String userProfile = inputData.getProfile();
+        String userProfile = context.getProfile();
         if (userProfile != null) {
             // evaluate optimal profile based on file format if profile was explicitly specified in url
             // if user passed accessor+fragmenter+resolver - use them
@@ -298,9 +289,9 @@ public class HiveDataFragmenter extends Fragmenter {
         }
         String fragmenterForProfile = null;
         if (profile != null) {
-            fragmenterForProfile = ProfilesConf.getProfilePluginsMap(profile).get("X-GP-OPTIONS-FRAGMENTER");
+            fragmenterForProfile = context.getPluginConf().getPlugins(profile).get("FRAGMENTER");
         } else {
-            fragmenterForProfile = inputData.getFragmenter();
+            fragmenterForProfile = context.getFragmenter();
         }
 
         FileInputFormat.setInputPaths(jobConf, new Path(
@@ -317,7 +308,7 @@ public class HiveDataFragmenter extends Fragmenter {
         for (InputSplit split : splits) {
             FileSplit fsp = (FileSplit) split;
             String[] hosts = fsp.getLocations();
-            String filepath = fsp.getPath().toUri().getPath();
+            String filepath = fsp.getPath().toString();
 
             byte[] locationInfo = HdfsUtilities.prepareFragmentMetadata(fsp);
             Fragment fragment = new Fragment(filepath, hosts, locationInfo,
@@ -345,18 +336,18 @@ public class HiveDataFragmenter extends Fragmenter {
     private String buildFilterStringForHive() throws Exception {
 
         StringBuilder filtersString = new StringBuilder();
-        String filterInput = inputData.getFilterString();
+        String filterInput = context.getFilterString();
 
         if (LOG.isDebugEnabled()) {
 
-            for (ColumnDescriptor cd : inputData.getTupleDescription()) {
+            for (ColumnDescriptor cd : context.getTupleDescription()) {
                 LOG.debug("ColumnDescriptor : " + cd);
             }
 
-            LOG.debug("Filter string input : " + inputData.getFilterString());
+            LOG.debug("Filter string input : " + context.getFilterString());
         }
 
-        HiveFilterBuilder eval = new HiveFilterBuilder(inputData);
+        HiveFilterBuilder eval = new HiveFilterBuilder(context);
         Object filter = eval.getFilterObject(filterInput);
 
         if (filter instanceof LogicalFilter) {
@@ -368,9 +359,9 @@ public class HiveDataFragmenter extends Fragmenter {
         return filtersString.toString();
     }
 
-    private void buildCompoundFilter(LogicalFilter filter, StringBuilder filterString) throws Exception{
+    private void buildCompoundFilter(LogicalFilter filter, StringBuilder filterString) throws Exception {
         String prefix;
-        switch(filter.getOperator()) {
+        switch (filter.getOperator()) {
             case HDOP_AND:
                 prefix = " and ";
                 break;
@@ -410,8 +401,8 @@ public class HiveDataFragmenter extends Fragmenter {
         int filterColumnIndex = bFilter.getColumn().index();
         // Avoids NullPointerException in case of operations like HDOP_IS_NULL,
         // HDOP_IS_NOT_NULL where no constant value is passed as part of query
-        String filterValue = bFilter.getConstant()!= null ? bFilter.getConstant().constant().toString() : "";
-        ColumnDescriptor filterColumn = inputData.getColumn(filterColumnIndex);
+        String filterValue = bFilter.getConstant() != null ? bFilter.getConstant().constant().toString() : "";
+        ColumnDescriptor filterColumn = context.getColumn(filterColumnIndex);
         String filterColumnName = filterColumn.columnName();
         FilterParser.Operation operation = ((BasicFilter) filter).getOperation();
         String colType = partitionkeyTypes.get(filterColumnName);
@@ -426,9 +417,9 @@ public class HiveDataFragmenter extends Fragmenter {
             return false;
         }
 
-        /* 
-         * HAWQ-1527 - Filtering only supported for partition columns of type string or 
-         * intgeral datatype. Integral datatypes include - TINYINT, SMALLINT, INT, BIGINT. 
+        /*
+         * HAWQ-1527 - Filtering only supported for partition columns of type string or
+         * intgeral datatype. Integral datatypes include - TINYINT, SMALLINT, INT, BIGINT.
          * Note that with integral data types only equals("=") and not equals("!=") operators
          * are supported. There are no operator restrictions with String.
          */
@@ -443,7 +434,7 @@ public class HiveDataFragmenter extends Fragmenter {
             filtersString.append(prefix);
         filtersString.append(filterColumnName);
 
-        switch(operation) {
+        switch (operation) {
             case HDOP_EQ:
                 filtersString.append(HIVE_API_EQ);
                 break;
@@ -479,8 +470,8 @@ public class HiveDataFragmenter extends Fragmenter {
      * Returns statistics for Hive table. Currently it's not implemented.
      */
     @Override
-    public FragmentsStats getFragmentsStats() throws Exception {
-        Metadata.Item tblDesc = HiveUtilities.extractTableFromName(inputData.getDataSource());
+    public FragmentStats getFragmentStats() throws Exception {
+        Metadata.Item tblDesc = HiveUtilities.extractTableFromName(context.getDataSource());
         Table tbl = HiveUtilities.getHiveTable(client, tblDesc);
         Metadata metadata = new Metadata(tblDesc);
         HiveUtilities.getSchema(tbl, metadata);
@@ -488,6 +479,6 @@ public class HiveDataFragmenter extends Fragmenter {
         long split_count = Long.parseLong(tbl.getParameters().get("numFiles"));
         long totalSize = Long.parseLong(tbl.getParameters().get("totalSize"));
         long firstFragmentSize = totalSize / split_count;
-        return new FragmentsStats(split_count, firstFragmentSize, totalSize);
+        return new FragmentStats(split_count, firstFragmentSize, totalSize);
     }
 }

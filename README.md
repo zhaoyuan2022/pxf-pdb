@@ -123,6 +123,7 @@ docker run --rm -it \
   -p 5432:5432 \
   -p 5888:5888 \
   -p 8000:8000 \
+  -p 5005:5005 \
   -p 8020:8020 \
   -p 9090:9090 \
   -p 50070:50070 \
@@ -220,11 +221,17 @@ All tests use a database named `pxfautomation`.
 ```bash
 pushd ~/workspace/pxf/automation
 
+# Initialize default server configs using template
+cp ~/pxf/templates/*.xml ~/pxf/servers/default
+
 # Run specific tests. Example: Hdfs Smoke Test
 make TEST=HdfsSmokeTest
 
 # Run all tests. This will be time consuming.
 make GROUP=gpdb
+
+# If you wish to run test(s) against a different storage protocol set the following variable (for eg: s3) 
+export PROTOCOL=s3
 popd
 ```
 

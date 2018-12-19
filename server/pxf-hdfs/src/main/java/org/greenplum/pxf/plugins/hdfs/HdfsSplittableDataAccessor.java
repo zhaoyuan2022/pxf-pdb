@@ -8,9 +8,9 @@ package org.greenplum.pxf.plugins.hdfs;
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,13 +20,16 @@ package org.greenplum.pxf.plugins.hdfs;
  */
 
 
+import org.apache.hadoop.mapred.FileSplit;
+import org.apache.hadoop.mapred.InputFormat;
+import org.apache.hadoop.mapred.InputSplit;
+import org.apache.hadoop.mapred.JobConf;
+import org.apache.hadoop.mapred.RecordReader;
 import org.greenplum.pxf.api.OneRow;
-import org.greenplum.pxf.api.ReadAccessor;
-import org.greenplum.pxf.api.utilities.InputData;
-import org.greenplum.pxf.api.utilities.Plugin;
+import org.greenplum.pxf.api.model.Accessor;
+import org.greenplum.pxf.api.model.BasePlugin;
+import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.plugins.hdfs.utilities.HdfsUtilities;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.mapred.*;
 
 import java.io.IOException;
 import java.util.LinkedList;
@@ -36,39 +39,36 @@ import java.util.ListIterator;
  * Accessor for accessing a splittable HDFS data sources. HDFS will divide the
  * file into splits based on an internal decision (by default, the block size is
  * also the split size).
- *
+ * <p>
  * Accessors that require such base functionality should extend this class.
  */
-public abstract class HdfsSplittableDataAccessor extends Plugin implements
-        ReadAccessor {
-    protected Configuration conf = null;
-    protected RecordReader<Object, Object> reader = null;
-    protected InputFormat<?, ?> inputFormat = null;
-    protected ListIterator<InputSplit> iter = null;
-    protected JobConf jobConf = null;
+public abstract class HdfsSplittableDataAccessor extends BasePlugin implements Accessor {
+    protected RecordReader<Object, Object> reader;
+    protected InputFormat<?, ?> inputFormat;
+    protected JobConf jobConf;
     protected Object key, data;
-    protected boolean isDFS;
+    protected HcfsType hcfsType;
+
+    private ListIterator<InputSplit> iter;
 
     /**
      * Constructs an HdfsSplittableDataAccessor
      *
-     * @param input all input parameters coming from the client request
      * @param inFormat the HDFS {@link InputFormat} the caller wants to use
      */
-    public HdfsSplittableDataAccessor(InputData input,
-                                      InputFormat<?, ?> inFormat) {
-        super(input);
+    protected HdfsSplittableDataAccessor(InputFormat<?, ?> inFormat) {
         inputFormat = inFormat;
+    }
 
-        // 1. Load Hadoop configuration defined in $HADOOP_HOME/conf/*.xml files
-        conf = new Configuration();
+    @Override
+    public void initialize(RequestContext requestContext) {
+        super.initialize(requestContext);
 
-        // 2. variable required for the splits iteration logic
-        jobConf = new JobConf(conf, HdfsSplittableDataAccessor.class);
+        // variable required for the splits iteration logic
+        jobConf = new JobConf(configuration, HdfsSplittableDataAccessor.class);
 
         // Check if the underlying configuration is for HDFS
-        String defaultFS = conf.get("fs.defaultFS");
-        isDFS = (defaultFS != null) && defaultFS.startsWith("hdfs://");
+        hcfsType = HcfsType.getHcfsType(configuration, requestContext);
     }
 
     /**
@@ -79,8 +79,8 @@ public abstract class HdfsSplittableDataAccessor extends Plugin implements
      */
     @Override
     public boolean openForRead() throws Exception {
-        LinkedList<InputSplit> requestSplits = new LinkedList<InputSplit>();
-        FileSplit fileSplit = HdfsUtilities.parseFileSplit(inputData);
+        LinkedList<InputSplit> requestSplits = new LinkedList<>();
+        FileSplit fileSplit = HdfsUtilities.parseFileSplit(context);
         requestSplits.add(fileSplit);
 
         // Initialize record reader based on current split
@@ -110,7 +110,7 @@ public abstract class HdfsSplittableDataAccessor extends Plugin implements
      * @throws IOException if record reader could not be created
      */
     @SuppressWarnings(value = "unchecked")
-    protected boolean getNextSplit() throws IOException  {
+    protected boolean getNextSplit() throws IOException {
         if (!iter.hasNext()) {
             return false;
         }
@@ -164,8 +164,9 @@ public abstract class HdfsSplittableDataAccessor extends Plugin implements
 
     @Override
     public boolean isThreadSafe() {
-        return HdfsUtilities.isThreadSafe(inputData.getDataSource(),
-                inputData.getUserProperty("COMPRESSION_CODEC"));
+        return HdfsUtilities.isThreadSafe(
+                configuration,
+                context.getDataSource(),
+                context.getOption("COMPRESSION_CODEC"));
     }
-
 }

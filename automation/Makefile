@@ -26,6 +26,19 @@ else
 	MAVEN_TEST_OPTS+= -o
 endif
 
+ifneq "$(PROTOCOL)" ""
+	MAVEN_TEST_OPTS+= -DPROTOCOL=$(PROTOCOL)
+	PROTOCOL_HOME=~/pxf/servers/$(PROTOCOL)
+endif
+
+ifneq "$(AWS_ACCESS_KEY_ID)" ""
+	MAVEN_TEST_OPTS+= -DAWS_ACCESS_KEY_ID=$(AWS_ACCESS_KEY_ID)
+endif
+
+ifneq "$(AWS_SECRET_ACCESS_KEY)" ""
+	MAVEN_TEST_OPTS+= -DAWS_SECRET_ACCESS_KEY=$(AWS_SECRET_ACCESS_KEY)
+endif
+
 #MAVEN_DEBUG_OPTS+= -Dmaven.surefire.debug
 
 MVN=mvn
@@ -44,7 +57,7 @@ symlink_pxf_jars:
 		done; \
 	fi
 
-test: symlink_pxf_jars
+test: symlink_pxf_jars sync_cloud_configs
 	$(MVN) $(MAVEN_TEST_OPTS) ${MAVEN_DEBUG_OPTS} test
 
 clean:
@@ -60,6 +73,43 @@ clean-logs:
 
 dev: symlink_pxf_jars
 	$(MVN) $(MAVEN_TEST_OPTS) package -DskipTests=true
+
+sync_cloud_configs:
+ifneq "$(PROTOCOL)" ""
+	@mkdir -p $(PROTOCOL_HOME)
+	@if [[ ! -f "$(PROTOCOL_HOME)/$(PROTOCOL)-site.xml" ]]; then \
+		cp $(PXF_HOME)/templates/user/templates/$(PROTOCOL)-site.xml $(PROTOCOL_HOME)/; \
+		cp $(PXF_HOME)/templates/user/templates/mapred-site.xml $(PROTOCOL_HOME)/; \
+		if [[ $(PROTOCOL) == s3 ]]; then \
+			if [[ -z "$(AWS_ACCESS_KEY_ID)" ]] || [[ -z "$(AWS_SECRET_ACCESS_KEY)" ]]; then \
+				echo "AWS Keys (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY) not set"; \
+				rm -rf $(PROTOCOL_HOME); \
+				exit 1; \
+			fi; \
+			sed -i "s|YOUR_AWS_ACCESS_KEY_ID|$(AWS_ACCESS_KEY_ID)|" $(PROTOCOL_HOME)/$(PROTOCOL)-site.xml; \
+			sed -i "s|YOUR_AWS_SECRET_ACCESS_KEY|$(AWS_SECRET_ACCESS_KEY)|" $(PROTOCOL_HOME)/$(PROTOCOL)-site.xml; \
+		fi; \
+		if [[ $(PROTOCOL) == adl ]]; then \
+			if [[ -z "$(ADL_ACCOUNT)" ]] || [[ -z "$(ADL_REFRESH_URL)" ]] || [[ -z "$(ADL_CLIENT_ID)" ]] || [[ -z "$(ADL_CREDENTIAL)" ]]; then \
+				echo "ADL Keys (ADL_ACCOUNT, ADL_CLIENT_ID, ADL_CREDENTIAL, ADL_REFRESH_URL) not set"; \
+				rm -rf $(PROTOCOL_HOME); \
+				exit 1; \
+			fi; \
+			sed -i "s|YOUR_ADL_REFRESH_URL|$(ADL_REFRESH_URL)|" $(PROTOCOL_HOME)/$(PROTOCOL)-site.xml; \
+			sed -i "s|YOUR_ADL_CLIENT_ID|$(ADL_CLIENT_ID)|" $(PROTOCOL_HOME)/$(PROTOCOL)-site.xml; \
+			sed -i "s|YOUR_ADL_CREDENTIAL|$(ADL_CREDENTIAL)|" $(PROTOCOL_HOME)/$(PROTOCOL)-site.xml; \
+		fi; \
+		if [[ $(PROTOCOL) == gs ]]; then \
+			if [[ ! -f /tmp/gsc-ci-service-account.key.json ]]; then \
+				echo "Google Service Account Key JSON file does exist in /tmp/gsc-ci-service-account.key.json"; \
+				rm -rf $(PROTOCOL_HOME); \
+				exit 1; \
+			fi; \
+			sed -i "s|YOUR_GOOGLE_STORAGE_KEYFILE|/tmp/gsc-ci-service-account.key.json|" $(PROTOCOL_HOME)/$(PROTOCOL)-site.xml; \
+		fi; \
+		echo "Created $(PROTOCOL) server configuration"; \
+	fi
+endif
 
 list-tests:
 ifneq ("$(TEST)", "")

@@ -19,33 +19,28 @@ package org.greenplum.pxf.plugins.jdbc;
  * under the License.
  */
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.greenplum.pxf.api.OneRow;
-import org.greenplum.pxf.api.ReadAccessor;
-import org.greenplum.pxf.api.WriteAccessor;
-import org.greenplum.pxf.api.UserDataException;
+import org.greenplum.pxf.api.model.Accessor;
 import org.greenplum.pxf.api.utilities.ColumnDescriptor;
-import org.greenplum.pxf.api.utilities.InputData;
 import org.greenplum.pxf.plugins.jdbc.writercallable.WriterCallable;
 import org.greenplum.pxf.plugins.jdbc.writercallable.WriterCallableFactory;
 
-import java.util.List;
-import java.util.LinkedList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-
 import java.io.IOException;
-import java.text.ParseException;
-import java.sql.Statement;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLTimeoutException;
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import java.sql.Statement;
+import java.text.ParseException;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 /**
  * JDBC tables accessor
@@ -55,16 +50,7 @@ import org.apache.commons.logging.LogFactory;
  * The INSERT queries are processed by {@link java.sql.PreparedStatement} and
  * built-in JDBC batches of arbitrary size
  */
-public class JdbcAccessor extends JdbcPlugin implements ReadAccessor, WriteAccessor {
-    /**
-     * Class constructor
-     *
-     * @param inputData Input data
-     * @throws UserDataException if there is a user data exception
-     */
-    public JdbcAccessor(InputData inputData) throws UserDataException {
-        super(inputData);
-    }
+public class JdbcAccessor extends JdbcBasePlugin implements Accessor {
 
     /**
      * openForRead() implementation
@@ -73,7 +59,7 @@ public class JdbcAccessor extends JdbcPlugin implements ReadAccessor, WriteAcces
      * @return true if successful
      * @throws SQLException if a database access error occurs
      * @throws SQLTimeoutException if a problem with the connection occurs
-     * @throws ParseException if th SQL statement provided in PXF InputData is incorrect
+     * @throws ParseException if th SQL statement provided in PXF RequestContext is incorrect
      * @throws ClassNotFoundException if the JDBC driver was not found
      */
     @Override
@@ -111,7 +97,7 @@ public class JdbcAccessor extends JdbcPlugin implements ReadAccessor, WriteAcces
      */
     @Override
     public void closeForRead() {
-        JdbcPlugin.closeStatement(statementRead);
+        JdbcBasePlugin.closeStatement(statementRead);
     }
 
     /**
@@ -121,7 +107,7 @@ public class JdbcAccessor extends JdbcPlugin implements ReadAccessor, WriteAcces
      * @return true if successful
      * @throws SQLException if a database access error occurs
      * @throws SQLTimeoutException if a problem with the connection occurs
-     * @throws ParseException if the SQL statement provided in PXF InputData is incorrect
+     * @throws ParseException if the SQL statement provided in PXF RequestContext is incorrect
      * @throws ClassNotFoundException if the JDBC driver was not found
      */
     @Override
@@ -264,7 +250,7 @@ public class JdbcAccessor extends JdbcPlugin implements ReadAccessor, WriteAcces
             writerCallable.call();
         }
         finally {
-            JdbcPlugin.closeStatement(statementWrite);
+            JdbcBasePlugin.closeStatement(statementWrite);
         }
     }
 
@@ -274,7 +260,7 @@ public class JdbcAccessor extends JdbcPlugin implements ReadAccessor, WriteAcces
      *
      * @return Complete SQL query
      *
-     * @throws ParseException if the constraints passed in InputData are incorrect
+     * @throws ParseException if the constraints passed in RequestContext are incorrect
      * @throws SQLException if the database metadata is invalid
      */
     private String buildSelectQuery(DatabaseMetaData databaseMetaData) throws ParseException, SQLException {
@@ -296,10 +282,10 @@ public class JdbcAccessor extends JdbcPlugin implements ReadAccessor, WriteAcces
         sb.append(" FROM ").append(tableName);
 
         // Insert regular WHERE constraints
-        (new WhereSQLBuilder(inputData)).buildWhereSQL(databaseMetaData.getDatabaseProductName(), sb);
+        (new WhereSQLBuilder(context)).buildWhereSQL(databaseMetaData.getDatabaseProductName(), sb);
 
         // Insert partition constraints
-        JdbcPartitionFragmenter.buildFragmenterSql(inputData, databaseMetaData.getDatabaseProductName(), sb);
+        JdbcPartitionFragmenter.buildFragmenterSql(context, databaseMetaData.getDatabaseProductName(), sb);
 
         return sb.toString();
     }
