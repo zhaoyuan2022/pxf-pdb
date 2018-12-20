@@ -39,7 +39,9 @@ ifneq "$(AWS_SECRET_ACCESS_KEY)" ""
 	MAVEN_TEST_OPTS+= -DAWS_SECRET_ACCESS_KEY=$(AWS_SECRET_ACCESS_KEY)
 endif
 
-#MAVEN_DEBUG_OPTS+= -Dmaven.surefire.debug
+ifeq "$(PXF_TEST_DEBUG)" "true"
+	MAVEN_DEBUG_OPTS+= -Dmaven.surefire.debug -DPXF_TEST_DEBUG=$(PXF_TEST_DEBUG)
+endif
 
 MVN=mvn
 
