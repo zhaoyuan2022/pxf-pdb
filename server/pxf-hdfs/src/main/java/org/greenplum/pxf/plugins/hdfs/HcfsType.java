@@ -76,20 +76,30 @@ public enum HcfsType {
 
     private static String getScheme(Configuration configuration, RequestContext context) {
         // if defaultFs is defined and not file://, it takes precedence over protocol
-        String protocolFromContext = context.getProtocol();
+        String schemeFromContext = context.getProtocol();
         URI defaultFS = FileSystem.getDefaultUri(configuration);
-        String scheme = defaultFS.getScheme();
-        if (StringUtils.isBlank(scheme)) {
+        String defaultFSScheme = defaultFS.getScheme();
+        if (StringUtils.isBlank(defaultFSScheme)) {
             throw new IllegalStateException(String.format("No scheme for property %s=%s", FS_DEFAULT_NAME_KEY, defaultFS));
-        } else if (FILE_SCHEME.equals(scheme)) {
-            // default FS of file:// is likely defaulted, see if context protocol can be used
-            if (StringUtils.isNotBlank(protocolFromContext)) {
-                scheme = protocolFromContext; // use the value from context
-            }
-        } // else {
-        // defaultFS is explicitly set to smth which is not file://, it will take precedence over context protocol
-        // }
-        return scheme;
+        }
+
+        // protocol from RequestContext will take precedence over defaultFS
+        if (StringUtils.isNotBlank(schemeFromContext)) {
+            checkForConfigurationMismatch(defaultFSScheme, schemeFromContext);
+            return schemeFromContext;
+        }
+
+        return defaultFSScheme;
+    }
+
+    private static void checkForConfigurationMismatch(String defaultFSScheme, String schemeFromContext) {
+        // do not allow protocol mismatch, unless defaultFs has file:// scheme
+        if (!FILE_SCHEME.equals(defaultFSScheme) &&
+                !StringUtils.equalsIgnoreCase(defaultFSScheme, schemeFromContext)) {
+            throw new IllegalArgumentException(
+                    String.format("profile protocol (%s) is not compatible with server filesystem (%s)",
+                            schemeFromContext, defaultFSScheme));
+        }
     }
 
     /**
@@ -118,7 +128,6 @@ public enum HcfsType {
         if (FILE_SCHEME.equals(defaultFS.getScheme())) {
             // if the defaultFS is file://, but enum is not FILE, use enum prefix only
             return prefix + normalizeDataSource(context.getDataSource());
-
         } else {
             // if the defaultFS is not file://, use it, instead of enum prefix and append user's path
             return StringUtils.removeEnd(defaultFS.toString(), "/") + "/" + StringUtils.removeStart(context.getDataSource(), "/");
