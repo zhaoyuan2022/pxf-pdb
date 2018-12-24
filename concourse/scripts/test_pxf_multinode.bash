@@ -85,6 +85,13 @@ EOF
 
 	chown gpadmin:gpadmin /home/gpadmin/run_pxf_automation_test.sh
 	chmod a+x /home/gpadmin/run_pxf_automation_test.sh
+
+	if [[ ${ACCEPTANCE} == "true" ]]; then
+		echo Acceptance test pipeline
+		close_ssh_tunnels
+		exit 1
+	fi
+
 	su gpadmin -c "bash /home/gpadmin/run_pxf_automation_test.sh"
 }
 
@@ -98,11 +105,6 @@ function _main() {
 
 	open_ssh_tunnels
 	configure_local_hdfs
-
-	if [[ ${ACCEPTANCE} == "true" ]]; then
-		echo Acceptance test pipeline
-		exit 1
-	fi
 
 	run_pxf_automation
 	close_ssh_tunnels
