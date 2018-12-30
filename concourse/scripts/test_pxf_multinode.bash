@@ -86,7 +86,7 @@ EOF
 	chown gpadmin:gpadmin /home/gpadmin/run_pxf_automation_test.sh
 	chmod a+x /home/gpadmin/run_pxf_automation_test.sh
 
-	if [[ ${ACCEPTANCE} == "true" ]]; then
+	if [[ ${ACCEPTANCE} == true ]]; then
 		echo Acceptance test pipeline
 		close_ssh_tunnels
 		exit 1

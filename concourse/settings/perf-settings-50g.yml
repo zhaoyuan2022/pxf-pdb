@@ -6,7 +6,7 @@ perf-scale: 50
 
 enable-impersonation-multinode: true
 pxf-jvm-opts: "-Xmx512m -Xms512m"
-perf-ccp-reap-minutes: 480
+perf-ccp-reap-minutes: 80
 
 perf-gpdb-number-of-nodes: 8
 perf-gpdb-segments-per-host: 4
