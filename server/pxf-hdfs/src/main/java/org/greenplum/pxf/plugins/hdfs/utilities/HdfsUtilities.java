@@ -19,13 +19,6 @@ package org.greenplum.pxf.plugins.hdfs.utilities;
  * under the License.
  */
 
-import org.apache.avro.Schema;
-import org.apache.avro.file.DataFileReader;
-import org.apache.avro.generic.GenericDatumReader;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.io.DatumReader;
-import org.apache.avro.mapred.FsInput;
-import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -36,14 +29,11 @@ import org.apache.hadoop.io.compress.CompressionCodecFactory;
 import org.apache.hadoop.io.compress.SplittableCompressionCodec;
 import org.apache.hadoop.mapred.FileSplit;
 import org.apache.hadoop.util.ReflectionUtils;
-import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.MessageTypeParser;
 import org.greenplum.pxf.api.OneField;
 import org.greenplum.pxf.api.io.DataType;
 import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.api.utilities.FragmentMetadata;
 import org.greenplum.pxf.api.utilities.Utilities;
-import org.greenplum.pxf.plugins.hdfs.ParquetUserData;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -109,7 +99,7 @@ public class HdfsUtilities {
      * @param path path of the file to be read
      * @return if the codec needed for reading the specified path is splittable.
      */
-    public static boolean isSplittableCodec(CompressionCodecFactory factory, Path path) {
+    static boolean isSplittableCodec(CompressionCodecFactory factory, Path path) {
 
         final CompressionCodec codec = factory.getCodec(path);
         if (null == codec) {
@@ -149,17 +139,15 @@ public class HdfsUtilities {
             throws IOException {
 
         return prepareFragmentMetadata(fsp.getStart(), fsp.getLength(), fsp.getLocations());
-
     }
 
     public static byte[] prepareFragmentMetadata(long start, long length, String[] locations)
             throws IOException {
 
         ByteArrayOutputStream byteArrayStream = writeBaseFragmentInfo(start, length, locations);
-
         return byteArrayStream.toByteArray();
-
     }
+
 
     private static ByteArrayOutputStream writeBaseFragmentInfo(long start, long length, String[] locations) throws IOException {
         ByteArrayOutputStream byteArrayStream = new ByteArrayOutputStream();
@@ -179,36 +167,12 @@ public class HdfsUtilities {
     public static FileSplit parseFileSplit(RequestContext requestContext) {
         try {
             FragmentMetadata fragmentMetadata = Utilities.parseFragmentMetadata(requestContext);
-
-            FileSplit fileSplit = new FileSplit(new Path(requestContext.getDataSource()), fragmentMetadata.getStart(), fragmentMetadata.getEnd(), fragmentMetadata.getHosts());
-
-            return fileSplit;
-
-        } catch (Exception e) {
-            throw new RuntimeException(
-                    "Exception while reading expected fragment metadata", e);
+            return new FileSplit(new Path(requestContext.getDataSource()),
+                    fragmentMetadata.getStart(), fragmentMetadata.getEnd(), fragmentMetadata.getHosts());
         }
-    }
-
-    /**
-     * Accessing the Avro file through the "unsplittable" API just to get the
-     * schema. The splittable API (AvroInputFormat) which is the one we will be
-     * using to fetch the records, does not support getting the Avro schema yet.
-     *
-     * @param conf       Hadoop configuration
-     * @param dataSource Avro file (i.e fileName.avro) path
-     * @return the Avro schema
-     * @throws IOException if I/O error occurred while accessing Avro schema file
-     */
-    public static Schema getAvroSchema(Configuration conf, String dataSource)
-            throws IOException {
-        FsInput inStream = new FsInput(new Path(dataSource), conf);
-        DatumReader<GenericRecord> dummyReader = new GenericDatumReader<>();
-        DataFileReader<GenericRecord> dummyFileReader = new DataFileReader<>(
-                inStream, dummyReader);
-        Schema schema = dummyFileReader.getSchema();
-        dummyFileReader.close();
-        return schema;
+        catch (Exception e) {
+            throw new RuntimeException("Exception while reading expected fragment metadata", e);
+        }
     }
 
     /**
@@ -227,7 +191,7 @@ public class HdfsUtilities {
             return "";
         for (OneField complex : complexRecord) {
             if (complex.type == DataType.BYTEA.getOID()) {
-                /** Serialize byte array as string */
+                // Serialize byte array as string
                 buff.append(delim);
                 Utilities.byteArrayToOctalString((byte[]) complex.val, buff);
             } else {
@@ -236,16 +200,6 @@ public class HdfsUtilities {
             delim = delimiter;
         }
         return buff.toString();
-    }
-
-    public static byte[] makeParquetUserData(MessageType schema) throws IOException {
-        ParquetUserData userData = new ParquetUserData(schema);
-        return userData.toString().getBytes();
-    }
-
-    public static ParquetUserData parseParquetUserData(RequestContext input) {
-        MessageType schema = MessageTypeParser.parseMessageType(new String(input.getFragmentUserData()));
-        return new ParquetUserData(schema);
     }
 
 }

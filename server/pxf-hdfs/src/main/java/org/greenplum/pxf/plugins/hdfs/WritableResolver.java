@@ -68,12 +68,12 @@ public class WritableResolver extends BasePlugin implements Resolver {
 
         String schemaName = context.getOption("DATA-SCHEMA");
 
-        /** Testing that the schema name was supplied by the user - schema is an optional property. */
+        /* Testing that the schema name was supplied by the user - schema is an optional property. */
         if (schemaName == null) {
             throw new DataSchemaException(DataSchemaException.MessageFmt.SCHEMA_NOT_INDICATED, this.getClass().getName());
         }
 
-        /** Testing that the schema resource exists. */
+        /* Testing that the schema resource exists. */
         if (!isSchemaOnClasspath(schemaName)) {
             throw new DataSchemaException(DataSchemaException.MessageFmt.SCHEMA_NOT_ON_CLASSPATH, schemaName);
         }
@@ -110,7 +110,7 @@ public class WritableResolver extends BasePlugin implements Resolver {
     @Override
     public List<OneField> getFields(OneRow onerow) throws Exception {
         userObject = onerow.getData();
-        List<OneField> record = new LinkedList<OneField>();
+        List<OneField> record = new LinkedList<>();
 
         int currentIdx = 0;
         for (Field field : fields) {
@@ -128,7 +128,7 @@ public class WritableResolver extends BasePlugin implements Resolver {
         return record;
     }
 
-    int setArrayField(List<OneField> record, int dataType, Field reflectedField) throws IllegalAccessException {
+    private int setArrayField(List<OneField> record, int dataType, Field reflectedField) throws IllegalAccessException {
         Object array = reflectedField.get(userObject);
         int length = Array.getLength(array);
         for (int j = 0; j < length; j++) {
@@ -169,7 +169,7 @@ public class WritableResolver extends BasePlugin implements Resolver {
         throw new UnsupportedTypeException("Type " + type + " is not supported by GPDBWritable");
     }
 
-    int populateRecord(List<OneField> record, Field field) throws BadRecordException {
+    private int populateRecord(List<OneField> record, Field field) throws BadRecordException {
         String javaType = field.getType().getName();
         try {
             DataType dataType = convertJavaToGPDBType(javaType);

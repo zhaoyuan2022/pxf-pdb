@@ -29,11 +29,8 @@ import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetInputFormat;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
-import org.apache.parquet.hadoop.util.HadoopInputFile;
-import org.apache.parquet.io.InputFile;
 import org.apache.parquet.schema.MessageType;
 import org.greenplum.pxf.api.model.Fragment;
-import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.plugins.hdfs.utilities.HdfsUtilities;
 
 import java.io.IOException;
@@ -60,8 +57,9 @@ public class ParquetDataFragmenter extends HdfsDataFragmenter {
                     jobConf, path, ParquetMetadataConverter.NO_FILTER);
             MessageType schema = metadata.getFileMetaData().getSchema();
 
-            byte[] fragmentMetadata = HdfsUtilities.prepareFragmentMetadata(fsp.getStart(), fsp.getLength(), fsp.getLocations());
-            Fragment fragment = new Fragment(path.toString(), hosts, fragmentMetadata, HdfsUtilities.makeParquetUserData(schema));
+            byte[] fragmentMetadata = HdfsUtilities.prepareFragmentMetadata(fsp.getStart(), fsp.getLength(), hosts);
+            byte[] parquetUserdata = schema.toString().getBytes();
+            Fragment fragment = new Fragment(path.toString(), hosts, fragmentMetadata, parquetUserdata);
             fragments.add(fragment);
         }
 

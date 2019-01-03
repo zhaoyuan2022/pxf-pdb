@@ -19,52 +19,63 @@ package org.greenplum.pxf.plugins.hdfs;
  * under the License.
  */
 
-import org.greenplum.pxf.api.OneField;
-import org.greenplum.pxf.api.OneRow;
-import org.greenplum.pxf.api.model.Resolver;
-import org.greenplum.pxf.api.UnsupportedTypeException;
-import org.greenplum.pxf.api.io.DataType;
-import org.greenplum.pxf.api.model.RequestContext;
-import org.greenplum.pxf.api.model.BasePlugin;
-
-import org.greenplum.pxf.plugins.hdfs.utilities.HdfsUtilities;
 import org.apache.parquet.example.data.Group;
+import org.apache.parquet.example.data.simple.NanoTime;
+import org.apache.parquet.example.data.simple.SimpleGroupFactory;
+import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
+import org.greenplum.pxf.api.OneField;
+import org.greenplum.pxf.api.OneRow;
+import org.greenplum.pxf.api.UnsupportedTypeException;
+import org.greenplum.pxf.api.io.DataType;
+import org.greenplum.pxf.api.model.BasePlugin;
+import org.greenplum.pxf.api.model.RequestContext;
+import org.greenplum.pxf.api.model.Resolver;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedList;
 import java.util.List;
 
 public class ParquetResolver extends BasePlugin implements Resolver {
 
-    public static final int JULIAN_EPOCH_OFFSET_DAYS = 2440588;
-    public static final long MILLIS_IN_DAY = 24 * 3600 * 1000;
+    private static final int JULIAN_EPOCH_OFFSET_DAYS = 2440588;
+    private static final int SECOND_IN_MILLIS = 1000;
+    private static final long MILLIS_IN_DAY = 24 * 3600 * 1000;
+    private static final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    /**
-     * {@inheritDoc}
-     * @param schema the MessageType instance, which is obtained from the Parquet file footer
-     */
-    public List<OneField> getFields(OneRow row, MessageType schema) throws Exception
-    {
-      ParquetUserData parquetUserData = new ParquetUserData(schema);
-      Group g = (Group) row.getData();
-      List<OneField> output = resolveRecord(parquetUserData, g);
-      return output;
+    private MessageType schema;
+    private SimpleGroupFactory groupFactory;
+
+    @Override
+    public void initialize(RequestContext requestContext) {
+        super.initialize(requestContext);
+
+        schema = (MessageType) requestContext.getMetadata();
+        groupFactory = new SimpleGroupFactory(schema);
     }
 
     @Override
-    public List<OneField> getFields(OneRow row) throws Exception {
-        Object data = row.getData();
-        ParquetUserData parquetUserData = HdfsUtilities.parseParquetUserData(context);
-        Group g = (Group) data;
-        List<OneField> output = resolveRecord(parquetUserData, g);
+    public List<OneField> getFields(OneRow row) {
+        Group group = (Group) row.getData();
+        List<OneField> output = new LinkedList<>();
 
+        for (int i = 0; i < schema.getFieldCount(); i++) {
+            if (schema.getType(i).isPrimitive()) {
+                output.add(resolvePrimitive(i, group, schema.getType(i)));
+            } else {
+                throw new UnsupportedTypeException("Only primitive types are supported.");
+            }
+        }
         return output;
     }
 
@@ -73,24 +84,68 @@ public class ParquetResolver extends BasePlugin implements Resolver {
      *
      * @param record list of {@link OneField}
      * @return the constructed {@link OneRow}
-     * @throws Exception if constructing a row from the fields failed
+     * @throws IOException if constructing a row from the fields failed
      */
     @Override
-    public OneRow setFields(List<OneField> record) throws Exception {
-        throw new UnsupportedOperationException();
+    public OneRow setFields(List<OneField> record) throws IOException {
+        Group group = groupFactory.newGroup();
+        for (int i = 0; i < record.size(); i++) {
+            fillGroup(i, record.get(i), group, schema.getType(i));
+        }
+        return new OneRow(null, group);
     }
 
-    private List<OneField> resolveRecord(ParquetUserData userData, Group g) {
-        List<OneField> output = new LinkedList<OneField>();
-
-        for (int i = 0; i < userData.getSchema().getFieldCount(); i++) {
-            if (userData.getSchema().getType(i).isPrimitive()) {
-                output.add(resolvePrimitive(i, g, userData.getSchema().getType(i)));
-            } else {
-                throw new UnsupportedTypeException("Only primitive types are supported.");
-            }
+    private void fillGroup(int index, OneField field, Group group, Type type) throws IOException {
+        if (field.val == null)
+            return;
+        switch (type.asPrimitiveType().getPrimitiveTypeName()) {
+            case BINARY:
+                if (type.getOriginalType() == OriginalType.UTF8)
+                    group.add(index, (String) field.val);
+                else
+                    group.add(index, Binary.fromReusedByteArray((byte[]) field.val));
+                break;
+            case INT32:
+                if (type.getOriginalType() == OriginalType.INT_16)
+                    group.add(index, (Short) field.val);
+                else
+                    group.add(index, (Integer) field.val);
+                break;
+            case INT64:
+                group.add(index, (Long) field.val);
+                break;
+            case DOUBLE:
+                group.add(index, (Double) field.val);
+                break;
+            case FLOAT:
+                group.add(index, (Float) field.val);
+                break;
+            case FIXED_LEN_BYTE_ARRAY:
+                BigDecimal value = new BigDecimal((String) field.val);
+                byte fillByte = (byte) (value.signum() < 0 ? 0xFF : 0x00);
+                byte[] unscaled = value.unscaledValue().toByteArray();
+                byte[] bytes = new byte[16];
+                int offset = bytes.length - unscaled.length;
+                for (int i = 0; i < bytes.length; i += 1) {
+                    if (i < offset) {
+                        bytes[i] = fillByte;
+                    } else {
+                        bytes[i] = unscaled[i - offset];
+                    }
+                }
+                group.add(index, Binary.fromReusedByteArray(bytes));
+                break;
+            case INT96:
+                LocalDateTime date = LocalDateTime.parse((String) field.val, dateFormatter);
+                long millisSinceEpoch = date.toEpochSecond(ZoneOffset.UTC) * SECOND_IN_MILLIS;
+                group.add(index, getBinary(millisSinceEpoch));
+                break;
+            case BOOLEAN:
+                group.add(index, (Boolean) field.val);
+                break;
+            default:
+                throw new IOException("Not supported type " + type.asPrimitiveType().getPrimitiveTypeName());
         }
-        return output;
     }
 
     private OneField resolvePrimitive(Integer columnIndex, Group g, Type type) {
@@ -142,9 +197,8 @@ public class ParquetResolver extends BasePlugin implements Resolver {
             }
             case INT96: {
                 field.type = DataType.TIMESTAMP.getOID();
-                Timestamp ts = g.getFieldRepetitionCount(columnIndex) == 0 ?
+                field.val = g.getFieldRepetitionCount(columnIndex) == 0 ?
                         null : bytesToTimestamp(g.getInt96(columnIndex, 0).getBytes());
-                field.val = ts;
                 break;
             }
             case FLOAT: {
@@ -157,8 +211,7 @@ public class ParquetResolver extends BasePlugin implements Resolver {
                 field.type = DataType.NUMERIC.getOID();
                 if (g.getFieldRepetitionCount(columnIndex) > 0) {
                     int scale = type.asPrimitiveType().getDecimalMetadata().getScale();
-                    BigDecimal bd = new BigDecimal(new BigInteger(g.getBinary(columnIndex, 0).getBytes()), scale);
-                    field.val = bd;
+                    field.val = new BigDecimal(new BigInteger(g.getBinary(columnIndex, 0).getBytes()), scale);
                 }
                 break;
             }
@@ -176,27 +229,21 @@ public class ParquetResolver extends BasePlugin implements Resolver {
         return field;
     }
 
+    // Convert parquet byte array to java timestamp
     private Timestamp bytesToTimestamp(byte[] bytes) {
+        long timeOfDayNanos = ByteBuffer.wrap(new byte[]{
+                bytes[7], bytes[6], bytes[5], bytes[4], bytes[3], bytes[2], bytes[1], bytes[0]}).getLong();
+        int julianDays = (ByteBuffer.wrap(new byte[]{bytes[11], bytes[10], bytes[9], bytes[8]})).getInt();
+        long unixTimeMs = (julianDays - JULIAN_EPOCH_OFFSET_DAYS) * MILLIS_IN_DAY + timeOfDayNanos / 1000000;
+        return new Timestamp(unixTimeMs);
+    }
 
-        long numberOfDays = ByteBuffer.wrap(new byte[]{
-                bytes[7],
-                bytes[6],
-                bytes[5],
-                bytes[4],
-                bytes[3],
-                bytes[2],
-                bytes[1],
-                bytes[0]
-        }).getLong();
-
-        int julianDays = (ByteBuffer.wrap(new byte[]{bytes[11],
-                bytes[10],
-                bytes[9],
-                bytes[8]
-        })).getInt();
-        long unixTimeMs = (julianDays - JULIAN_EPOCH_OFFSET_DAYS) * MILLIS_IN_DAY + numberOfDays / 1000000;
-        Timestamp ts = new Timestamp(unixTimeMs);
-        return ts;
-
+    // Convert epoch timestamp to byte array (INT96)
+    // Inverse of the function above
+    private Binary getBinary(long timeMillis) {
+        long daysSinceEpoch = timeMillis / MILLIS_IN_DAY;
+        int julianDays = JULIAN_EPOCH_OFFSET_DAYS + (int) daysSinceEpoch;
+        long timeOfDayNanos = (timeMillis % MILLIS_IN_DAY) * 1000000;
+        return new NanoTime(julianDays, timeOfDayNanos).toBinary();
     }
 }
