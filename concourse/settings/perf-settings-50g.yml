@@ -21,8 +21,8 @@ perf-hadoop-disk-size: 64
 # 2 weeks
 #perf-trigger-interval: 336h
 perf-trigger-interval: 24h
-perf-trigger-start: 12:30 PM
-perf-trigger-stop: 12:40 PM
+perf-trigger-start: 6:30 AM
+perf-trigger-stop: 6:40 AM
 
 perf-benchmark-adl: false
 perf-benchmark-s3: true
