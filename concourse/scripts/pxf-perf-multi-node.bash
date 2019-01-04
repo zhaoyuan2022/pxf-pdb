@@ -258,6 +258,13 @@ function create_adl_external_tables() {
         LOCATION('pxf://${ADL_ACCOUNT}.azuredatalakestore.net/adl-profile-test/output/${SCALE}/?PROFILE=adl:text&server=adlbenchmark') FORMAT 'CSV'"
 }
 
+function create_gcs_external_tables() {
+    psql -c "CREATE EXTERNAL TABLE lineitem_gcs_read (LIKE lineitem)
+        LOCATION('pxf://data-gpdb-ud-tpch/${SCALE}/lineitem_data/?PROFILE=gs:text&SERVER=gsbenchmark') FORMAT 'CSV' (DELIMITER '|');"
+    psql -c "CREATE WRITABLE EXTERNAL TABLE lineitem_gcs_write (LIKE lineitem)
+        LOCATION('pxf://data-gpdb-ud-tpch/output/${SCALE}/?PROFILE=gs:text&SERVER=gsbenchmark') FORMAT 'CSV';"
+}
+
 function create_s3_extension_external_tables {
     psql -c "CREATE EXTERNAL TABLE lineitem_s3_c (LIKE lineitem)
         LOCATION('s3://s3.us-west-2.amazonaws.com/gpdb-ud-scratch/s3-profile-test/lineitem/${SCALE}/ config=/home/gpadmin/s3/s3.conf') FORMAT 'CSV' (DELIMITER '|')"
@@ -385,6 +392,51 @@ EOF
     time psql -c "INSERT INTO lineitem_adl_write SELECT * FROM lineitem"
 }
 
+function run_gcs_benchmark() {
+    create_gcs_external_tables
+
+    cat << EOF > /tmp/gsc-ci-service-account.key.json
+${GOOGLE_CREDENTIALS}
+EOF
+
+    GS_SERVER_DIR="${PXF_SERVER_DIR}/gsbenchmark"
+
+    cat > /tmp/gs-site.xml <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+	<property>
+		<name>google.cloud.auth.service.account.enable</name>
+		<value>true</value>
+	</property>
+	<property>
+		<name>google.cloud.auth.service.account.json.keyfile</name>
+		<value>${GS_SERVER_DIR}/gsc-ci-service-account.key.json</value>
+	</property>
+</configuration>
+EOF
+
+    # Create the Google Cloud Storage Benchmark server and copy core-site.xml
+    gpssh -u gpadmin -h mdw -v -s -e "mkdir -p $GS_SERVER_DIR"
+    gpscp -u gpadmin -h mdw /tmp/gs-site.xml =:${GS_SERVER_DIR}/
+    gpscp -u gpadmin -h mdw /tmp/gsc-ci-service-account.key.json =:${GS_SERVER_DIR}/
+    sync_configuration
+
+    cat << EOF
+ ###########################################
+# GOOGLE CLOUD STORAGE PXF READ BENCHMARK #
+###########################################
+EOF
+    assert_count_in_table "lineitem_gcs_read" "${LINEITEM_COUNT}"
+
+    cat << EOF
+ ############################################
+# GOOGLE CLOUD STORAGE PXF WRITE BENCHMARK #
+############################################
+EOF
+    time psql -c "INSERT INTO lineitem_gcs_write SELECT * FROM lineitem"
+}
+
 function run_s3_extension_benchmark {
     create_s3_extension_external_tables
 
@@ -483,6 +535,10 @@ function main {
     if [[ ${BENCHMARK_WASB} == true ]]; then
     	# Azure Blob Storage Benchmark
         run_wasb_benchmark
+    fi
+
+    if [[ ${BENCHMARK_GCS} == true ]]; then
+        run_gcs_benchmark
     fi
 
     if [[ ${BENCHMARK_S3} == true ]]; then
