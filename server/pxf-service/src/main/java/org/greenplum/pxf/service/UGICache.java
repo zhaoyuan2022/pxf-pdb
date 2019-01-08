@@ -19,6 +19,11 @@ package org.greenplum.pxf.service;
  * under the License.
  */
 
+import com.google.common.base.Ticker;
+import org.apache.hadoop.security.UserGroupInformation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -27,11 +32,6 @@ import java.util.concurrent.DelayQueue;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import com.google.common.base.Ticker;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.security.UserGroupInformation;
 
 /**
  * Stores UserGroupInformation instances for each active session. The UGIs are cleaned up if they
@@ -42,14 +42,14 @@ import org.apache.hadoop.security.UserGroupInformation;
  */
 public class UGICache {
 
-    private static final Log LOG = LogFactory.getLog(UGICache.class);
+    static final int NANOS_PER_MILLIS = 1000000;
+    static final long UGI_CACHE_EXPIRY = 15 * 60 * 1000L; // 15 Minutes
+    private static final Logger LOG = LoggerFactory.getLogger(UGICache.class);
     private final Map<SessionId, Entry> cache = new ConcurrentHashMap<>();
     // There is a separate DelayQueue for each segment (also being used for locking)
     private final Map<Integer, DelayQueue<Entry>> expirationQueueMap = new HashMap<>();
     private final UGIProvider ugiProvider;
     private final Ticker ticker;
-    static final int NANOS_PER_MILLIS = 1000000;
-    static final long UGI_CACHE_EXPIRY = 15 * 60 * 1000L; // 15 Minutes
 
     /**
      * Create a UGICache with the given {@link Ticker} and {@link UGIProvider}. Intended for use by
@@ -73,11 +73,13 @@ public class UGICache {
      * proxy UGI. In either case this method increments the reference count of the UGI. This method
      * also destroys expired, unreferenced UGIs for the same segmentId as the given session.
      *
-     * @param session The user from the session is impersonated by the proxy UGI.
+     * @param session     The user from the session is impersonated by the proxy UGI.
+     * @param isProxyUser true if the {@link UserGroupInformation} is a proxy user
      * @return the proxy UGI for the given session.
      * @throws IOException when there is an IO issue
      */
-    public UserGroupInformation getUserGroupInformation(SessionId session) throws IOException {
+    @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
+    public UserGroupInformation getUserGroupInformation(SessionId session, boolean isProxyUser) throws IOException {
         Integer segmentId = session.getSegmentId();
         String user = session.getUser();
         DelayQueue<Entry> delayQueue = getExpirationQueue(segmentId);
@@ -86,10 +88,16 @@ public class UGICache {
             cleanup(delayQueue);
             Entry entry = cache.get(session);
             if (entry == null) {
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug(session + " Creating proxy user = " + user);
+
+                UserGroupInformation ugi;
+                if (isProxyUser) {
+                    LOG.debug("{} Creating proxy user = {}", session, user);
+                    ugi = ugiProvider.createProxyUGI(user);
+                } else {
+                    LOG.debug("{} Creating remote user = {}", session, user);
+                    ugi = ugiProvider.createRemoteUser(user);
                 }
-                entry = new Entry(ticker, ugiProvider.createProxyUGI(user), session);
+                entry = new Entry(ticker, ugi, session);
                 delayQueue.offer(entry);
                 cache.put(session, entry);
             }
@@ -106,6 +114,7 @@ public class UGICache {
      * @param cleanImmediatelyIfNoRefs if true, destroys the UGI for the given session (only if it
      *                                 is now unreferenced).
      */
+    @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
     public void release(SessionId session, boolean cleanImmediatelyIfNoRefs) {
 
         Entry entry = cache.get(session);
@@ -156,6 +165,7 @@ public class UGICache {
      * @param session
      * @return determine whether the session is in the internal cache
      */
+    @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
     boolean contains(SessionId session) {
         DelayQueue<Entry> expirationQueue = getExpirationQueue(session.getSegmentId());
         synchronized (expirationQueue) {
@@ -200,17 +210,12 @@ public class UGICache {
             } else {
                 // The UGI object is still being used by another thread
                 String fsMsg = "FileSystem for proxy user = " + expiredUGI.getSession().getUser();
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug(expiredUGI.getSession().toString() + " Skipping close of " + fsMsg);
-                }
+                LOG.debug("{} Skipping close of {}", expiredUGI.getSession().toString(), fsMsg);
                 // Place it back in the queue if still in use and was not closed
                 expiredUGI.resetTime();
                 expirationQueue.offer(expiredUGI);
             }
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Delay Queue Size for segment " +
-                        expiredUGI.getSession().getSegmentId() + " = " + expirationQueue.size());
-            }
+            LOG.debug("Delay Queue Size for segment {} = {}", expiredUGI.getSession().getSegmentId(), expirationQueue.size());
         }
     }
 
@@ -225,10 +230,7 @@ public class UGICache {
         SessionId session = expiredUGI.getSession();
         String fsMsg = "FileSystem for proxy user = " + session.getUser();
 
-        if (LOG.isDebugEnabled()) {
-            LOG.debug(session.toString() + " Closing " + fsMsg +
-                    " (Cache Size = " + cache.size() + ")");
-        }
+        LOG.debug("{} Closing {} (Cache Size = {})", session.toString(), fsMsg, cache.size());
 
         try {
             // Remove it from cache, as cache now has an
@@ -246,11 +248,11 @@ public class UGICache {
      */
     private static class Entry implements Delayed {
 
-        private volatile long startTime;
         private final SessionId session;
         private final UserGroupInformation proxyUGI;
         private final AtomicInteger referenceCount = new AtomicInteger();
         private final Ticker ticker;
+        private volatile long startTime;
 
         /**
          * Creates a new UGICache Entry.

@@ -44,7 +44,23 @@ class UGIProvider {
     }
 
     /**
+     * Wrapper for {@link UserGroupInformation} creation of remote users
+     *
+     * @param user the name of the remote user
+     * @return a remote {@link UserGroupInformation}.
+     */
+    UserGroupInformation createRemoteUser(String user) throws IOException {
+        if (UserGroupInformation.isSecurityEnabled()) {
+            UserGroupInformation proxyUGI = createProxyUGI(user);
+            proxyUGI.setAuthenticationMethod(UserGroupInformation.AuthenticationMethod.KERBEROS);
+            return proxyUGI;
+        }
+        return UserGroupInformation.createRemoteUser(user);
+    }
+
+    /**
      * Wrapper for {@link FileSystem}.closeAllForUGI method.
+     *
      * @param ugi the {@link UserGroupInformation} whose filesystem resources we want to free.
      * @throws IOException
      */
