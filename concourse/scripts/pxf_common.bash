@@ -291,3 +291,19 @@ function start_pxf_server() {
 
 	popd > /dev/null
 }
+
+function setup_minio() {
+	echo 'Adding test bucket gpdb-ud-scratch to Minio ...'
+	mkdir -p /opt/minio/data/gpdb-ud-scratch
+
+	export MINIO_ACCESS_KEY=admin
+	export MINIO_SECRET_KEY=password
+	echo "Minio credentials: accessKey=${MINIO_ACCESS_KEY} secretKey=${MINIO_SECRET_KEY}"
+
+	echo 'Starting Minio ...'
+	/opt/minio/bin/minio server /opt/minio/data &
+
+	# export minio credentials as access environment variables
+	export ACCESS_KEY_ID=${MINIO_ACCESS_KEY}
+	export SECRET_ACCESS_KEY=${MINIO_SECRET_KEY}
+}
