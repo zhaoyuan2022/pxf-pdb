@@ -12,6 +12,7 @@ groups:
   - singlecluster_noarch_hdp
   - docker-gpdb-pxf-dev-centos6
   - docker-gpdb-pxf-dev-ubuntu16
+  - docker-gpdb-pxf-dev-centos6-mapr-server
   - docker-gpdb-pxf-dev-centos6-cdh-server
   - docker-gpdb-pxf-dev-centos6-hdp-server
   - docker-gpdb-pxf-dev-ubuntu16-cdh-server
@@ -95,6 +96,14 @@ resources:
       uri: https://github.com/greenplum-db/gpdb.git
       paths: [src/tools/docker/centos6/Dockerfile]
 
+  - name: gpdb-pxf-dev-centos6-mapr-image
+    type: docker-image
+    source:
+      repository: pivotaldata/gpdb-pxf-dev
+      tag: centos6-mapr-server
+      username: {{docker-username}}
+      password: {{docker-password}}
+
   - name: gpdb-dev-centos6-image
     type: docker-image
     source:
@@ -110,6 +119,13 @@ resources:
       tag: centos6-hdp-secure
       username: {{docker-username}}
       password: {{docker-password}}
+
+  - name: dockerfile-gpdb-pxf-mapr
+    type: git
+    source:
+      branch: {{pxf-git-branch}}
+      uri: https://github.com/greenplum-db/pxf.git
+      paths: [concourse/docker/mapr/Dockerfile]
 
   - name: dockerfile-gpdb-dev-centos6-hdp-secure
     type: git
@@ -233,6 +249,22 @@ jobs:
     - put: gpdb-dev-ubuntu16-image
       params:
         build: pxf_src/concourse/docker/ubuntu16
+
+  - name: docker-gpdb-pxf-dev-centos6-mapr-server
+    plan:
+    - aggregate:
+      - get: pxf_src
+      - get: dockerfile-gpdb-pxf-dev-base
+        passed: [docker-gpdb-pxf-dev-centos6]
+        trigger: true
+      - get: dockerfile-gpdb-pxf-mapr
+        trigger: true
+    - put: gpdb-pxf-dev-centos6-mapr-image
+      params:
+        build: .
+        dockerfile: pxf_src/concourse/docker/mapr/Dockerfile
+        build_args:
+          BASE_IMAGE: "gpdb-dev:centos6"
 
   - name: docker-gpdb-dev-centos6-hdp-secure
     plan:
