@@ -1,4 +1,61 @@
+## ======================================================================
+## GROUPS
+## ======================================================================
+groups:
+  - name: all
+    jobs:
+      - compile_pxf
+{% if compile_gpdb %}
+      - compile_gpdb_centos6
+{% endif %}
+      - test_pxf_hdp_centos6
+      - test_pxf_cdh_centos6
+      - test_pxf_hdp_ubuntu16
+      - test_pxf_hdp_multinode_gpdb
+      - test_pxf_adl
+      - test_pxf_gs
+      - test_pxf_minio
+      - test_pxf_s3_no_impersonation
+      - test_pxf_s3_with_impersonation
+      - test_pxf_hdp_secure_with_impersonation
+      - test_pxf_hdp_secure_no_impersonation
+      - test_pxf_no_impersonation
+      - test_pxf_hdp_multinode_gpdb
+{% if pipeline_type == "release" %}
+      - build_release_candidate_centos
+{% elif pipeline_type == "pxf" %}
+      - promote_pxf_artifact
+{% endif %}
 
+  - name: hadoop
+    jobs:
+      - test_pxf_hdp_centos6
+      - test_pxf_cdh_centos6
+      - test_pxf_hdp_ubuntu16
+      - test_pxf_hdp_multinode_gpdb
+
+  - name: cloud
+    jobs:
+      - test_pxf_adl
+      - test_pxf_gs
+      - test_pxf_minio
+      - test_pxf_s3_no_impersonation
+      - test_pxf_s3_with_impersonation
+
+  - name: secure
+    jobs:
+      - test_pxf_hdp_secure_with_impersonation
+      - test_pxf_hdp_secure_no_impersonation
+
+  - name: no_impersonation
+    jobs:
+      - test_pxf_no_impersonation
+      - test_pxf_s3_no_impersonation
+      - test_pxf_hdp_secure_no_impersonation
+
+## ======================================================================
+## ANCHORS
+## ======================================================================
 ccp_destroy_anchor: &ccp_destroy
   do:
   - put: terraform_gpdb
@@ -10,12 +67,18 @@ ccp_destroy_anchor: &ccp_destroy
     get_params:
       action: destroy
 
+## ======================================================================
+## RESOURCE TYPES
+## ======================================================================
 resource_types:
 - name: terraform
   type: docker-image
   source:
     repository: ljfranklin/terraform-resource
 
+## ======================================================================
+## RESOURCES
+## ======================================================================
 resources:
 
 - name: ccp_src
@@ -187,6 +250,9 @@ resources:
     tag: 6-gcc6.2-llvm3.7
 
 {% endif %}
+## ======================================================================
+## JOBS
+## ======================================================================
 jobs:
 
 {% if compile_gpdb %}
@@ -797,6 +863,7 @@ jobs:
     passed:
     - test_pxf_hdp_centos6
     - test_pxf_cdh_centos6
+    - test_pxf_hdp_ubuntu16
     - test_pxf_adl
     - test_pxf_gs
     - test_pxf_minio
@@ -812,6 +879,7 @@ jobs:
     passed:
     - test_pxf_hdp_centos6
     - test_pxf_cdh_centos6
+    - test_pxf_hdp_ubuntu16
     - test_pxf_adl
     - test_pxf_gs
     - test_pxf_minio
