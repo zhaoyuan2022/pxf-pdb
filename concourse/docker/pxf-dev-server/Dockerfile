@@ -1,4 +1,4 @@
-ARG BASE_IMAGE
+ARG BASE_IMAGE=gpdb-pxf-dev:centos6
 
 FROM pivotaldata/${BASE_IMAGE} as scratch
 

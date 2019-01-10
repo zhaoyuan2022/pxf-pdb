@@ -264,7 +264,7 @@ jobs:
         build: .
         dockerfile: pxf_src/concourse/docker/mapr/Dockerfile
         build_args:
-          BASE_IMAGE: "gpdb-dev:centos6"
+          BASE_IMAGE: "gpdb-pxf-dev:centos6"
 
   - name: docker-gpdb-dev-centos6-hdp-secure
     plan:
