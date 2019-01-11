@@ -477,10 +477,6 @@ EOF
 		<name>fs.s3a.fast.upload</name>
 		<value>true</value>
 	</property>
-	<property>
-		<name>fs.s3a.fast.upload.buffer</name>
-		<value>array</value>
-	</property>
 </configuration>
 EOF
 
