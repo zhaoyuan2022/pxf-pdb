@@ -61,13 +61,6 @@ import java.util.List;
  */
 public class ParquetFileAccessor extends BasePlugin implements Accessor {
 
-    private ParquetFileReader fileReader;
-    private MessageColumnIO columnIO;
-    private HcfsType hcfsType;
-    private ParquetWriter<Group> parquetWriter;
-    private RecordReader<Group> recordReader;
-    private long rowsInRowGroup;
-
     private static final int DECIMAL_SCALE = 18;
     private static final int DECIMAL_PRECISION = 38;
     private static final int DEFAULT_PAGE_SIZE = 1024 * 1024;
@@ -75,8 +68,14 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
     private static final int DEFAULT_DICTIONARY_PAGE_SIZE = 512 * 1024;
     private static final WriterVersion DEFAULT_PARQUET_VERSION = WriterVersion.PARQUET_1_0;
     private static final CompressionCodecName DEFAULT_COMPRESSION_CODEC_NAME = CompressionCodecName.UNCOMPRESSED;
-
+    private ParquetFileReader fileReader;
+    private MessageColumnIO columnIO;
+    private HcfsType hcfsType;
+    private ParquetWriter<Group> parquetWriter;
+    private RecordReader<Group> recordReader;
+    private long rowsInRowGroup;
     private MessageType schema;
+    private long rowGroupsReadCount;
 
     @Override
     public void initialize(RequestContext requestContext) {
@@ -108,7 +107,7 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
         fileReader = new ParquetFileReader(configuration, file, ParquetMetadataConverter.range(
                 fileSplit.getStart(), fileSplit.getStart() + fileSplit.getLength()));
         columnIO = new ColumnIOFactory().getColumnIO(schema);
-        return readNextRowGroup();
+        return true;
     }
 
     /**
@@ -119,19 +118,32 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
      */
     @Override
     public OneRow readNextObject() throws IOException {
-        if (rowsInRowGroup-- == 0 && !readNextRowGroup())
+
+        rowsInRowGroup = (rowsInRowGroup == 0) ? readNextRowGroup() : rowsInRowGroup;
+
+        if (rowsInRowGroup == 0) {
             return null;
+        }
+
+        rowsInRowGroup--;
+
         return new OneRow(null, recordReader.read());
     }
 
-    private boolean readNextRowGroup() throws IOException {
+    private long readNextRowGroup() throws IOException {
 
         PageReadStore currentRowGroup = fileReader.readNextRowGroup();
-        if (currentRowGroup == null)
-            return false;
+        if (currentRowGroup == null) {
+            LOG.debug("All row groups have been exhausted");
+            return 0;
+        }
+        rowGroupsReadCount++;
         recordReader = columnIO.getRecordReader(currentRowGroup, new GroupRecordConverter(schema));
-        rowsInRowGroup = currentRowGroup.getRowCount();
-        return true;
+        long count = currentRowGroup.getRowCount();
+
+        LOG.debug("Found {} rows in row group #{}", count, rowGroupsReadCount);
+
+        return count;
     }
 
     /**
@@ -141,6 +153,7 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
      */
     @Override
     public void closeForRead() throws IOException {
+        LOG.debug("Read {} rowGroups", rowGroupsReadCount);
         if (fileReader != null) {
             fileReader.close();
         }
@@ -235,7 +248,7 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
 
         LOG.debug("Generating parquet schema for write using {}", columns);
         List<Type> fields = new ArrayList<>();
-        for (ColumnDescriptor column: columns) {
+        for (ColumnDescriptor column : columns) {
             String columnName = column.columnName();
             int columnTypeCode = column.columnTypeCode();
 
@@ -292,5 +305,4 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
 
         return new MessageType("hive_schema", fields);
     }
-
 }
