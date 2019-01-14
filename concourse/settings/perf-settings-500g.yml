@@ -6,7 +6,7 @@ perf-scale: 500
 
 enable-impersonation-multinode: true
 pxf-jvm-opts: "-XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/heap_dump -Xmx8g -Xms4g"
-perf-ccp-reap-minutes: 120
+perf-ccp-reap-minutes: 240
 
 perf-gpdb-number-of-nodes: 16
 perf-gpdb-segments-per-host: 8
