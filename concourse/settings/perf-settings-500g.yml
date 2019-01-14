@@ -5,7 +5,7 @@ folder-prefix: perf
 perf-scale: 500
 
 enable-impersonation-multinode: true
-pxf-jvm-opts: "-Xmx8g -Xms4g"
+pxf-jvm-opts: "-XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/heap_dump -Xmx8g -Xms4g"
 perf-ccp-reap-minutes: 120
 
 perf-gpdb-number-of-nodes: 16
