@@ -99,6 +99,17 @@
             <version>LATEST</version>
         </dependency>
 
+        <!-- Introduced for MapR dependencies that need to be classloaded
+             before hadoop-common and hadoop-auth. -->
+        <dependency>
+            <groupId>org.greenplum</groupId>
+            <artifactId>pxf-extras</artifactId>
+            <scope>system</scope>
+            <systemPath>${pxf.lib}/pxf-extras.jar</systemPath>
+            <version>LATEST</version>
+            <optional>true</optional>
+        </dependency>
+
         <dependency>
             <groupId>org.xerial.snappy</groupId>
             <artifactId>snappy-java</artifactId>
@@ -267,7 +278,6 @@
             <artifactId>azure-storage</artifactId>
             <version>2.2.0</version>
         </dependency>
-
 
         <!-- HADOOP Dependencies -->
         <dependency>
