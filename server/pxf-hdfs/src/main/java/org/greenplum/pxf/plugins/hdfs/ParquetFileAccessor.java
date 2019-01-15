@@ -21,7 +21,6 @@ package org.greenplum.pxf.plugins.hdfs;
 
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.mapred.FileSplit;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.page.PageReadStore;
@@ -67,14 +66,14 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
     private static final int DEFAULT_ROWGROUP_SIZE = 8 * 1024 * 1024;
     private static final int DEFAULT_DICTIONARY_PAGE_SIZE = 512 * 1024;
     private static final WriterVersion DEFAULT_PARQUET_VERSION = WriterVersion.PARQUET_1_0;
-    private static final CompressionCodecName DEFAULT_COMPRESSION_CODEC_NAME = CompressionCodecName.UNCOMPRESSED;
+
+    private MessageType schema;
     private ParquetFileReader fileReader;
     private MessageColumnIO columnIO;
     private HcfsType hcfsType;
     private ParquetWriter<Group> parquetWriter;
     private RecordReader<Group> recordReader;
     private long rowsInRowGroup;
-    private MessageType schema;
     private long rowGroupsReadCount;
 
     @Override
@@ -146,6 +145,22 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
         return count;
     }
 
+    private CompressionCodecName getCodec(String name) {
+        CompressionCodecName codecName = CompressionCodecName.SNAPPY;
+        if (name != null) {
+            try {
+                codecName = CompressionCodecName.fromConf(name);
+            } catch(IllegalArgumentException ie) {
+                try {
+                    codecName = CompressionCodecName.fromCompressionCodec(Class.forName(name));
+                } catch(ClassNotFoundException ce) {
+                    throw new IllegalArgumentException(String.format("Invalid codec: %s ", name));
+                }
+            }
+        }
+        return codecName;
+    }
+
     /**
      * Closes the resource for read.
      *
@@ -161,6 +176,8 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
 
     /**
      * Opens the resource for write.
+     * Uses compression codec based on user input which
+     * defaults to Snappy
      *
      * @return true if the resource is successfully opened
      * @throws IOException if opening the resource failed
@@ -170,30 +187,10 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
 
         String fileName = hcfsType.getDataUri(configuration, context);
         String compressCodec = context.getOption("COMPRESSION_CODEC");
-        CompressionCodecName codecName = DEFAULT_COMPRESSION_CODEC_NAME;
-        CompressionCodec codec;
-
-        // get compression codec
-        if (compressCodec != null) {
-            codec = HdfsUtilities.getCodec(configuration, compressCodec);
-            String extension = codec.getDefaultExtension();
-            fileName += extension;
-            switch (compressCodec) {
-                case "lzo":
-                    codecName = CompressionCodecName.LZO;
-                    break;
-                case "snappy":
-                    codecName = CompressionCodecName.SNAPPY;
-                    break;
-                case "gz":
-                    codecName = CompressionCodecName.GZIP;
-                    break;
-                default:
-                    throw new IOException("compression method not support, codec:" + compressCodec);
-            }
-        }
-
+        CompressionCodecName codecName = getCodec(compressCodec);
+        fileName += codecName.getExtension() + ".parquet";
         LOG.debug("Creating file {}", fileName);
+
         FileSystem fs = FileSystem.get(URI.create(fileName), configuration);
         Path file = new Path(fileName);
         if (fs.exists(file)) {
