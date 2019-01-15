@@ -111,7 +111,7 @@ resources:
     branch: {{pxf-git-branch}}
     uri: {{pxf-git-remote}}
 {% if pipeline_type == "release" %}
-    tag_filter: 4.*
+    tag_filter: 5.*
 
 - name: gpdb-pxf-dev-centos6
   type: docker-image
@@ -132,14 +132,12 @@ resources:
     repository: pivotaldata/gpdb-pxf-dev
     tag: centos6-hdp-server
 
-{% if pipeline_type == "pxf" %}
 - name: gpdb-pxf-dev-ubuntu16-hdp-server
   type: docker-image
   source:
     repository: pivotaldata/gpdb-pxf-dev
     tag: ubuntu16-hdp-server
 
-{% endif %}
 - name: gpdb-pxf-dev-centos6-hdp-secure
   type: docker-image
   source:
@@ -169,18 +167,16 @@ resources:
     versioned_file: bin_gpdb_centos6/gpdb_branch_((gpdb-branch))/icw_green/bin_gpdb.tar.gz
 {% endif %}
 
-{%  if pipeline_type == "pxf" %}
 - name: bin_gpdb_ubuntu16
   type: s3
   source:
     access_key_id: {{bucket-access-key-id}}
     # use the most recent compiled bits, for now, before updating icw_green
-    bucket: {{icw_green_bucket}}
+    bucket: gpdb5-stable-concourse-builds
     region_name: {{aws-region}}
     secret_access_key: {{bucket-secret-access-key}}
     versioned_file: compiled_bits_ubuntu16/compiled_bits_ubuntu16.tar.gz
 
-{% endif %}
 - name: pxf_tarball
   type: s3
   source:
@@ -352,7 +348,6 @@ jobs:
       ACCEPTANCE: true
 {% endif %}
 
-{% if pipeline_type == "pxf" %}
 - name: test_pxf_hdp_ubuntu16
   plan:
   - aggregate:
@@ -393,7 +388,6 @@ jobs:
       ACCEPTANCE: true
 {% endif %}
 
-{% endif %}
 - name: test_pxf_hdp_secure_with_impersonation
   plan:
   - aggregate:
