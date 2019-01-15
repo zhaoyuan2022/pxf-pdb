@@ -162,8 +162,8 @@ function install_pxf_server() {
 			make install
 			popd
 		fi
-		chown -R gpadmin:gpadmin ${PXF_HOME}
 	fi
+	chown -R gpadmin:gpadmin ${PXF_HOME}
 }
 
 function setup_impersonation() {
