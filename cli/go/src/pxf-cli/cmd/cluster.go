@@ -187,7 +187,9 @@ func doBatchedSetupAndClusterRun(batchSize int, cmd pxf.Command) error {
 				gplog.Error(err.Error())
 				os.Exit(1)
 			}
-			gplog.Info(fmt.Sprintf("Running on [%s]", strings.TrimSuffix(listOfSegs.String(), ", ")))
+			if len(uniqueHostSegConfigs) > batchSize {
+				gplog.Info(fmt.Sprintf("Running on [%s]", strings.TrimSuffix(listOfSegs.String(), ", ")))
+			}
 			err = clusterRun(cmd)
 			batchOfSegs = make([]cluster.SegConfig, 0)
 			listOfSegs.Reset()
