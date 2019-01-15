@@ -147,7 +147,6 @@ resources:
     repository: pivotaldata/gpdb-pxf-dev
     tag: centos6-mapr-server
 
-{% if pipeline_type == "pxf" %}
 - name: gpdb-pxf-dev-ubuntu16-hdp-server
   type: docker-image
   source:
