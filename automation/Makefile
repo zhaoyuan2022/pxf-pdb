@@ -65,10 +65,10 @@ symlink_pxf_jars:
 		touch $(PXF_HOME)/tmp/pxf-extras.jar; \
 	fi
 
-test: symlink_pxf_jars sync_cloud_configs
+test: clean-logs symlink_pxf_jars sync_cloud_configs
 	$(MVN) $(MAVEN_TEST_OPTS) ${MAVEN_DEBUG_OPTS} test
 
-clean:
+clean: clean-logs
 	$(MVN) $(MAVEN_TEST_OPTS) clean
 	rm -rf $(PXF_HOME)/tmp
 
