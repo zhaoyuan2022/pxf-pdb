@@ -18,7 +18,7 @@ RUN useradd -s /sbin/nologin -d /opt/minio minio && \
     mkdir -p /opt/minio/bin && \
     chmod a+rx /opt/minio && \
     mkdir /opt/minio/data && \
-    wget https://dl.minio.io/server/minio/release/linux-amd64/minio -O /opt/minio/bin/minio && \
+    wget -q https://dl.minio.io/server/minio/release/linux-amd64/minio -O /opt/minio/bin/minio && \
     chmod +x /opt/minio/bin/minio && \
     chown -R minio:minio /opt/minio
 
