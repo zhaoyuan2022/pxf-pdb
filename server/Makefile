@@ -33,7 +33,7 @@ help:
 	@echo	"  - doc - creates aggregate javadoc under docs"
 
 all:
-	./gradlew clean tar aggregateJavadoc $(BUILD_PARAMS)
+	./gradlew clean tar $(BUILD_PARAMS)
 
 compile:
 	./gradlew compileJava
