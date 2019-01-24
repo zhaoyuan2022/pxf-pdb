@@ -2,7 +2,7 @@
 ## GROUPS
 ## ======================================================================
 groups:
-- name: build-docker-images
+- name: all
   jobs:
   - docker-gpdb-dev-centos6
   - docker-gpdb-dev-centos6-hdp-secure
@@ -20,6 +20,31 @@ groups:
   - docker-gpdb-pxf-dev-centos7-mapr-server
   - docker-gpdb-pxf-dev-centos7-cdh-server
   - docker-gpdb-pxf-dev-centos7-hdp-server
+  - docker-gpdb-pxf-dev-ubuntu16-cdh-server
+  - docker-gpdb-pxf-dev-ubuntu16-hdp-server
+
+- name: centos6
+  jobs:
+  - docker-gpdb-dev-centos6
+  - docker-gpdb-dev-centos6-hdp-secure
+  - docker-gpdb-pxf-dev-centos6
+  - docker-gpdb-pxf-dev-centos6-mapr-server
+  - docker-gpdb-pxf-dev-centos6-cdh-server
+  - docker-gpdb-pxf-dev-centos6-hdp-server
+
+- name: centos7
+  jobs:
+  - docker-gpdb-dev-centos7
+  - docker-gpdb-dev-centos7-hdp-secure
+  - docker-gpdb-pxf-dev-centos7
+  - docker-gpdb-pxf-dev-centos7-mapr-server
+  - docker-gpdb-pxf-dev-centos7-cdh-server
+  - docker-gpdb-pxf-dev-centos7-hdp-server
+
+- name: ubuntu16
+  jobs:
+  - docker-gpdb-dev-ubuntu16
+  - docker-gpdb-pxf-dev-ubuntu16
   - docker-gpdb-pxf-dev-ubuntu16-cdh-server
   - docker-gpdb-pxf-dev-ubuntu16-hdp-server
 
