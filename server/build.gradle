@@ -110,22 +110,22 @@ project('pxf') {
     dependencies {
         // AWS S3 support jars
         bundleJars "com.fasterxml.jackson.core:jackson-core:2.6.7"
-        bundleJars "com.fasterxml.jackson.core:jackson-databind:2.6.7.1"
+        bundleJars "com.fasterxml.jackson.core:jackson-databind:2.6.7.2"
         bundleJars "com.fasterxml.jackson.core:jackson-annotations:2.6.0"
-        bundleJars "org.apache.httpcomponents:httpclient:4.5.2"
-        bundleJars "org.apache.httpcomponents:httpcore:4.4.4"
+        bundleJars "org.apache.httpcomponents:httpclient:4.5.5"
+        bundleJars "org.apache.httpcomponents:httpcore:4.4.9"
         bundleJars "org.apache.hadoop:hadoop-aws:${hadoopVersion}"
         bundleJars "com.amazonaws:aws-java-sdk-core:${awsJavaSdk}"
         bundleJars "com.amazonaws:aws-java-sdk-kms:${awsJavaSdk}"
         bundleJars "com.amazonaws:aws-java-sdk-s3:${awsJavaSdk}"
         // Azure Data Blob
         bundleJars "org.apache.hadoop:hadoop-azure:${hadoopVersion}"
-        bundleJars "com.microsoft.azure:azure-storage:2.2.0"
+        bundleJars "com.microsoft.azure:azure-storage:5.4.0"
         // Azure Datalake jars
         bundleJars "org.apache.hadoop:hadoop-azure-datalake:${hadoopVersion}"
         bundleJars "com.microsoft.azure:azure-data-lake-store-sdk:2.2.3"
         // GCS jars and dependencies
-        bundleJars "com.google.cloud.bigdataoss:gcs-connector:1.9.0-hadoop2:shaded"
+        bundleJars "com.google.cloud.bigdataoss:gcs-connector:1.9.2-hadoop2:shaded"
     }
 }
 
@@ -165,6 +165,7 @@ project('pxf-hdfs') {
         compile "org.apache.avro:avro-mapred:1.7.7"
         compile "org.apache.hadoop:hadoop-mapreduce-client-core:${hadoopVersion}"
         compile "org.apache.hadoop:hadoop-yarn-api:${hadoopVersion}" // Kerberos dependency
+        compile "org.apache.hadoop:hadoop-yarn-client:${hadoopVersion}" // Kerberos dependency
         compile "org.apache.hadoop:hadoop-common:${hadoopVersion}"
         compile "org.apache.htrace:htrace-core4:${htraceVersion}"
         compile "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}"
@@ -177,6 +178,10 @@ project('pxf-hdfs') {
         compile "org.apache.parquet:parquet-hadoop:${parquetVersion}"
 
         bundleJars "org.apache.avro:avro:1.7.7"
+        // Dependency in hadoop 2.9.2
+        bundleJars "com.fasterxml.woodstox:woodstox-core:5.0.3"
+        bundleJars "org.codehaus.woodstox:stax2-api:3.1.4"
+
     }
 }
 
