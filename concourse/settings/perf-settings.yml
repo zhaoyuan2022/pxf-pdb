@@ -22,11 +22,12 @@ perf-trigger-interval: 24h
 perf-trigger-start: 12:30 PM
 perf-trigger-stop: 12:40 PM
 
+perf-benchmark-concurrency: 1
+perf-benchmark-hadoop: true
 perf-benchmark-adl: false
-perf-benchmark-hadoop: false
 perf-benchmark-s3: true
-perf-benchmark-concurrency: 5
 perf-benchmark-s3-extension: true
 perf-benchmark-gcs: false
 perf-benchmark-gphdfs: false
 perf-benchmark-wasb: false
+perf-sleep-before-destroy: 600
