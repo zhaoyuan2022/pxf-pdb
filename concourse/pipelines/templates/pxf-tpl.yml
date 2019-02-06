@@ -579,6 +579,8 @@ jobs:
   - aggregate:
     - task: intialize_greenplum
       file: ccp_src/ci/tasks/gpinitsystem.yml
+      on_failure:
+        <<: *ccp_destroy
     - task: install_hadoop
       file: pxf_src/concourse/tasks/install_hadoop.yml
       image: gpdb-pxf-dev-centos6-hdp-server
@@ -590,6 +592,8 @@ jobs:
 {% if pipeline_type == "pxf" %}
         TARGET_OS: centos
 {% endif %}
+      on_failure:
+        <<: *ccp_destroy
   - task: test_pxf_multinode
     input_mapping:
       bin_gpdb: gpdb_binary
