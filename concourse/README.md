@@ -55,8 +55,8 @@ fly -t ud set-pipeline \
     -l ~/workspace/gp-continuous-integration/secrets/gpdb_common-ci-secrets.yml \
     -l ~/workspace/gp-continuous-integration/secrets/ccp_ci_secrets_ud.yml \
     -l ~/workspace/pxf/concourse/settings/perf-settings-10g.yml \
-    -v gpdb-branch=master -v icw_green_bucket=gpdb5-stable-concourse-builds \
-    -v pxf-git-branch=5X_STABLE -p pxf_perf-10g
+    -v gpdb-branch=5X_STABLE -v icw_green_bucket=gpdb5-stable-concourse-builds \
+    -v pxf-git-branch=master -p pxf_perf-10g
 ```
 
 You can deploy a development version of the perf pipeline by substituting the name
@@ -71,8 +71,8 @@ fly -t ud set-pipeline \
     -l ~/workspace/gp-continuous-integration/secrets/gpdb_common-ci-secrets.yml \
     -l ~/workspace/gp-continuous-integration/secrets/ccp_ci_secrets_ud.yml \
     -l ~/workspace/pxf/concourse/settings/perf-settings-50g.yml \
-    -v gpdb-branch=master -v icw_green_bucket=gpdb5-stable-concourse-builds \
-    -v pxf-git-branch=5X_STABLE -p pxf_perf-50g
+    -v gpdb-branch=5X_STABLE -v icw_green_bucket=gpdb5-stable-concourse-builds \
+    -v pxf-git-branch=master -p pxf_perf-50g
 ```
 
 500G Performance pipeline:
@@ -83,8 +83,8 @@ fly -t ud set-pipeline \
     -l ~/workspace/gp-continuous-integration/secrets/gpdb_common-ci-secrets.yml \
     -l ~/workspace/gp-continuous-integration/secrets/ccp_ci_secrets_ud.yml \
     -l ~/workspace/pxf/concourse/settings/perf-settings-500g.yml \
-    -v gpdb-branch=master -v icw_green_bucket=gpdb5-stable-concourse-builds \
-    -v pxf-git-branch=5X_STABLE -p pxf_perf-500g
+    -v gpdb-branch=5X_STABLE -v icw_green_bucket=gpdb5-stable-concourse-builds \
+    -v pxf-git-branch=master -p pxf_perf-500g
 ```
 
 # Deploy a PXF acceptance pipeline
