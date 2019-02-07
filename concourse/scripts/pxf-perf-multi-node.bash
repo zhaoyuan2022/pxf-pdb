@@ -8,6 +8,7 @@ export PGDATABASE=tpch
 GPHOME="/usr/local/greenplum-db-devel"
 CWDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 HADOOP_HOSTNAME="ccp-$(cat terraform_dataproc/name)-m"
+SCALE=${SCALE:-10}
 scale=$(($SCALE + 0))
 PXF_CONF_DIR="/home/gpadmin/pxf"
 PXF_SERVER_DIR="${PXF_CONF_DIR}/servers"
@@ -325,6 +326,8 @@ function run_concurrent_benchmark() {
         echo "Starting PXF Benchmark ${benchmark_fn} ${i} with UUID ${UUID}-${i}"
         ${benchmark_fn} ${prepare_test_fn} "${benchmark_name}" "${benchmark_description}" "${i}" >/tmp/${benchmark_fn}-${benchmark_name}-${i}.bench 2>&1 &
         pids+=("$!")
+        # Sleep for 30 seconds before subsequent runs
+        sleep 30
     done
 
     set +e
@@ -464,8 +467,8 @@ function main() {
         fi
     fi
 
-    echo "Destroying cluster in ${sleep_time} seconds"
     sleep_time=${SLEEP_BEFORE_DESTROY_IN_SEC:-150}
+    echo "Destroying cluster in ${sleep_time} seconds"
     sleep ${sleep_time}
 }
 

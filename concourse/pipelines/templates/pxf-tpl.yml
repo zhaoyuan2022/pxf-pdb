@@ -508,7 +508,7 @@ jobs:
     file: pxf_src/concourse/tasks/test_pxf_secure.yml
     image: gpdb-pxf-dev-centos6-hdp-secure
     privileged: true
-    attempts: 3
+    attempts: 2
     params:
       AWS_ACCESS_KEY_ID: {{tf-machine-access-key-id}}
       AWS_SECRET_ACCESS_KEY: {{tf-machine-secret-access-key}}
@@ -549,7 +549,7 @@ jobs:
     file: pxf_src/concourse/tasks/test_pxf_secure.yml
     image: gpdb-pxf-dev-centos6-hdp-secure
     privileged: true
-    attempts: 3
+    attempts: 2
     params:
       AWS_ACCESS_KEY_ID: {{tf-machine-access-key-id}}
       AWS_SECRET_ACCESS_KEY: {{tf-machine-secret-access-key}}
@@ -676,7 +676,7 @@ jobs:
   - task: test_pxf
     file: pxf_src/concourse/tasks/test_pxf.yml
     image: gpdb-pxf-dev-centos6-cdh-server
-    attempts: 3
+    attempts: 2
     params:
       ACCESS_KEY_ID: {{tf-machine-access-key-id}}
       SECRET_ACCESS_KEY: {{tf-machine-secret-access-key}}
