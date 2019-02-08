@@ -2,7 +2,7 @@ ARG BASE_IMAGE=ubuntu-gpdb-dev:16.04
 
 FROM pivotaldata/${BASE_IMAGE}
 
-RUN apt-get update && apt-get install sudo && \
+RUN apt-get update && apt-get install sudo time libzstd1-dev && \
     groupadd -g 1000 gpadmin && useradd -u 1000 -g 1000 gpadmin && \
     echo "gpadmin  ALL=(ALL)       NOPASSWD: ALL" > /etc/sudoers.d/gpadmin && \
     groupadd supergroup && usermod -a -G supergroup gpadmin && \
