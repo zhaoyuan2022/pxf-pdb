@@ -8,21 +8,21 @@ groups:
 {% if compile_gpdb %}
       - compile_gpdb_centos6
 {% endif %}
-      - test_pxf_hdp_centos6
       - test_pxf_cdh_centos6
       - test_pxf_hdp_ubuntu16
       - test_pxf_hdp_multinode_gpdb
+      - test_pxf_s3_no_impersonation
+      - test_pxf_s3_with_impersonation
+      - test_pxf_hdp_secure_with_impersonation
+      - test_pxf_no_impersonation
+      - test_pxf_hdp_multinode_gpdb
+{% if pipeline_type == "release" %}
+      - test_pxf_hdp_centos6
       - test_pxf_mapr_centos6
       - test_pxf_adl
       - test_pxf_gs
       - test_pxf_minio
-      - test_pxf_s3_no_impersonation
-      - test_pxf_s3_with_impersonation
-      - test_pxf_hdp_secure_with_impersonation
       - test_pxf_hdp_secure_no_impersonation
-      - test_pxf_no_impersonation
-      - test_pxf_hdp_multinode_gpdb
-{% if pipeline_type == "release" %}
       - build_release_candidate_centos
 {% elif pipeline_type == "pxf" %}
       - promote_pxf_artifact
@@ -35,10 +35,12 @@ groups:
       - compile_gpdb_centos6
 {% endif %}
       - test_pxf_cdh_centos6
-      - test_pxf_hdp_centos6
       - test_pxf_hdp_ubuntu16
       - test_pxf_hdp_multinode_gpdb
+{% if pipeline_type == "release" %}
+      - test_pxf_hdp_centos6
       - test_pxf_mapr_centos6
+{% endif %}
 
   - name: cloud
     jobs:
@@ -46,11 +48,13 @@ groups:
 {% if compile_gpdb %}
       - compile_gpdb_centos6
 {% endif %}
+      - test_pxf_s3_no_impersonation
+      - test_pxf_s3_with_impersonation
+{% if pipeline_type == "release" %}
       - test_pxf_adl
       - test_pxf_gs
       - test_pxf_minio
-      - test_pxf_s3_no_impersonation
-      - test_pxf_s3_with_impersonation
+{% endif %}
 
   - name: secure
     jobs:
@@ -59,7 +63,9 @@ groups:
       - compile_gpdb_centos6
 {% endif %}
       - test_pxf_hdp_secure_with_impersonation
+{% if pipeline_type == "release" %}
       - test_pxf_hdp_secure_no_impersonation
+{% endif %}
 
   - name: no_impersonation
     jobs:
@@ -67,12 +73,14 @@ groups:
 {% if compile_gpdb %}
       - compile_gpdb_centos6
 {% endif %}
+      - test_pxf_no_impersonation
+      - test_pxf_s3_no_impersonation
+{% if pipeline_type == "release" %}
       - test_pxf_adl
       - test_pxf_gs
       - test_pxf_minio
-      - test_pxf_no_impersonation
-      - test_pxf_s3_no_impersonation
       - test_pxf_hdp_secure_no_impersonation
+{% endif %}
 
 ## ======================================================================
 ## ANCHORS
@@ -140,13 +148,13 @@ resources:
     uri: {{pxf-git-remote}}
 {% if pipeline_type == "release" %}
     tag_filter: 5.*
+{% endif %}
 
 - name: gpdb-pxf-dev-centos6
   type: docker-image
   source:
     repository: pivotaldata/gpdb-pxf-dev
     tag: centos6
-{% endif %}
 
 - name: gpdb-pxf-dev-centos6-cdh-server
   type: docker-image
@@ -160,11 +168,13 @@ resources:
     repository: pivotaldata/gpdb-pxf-dev
     tag: centos6-hdp-server
 
+{% if pipeline_type == "release" %}
 - name: gpdb-pxf-dev-centos6-mapr-image
   type: docker-image
   source:
     repository: pivotaldata/gpdb-pxf-dev
     tag: centos6-mapr-server
+{% endif %}
 
 - name: gpdb-pxf-dev-ubuntu16-hdp-server
   type: docker-image
@@ -354,22 +364,15 @@ jobs:
 {% endif %}
     - get: pxf_src
       trigger: true
-{% if pipeline_type == "pxf" %}
-    - get: gpdb-pxf-dev-centos6-hdp-server
-{% elif pipeline_type == "release" %}
     - get: gpdb-pxf-dev-centos6
-{% endif %}
   - task: compile_pxf
-{% if pipeline_type == "pxf" %}
-    image: gpdb-pxf-dev-centos6-hdp-server
-{% elif pipeline_type == "release" %}
     image: gpdb-pxf-dev-centos6
-{% endif %}
     file: pxf_src/concourse/tasks/compile_pxf.yml
   - put: pxf_tarball
     params:
       file: pxf_artifacts/pxf.tar.gz
 
+{% if pipeline_type == "release" %}
 - name: test_pxf_hdp_centos6
   plan:
   - aggregate:
@@ -446,6 +449,7 @@ jobs:
 {% if acceptance %}
       ACCEPTANCE: true
 {% endif %}
+{% endif %}
 
 - name: test_pxf_hdp_ubuntu16
   plan:
@@ -521,6 +525,7 @@ jobs:
       ACCEPTANCE: true
 {% endif %}
 
+{% if pipeline_type == "release" %}
 - name: test_pxf_hdp_secure_no_impersonation
   plan:
   - aggregate:
@@ -560,6 +565,7 @@ jobs:
       TARGET_OS: centos
 {% if acceptance %}
       ACCEPTANCE: true
+{% endif %}
 {% endif %}
 
 - name: test_pxf_hdp_multinode_gpdb
@@ -764,6 +770,7 @@ jobs:
       ACCEPTANCE: true
 {% endif %}
 
+{% if pipeline_type == "release" %}
 - name: test_pxf_minio
   plan:
   - aggregate:
@@ -882,6 +889,7 @@ jobs:
 {% if acceptance %}
       ACCEPTANCE: true
 {% endif %}
+{% endif %}
 
 - name: test_pxf_no_impersonation
   plan:
@@ -925,17 +933,11 @@ jobs:
   plan:
   - get: pxf_tarball
     passed:
-    - test_pxf_hdp_centos6
     - test_pxf_cdh_centos6
-    - test_pxf_mapr_centos6
     - test_pxf_hdp_ubuntu16
-    - test_pxf_adl
-    - test_pxf_gs
-    - test_pxf_minio
     - test_pxf_s3_no_impersonation
     - test_pxf_s3_with_impersonation
     - test_pxf_hdp_secure_with_impersonation
-    - test_pxf_hdp_secure_no_impersonation
     - test_pxf_no_impersonation
     - test_pxf_hdp_multinode_gpdb
     trigger: true
