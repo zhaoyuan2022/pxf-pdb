@@ -33,4 +33,4 @@ perf-benchmark-s3-extension: true
 perf-benchmark-gcs: true
 perf-benchmark-gphdfs: true
 perf-benchmark-wasb: true
-perf-sleep-before-destroy: 600
+perf-sleep-before-destroy: 10
