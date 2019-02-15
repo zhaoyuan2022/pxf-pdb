@@ -45,7 +45,9 @@ ifneq "$(SECRET_ACCESS_KEY)" ""
 endif
 
 ifeq "$(PXF_TEST_DEBUG)" "true"
-	MAVEN_DEBUG_OPTS+= -Dmaven.surefire.debug -DPXF_TEST_DEBUG=$(PXF_TEST_DEBUG)
+	MAVEN_DEBUG_OPTS+= -DPXF_TEST_DEBUG=$(PXF_TEST_DEBUG)
+	# Uncomment below line to remote debug pxf automation test
+	# MAVEN_DEBUG_OPTS+= -Dmaven.surefire.debug
 endif
 
 MVN=mvn
