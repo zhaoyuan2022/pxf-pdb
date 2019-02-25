@@ -104,7 +104,7 @@ resource_types:
   type: docker-image
   source:
     repository: ljfranklin/terraform-resource
-{% if compile_gpdb %}
+{% if compile_gpdb and gpdb_branch == 'master' %}
 
 - name: gcs
   type: docker-image
@@ -279,10 +279,15 @@ resources:
 - name: gpaddon_src
   type: git
   source:
-    branch: {{gpaddon-git-branch}}
+{% if gpdb_branch == 'master' %}
+    branch: master
+{% else %}
+    branch: 5X_STABLE
+{% endif %}
     private_key: {{gpaddon-git-key}}
     uri: {{gpaddon-git-remote}}
 
+{% if gpdb_branch == 'master' %}
 - name: gpdb6-centos6-build
   type: docker-image
   source:
@@ -309,6 +314,13 @@ resources:
     bucket: gp-internal-artifacts
     json_key: ((gcs-key))
     versioned_file: centos6/python-2.7.12.tar.gz
+{% else %}
+- name: centos-gpdb-dev-6
+  type: docker-image
+  source:
+    repository: pivotaldata/centos-gpdb-dev
+    tag: 6-gcc6.2-llvm3.7
+{% endif %}
 
 {% endif %}
 ## ======================================================================
@@ -322,6 +334,7 @@ jobs:
   - aggregate:
     - get: gpdb_src
     - get: gpaddon_src
+  {% if gpdb_branch == 'master' %}
     - get: gpdb6-centos6-build
     - get: libquicklz-installer
       resource: libquicklz-centos6
@@ -329,9 +342,16 @@ jobs:
       resource: libquicklz-devel-centos6
     - get: python-tarball
       resource: python-centos6
+{% else %}
+    - get: centos-gpdb-dev-6
+{% endif %}
   - task: sync_tools
     file: gpdb_src/concourse/tasks/sync_tools.yml
+{% if gpdb_branch == 'master' %}
     image: gpdb6-centos6-build
+{% else %}
+    image: centos-gpdb-dev-6
+{% endif %}
     params:
       IVYREPO_HOST: {{ivyrepo_host}}
       IVYREPO_REALM: {{ivyrepo_realm}}
@@ -343,7 +363,11 @@ jobs:
       TASK_OS_VERSION: 6
   - task: compile_gpdb
     file: gpdb_src/concourse/tasks/compile_gpdb.yml
+{% if gpdb_branch == 'master' %}
     image: gpdb6-centos6-build
+{% else %}
+    image: centos-gpdb-dev-6
+{% endif %}
     params:
       CONFIGURE_FLAGS: {{configure_flags}}
       TARGET_OS: centos

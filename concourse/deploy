@@ -41,7 +41,8 @@ def create_pipeline():
         'timestamp': datetime.datetime.now(),
         'pipeline_type': ARGS.pipeline_type,
         'compile_gpdb': ARGS.compile_gpdb,
-        'acceptance': ARGS.acceptance
+        'acceptance': ARGS.acceptance,
+        'gpdb_branch': ARGS.gpdb_branch
     }
 
     pipeline_yml = render_template(ARGS.template_filename, context)
