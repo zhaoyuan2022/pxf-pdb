@@ -301,6 +301,13 @@ resources:
     json_key: ((gcs-key))
     regexp: centos6/libquicklz-(\d.*)\.el6\.x86_64\.rpm
 
+- name: libsigar-centos6
+  type: gcs
+  source:
+    bucket: ((pivotal-gp-internal-artifacts-gcs-bucket))
+    json_key: ((gcs-key))
+    regexp: centos6/sigar-rhel6_x86_64-(.*)\.targz
+
 - name: libquicklz-devel-centos6
   type: gcs
   source:
@@ -340,6 +347,8 @@ jobs:
       resource: libquicklz-centos6
     - get: libquicklz-devel-installer
       resource: libquicklz-devel-centos6
+    - get: libsigar-installer
+      resource: libsigar-centos6
     - get: python-tarball
       resource: python-centos6
 {% else %}
