@@ -54,6 +54,7 @@ function install_gpdb_binary() {
 		service sshd start
 		psi_dir=$(find /usr/lib64 -name psi | sort -r | head -1)
 	elif [[ ${TARGET_OS} == "ubuntu" ]]; then
+		ln -s ${GPHOME} /usr/local/gpdb
 		service ssh start
 		pip install psi
 		psi_dir=$(find /usr/local/lib -name psi | sort -r | head -1)
