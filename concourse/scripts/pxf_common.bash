@@ -1,11 +1,6 @@
 #!/bin/bash -l
 
-if [[ ${TARGET_OS} == "ubuntu" ]]; then
-	GPHOME="/usr/local/gpdb"
-else
-	GPHOME="/usr/local/greenplum-db-devel"
-fi
-
+GPHOME="/usr/local/greenplum-db-devel"
 PXF_HOME="${GPHOME}/pxf"
 
 MDD_VALUE="/data/gpdata/master/gpseg-1"
