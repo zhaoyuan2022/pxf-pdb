@@ -75,8 +75,6 @@ def how_to_use_generated_pipeline_message():
         cmd += '    -l ~/workspace/gp-continuous-integration/secrets/pxf-release.prod.yml \\\n'
         if ARGS.gpdb_branch == 'master':
             cmd += '    -l ~/workspace/gp-continuous-integration/secrets/gpdb-6X_STABLE-release-secrets.prod.yml \\\n'
-        else:
-            cmd += '    -l ~/workspace/gp-continuous-integration/secrets/gpdb-5X-release-secrets.prod.yml \\\n'
 
     cmd += '    -l ' + ARGS.YML_FILE + ' \\\n'
     cmd += '    -v folder-prefix=' + ARGS.PREFIX + ' -v test-env=' + ARGS.TEST_ENV + ' \\\n'

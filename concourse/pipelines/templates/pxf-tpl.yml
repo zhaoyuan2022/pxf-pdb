@@ -195,13 +195,6 @@ resources:
     tag: 7
 
 - name: bin_gpdb_centos6
-{% if pipeline_type == "release" and gpdb_branch == 'master' %}
-  type: gcs
-  source:
-    bucket: ((gcs-bucket-intermediates))
-    json_key: ((concourse-gcs-resources-service-account-key))
-    versioned_file: gpdb_master/bin_gpdb_centos6/bin_gpdb.tar.gz
-{% else %}
   type: s3
   source:
     access_key_id: {{bucket-access-key-id}}
@@ -212,11 +205,14 @@ resources:
     versioned_file: {{bin_gpdb_centos_versioned_file}}
 {% elif pipeline_type == "release" %}
     bucket: {{gpdb-stable-builds-bucket-name}}
+{% if gpdb_branch == 'master' %}
+    versioned_file: release_candidates/bin_gpdb_centos6/gpdb6/debug/bin_gpdb.tar.gz
+{% else %}
     versioned_file: release_candidates/bin_gpdb_centos6/gpdb5/bin_gpdb.tar.gz
+{% endif %}
 {% elif pipeline_type == "pxf" %}
     bucket: {{icw_green_bucket}}
     versioned_file: bin_gpdb_centos6/gpdb_branch_((gpdb-branch))/icw_green/bin_gpdb.tar.gz
-{% endif %}
 {% endif %}
 
 - name: bin_gpdb_ubuntu16
@@ -230,7 +226,6 @@ resources:
   type: s3
   source:
     access_key_id: {{bucket-access-key-id}}
-    # use the most recent compiled bits, for now, before updating icw_green
     bucket: gpdb5-stable-concourse-builds
     region_name: {{aws-region}}
     secret_access_key: {{bucket-secret-access-key}}
