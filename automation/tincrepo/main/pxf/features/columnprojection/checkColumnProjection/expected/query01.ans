@@ -118,36 +118,36 @@ SELECT t0, colprojvalue FROM test_column_projection WHERE sqrt(a1) > 1 ORDER BY 
  J  | t0|a1|colprojvalue
 (8 rows)
 
--- SELECT t0, colprojvalue, sqrt(a1) FROM test_column_projection ORDER BY t0;
---  t0 |    colprojvalue    |       sqrt
--- ----+--------------------+------------------
---  A  | t0|a1|colprojvalue |                0
---  B  | t0|a1|colprojvalue |                1
---  C  | t0|a1|colprojvalue |  1.4142135623731
---  D  | t0|a1|colprojvalue | 1.73205080756888
---  E  | t0|a1|colprojvalue |                2
---  F  | t0|a1|colprojvalue | 2.23606797749979
---  G  | t0|a1|colprojvalue | 2.44948974278318
---  H  | t0|a1|colprojvalue | 2.64575131106459
---  I  | t0|a1|colprojvalue | 2.82842712474619
---  J  | t0|a1|colprojvalue |                3
--- (10 rows)
+SELECT t0, colprojvalue, sqrt(a1) FROM test_column_projection ORDER BY t0;
+ t0 |    colprojvalue    |       sqrt
+----+--------------------+------------------
+ A  | t0|a1|colprojvalue |                0
+ B  | t0|a1|colprojvalue |                1
+ C  | t0|a1|colprojvalue |  1.4142135623731
+ D  | t0|a1|colprojvalue | 1.73205080756888
+ E  | t0|a1|colprojvalue |                2
+ F  | t0|a1|colprojvalue | 2.23606797749979
+ G  | t0|a1|colprojvalue | 2.44948974278318
+ H  | t0|a1|colprojvalue | 2.64575131106459
+ I  | t0|a1|colprojvalue | 2.82842712474619
+ J  | t0|a1|colprojvalue |                3
+(10 rows)
 
--- -- Casting boolean column to int
--- SELECT t0, colprojvalue, sqrt(b2::int) FROM test_column_projection ORDER BY t0;
---  t0 |    colprojvalue    | sqrt
--- ----+--------------------+------
---  A  | t0|b2|colprojvalue |    1
---  B  | t0|b2|colprojvalue |    0
---  C  | t0|b2|colprojvalue |    1
---  D  | t0|b2|colprojvalue |    0
---  E  | t0|b2|colprojvalue |    1
---  F  | t0|b2|colprojvalue |    0
---  G  | t0|b2|colprojvalue |    1
---  H  | t0|b2|colprojvalue |    0
---  I  | t0|b2|colprojvalue |    1
---  J  | t0|b2|colprojvalue |    0
--- (10 rows)
+-- Casting boolean column to int
+SELECT t0, colprojvalue, sqrt(b2::int) FROM test_column_projection ORDER BY t0;
+ t0 |    colprojvalue    | sqrt
+----+--------------------+------
+ A  | t0|b2|colprojvalue |    1
+ B  | t0|b2|colprojvalue |    0
+ C  | t0|b2|colprojvalue |    1
+ D  | t0|b2|colprojvalue |    0
+ E  | t0|b2|colprojvalue |    1
+ F  | t0|b2|colprojvalue |    0
+ G  | t0|b2|colprojvalue |    1
+ H  | t0|b2|colprojvalue |    0
+ I  | t0|b2|colprojvalue |    1
+ J  | t0|b2|colprojvalue |    0
+(10 rows)
 
 SET optimizer = on;
 SET
@@ -258,36 +258,36 @@ SELECT t0, colprojvalue FROM test_column_projection WHERE sqrt(a1) > 1 ORDER BY 
  J  | t0|a1|colprojvalue
 (8 rows)
 
--- SELECT t0, colprojvalue, sqrt(a1) FROM test_column_projection ORDER BY t0;
---  t0 |    colprojvalue    |       sqrt
--- ----+--------------------+------------------
---  A  | t0|a1|colprojvalue |                0
---  B  | t0|a1|colprojvalue |                1
---  C  | t0|a1|colprojvalue |  1.4142135623731
---  D  | t0|a1|colprojvalue | 1.73205080756888
---  E  | t0|a1|colprojvalue |                2
---  F  | t0|a1|colprojvalue | 2.23606797749979
---  G  | t0|a1|colprojvalue | 2.44948974278318
---  H  | t0|a1|colprojvalue | 2.64575131106459
---  I  | t0|a1|colprojvalue | 2.82842712474619
---  J  | t0|a1|colprojvalue |                3
--- (10 rows)
+SELECT t0, colprojvalue, sqrt(a1) FROM test_column_projection ORDER BY t0;
+ t0 |    colprojvalue    |       sqrt
+----+--------------------+------------------
+ A  | t0|a1|colprojvalue |                0
+ B  | t0|a1|colprojvalue |                1
+ C  | t0|a1|colprojvalue |  1.4142135623731
+ D  | t0|a1|colprojvalue | 1.73205080756888
+ E  | t0|a1|colprojvalue |                2
+ F  | t0|a1|colprojvalue | 2.23606797749979
+ G  | t0|a1|colprojvalue | 2.44948974278318
+ H  | t0|a1|colprojvalue | 2.64575131106459
+ I  | t0|a1|colprojvalue | 2.82842712474619
+ J  | t0|a1|colprojvalue |                3
+(10 rows)
 
--- -- Casting boolean column to int
--- SELECT t0, colprojvalue, sqrt(b2::int) FROM test_column_projection ORDER BY t0;
---  t0 |    colprojvalue    | sqrt
--- ----+--------------------+------
---  A  | t0|b2|colprojvalue |    1
---  B  | t0|b2|colprojvalue |    0
---  C  | t0|b2|colprojvalue |    1
---  D  | t0|b2|colprojvalue |    0
---  E  | t0|b2|colprojvalue |    1
---  F  | t0|b2|colprojvalue |    0
---  G  | t0|b2|colprojvalue |    1
---  H  | t0|b2|colprojvalue |    0
---  I  | t0|b2|colprojvalue |    1
---  J  | t0|b2|colprojvalue |    0
--- (10 rows)
+-- Casting boolean column to int
+SELECT t0, colprojvalue, sqrt(b2::int) FROM test_column_projection ORDER BY t0;
+ t0 |    colprojvalue    | sqrt
+----+--------------------+------
+ A  | t0|b2|colprojvalue |    1
+ B  | t0|b2|colprojvalue |    0
+ C  | t0|b2|colprojvalue |    1
+ D  | t0|b2|colprojvalue |    0
+ E  | t0|b2|colprojvalue |    1
+ F  | t0|b2|colprojvalue |    0
+ G  | t0|b2|colprojvalue |    1
+ H  | t0|b2|colprojvalue |    0
+ I  | t0|b2|colprojvalue |    1
+ J  | t0|b2|colprojvalue |    0
+(10 rows)
 
 -- cleanup
 -- start_ignore
