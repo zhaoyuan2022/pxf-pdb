@@ -87,6 +87,10 @@ function setup_hadoop() {
 }
 
 function _main() {
+	# kill the sshd background process when this script exits. Otherwise, the
+	# concourse build will run forever.
+	trap "pkill sshd" EXIT
+
 	if [[ ${PROTOCOL} == "s3" ]]; then
 		echo Using S3 protocol
 	elif [[ ${PROTOCOL} == "minio" ]]; then
@@ -101,6 +105,9 @@ EOF
 		# start mapr services before installing GPDB
 		/root/init-script
 	fi
+
+	# Ping is called by gpinitsystem, which must be run by gpadmin
+	chmod u+s /bin/ping
 
 	# Install GPDB
 	install_gpdb_binary

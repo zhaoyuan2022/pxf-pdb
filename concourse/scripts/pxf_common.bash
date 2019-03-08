@@ -67,7 +67,8 @@ function install_gpdb_binary() {
 	fi
 
 	if [[ ${TARGET_OS} == "centos" ]]; then
-		service sshd start
+		# We can't use service sshd restart as service is not installed on CentOS 7.
+		/usr/sbin/sshd &
 		psi_dir=$(find /usr/lib64 -name psi | sort -r | head -1)
 	elif [[ ${TARGET_OS} == "ubuntu" ]]; then
         # Adjust GPHOME if the binary expects it to be /usr/local/gpdb

@@ -9,7 +9,6 @@ SSH_OPTS="-i cluster_env_files/private_key.pem"
 GPHD_ROOT="/singlecluster"
 
 function install_hadoop_single_cluster() {
-
     local hadoop_ip=${1}
     ssh ${SSH_OPTS} centos@edw0 "sudo mkdir -p /root/.ssh &&
         sudo cp /home/centos/.ssh/authorized_keys /root/.ssh &&
