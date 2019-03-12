@@ -26,9 +26,8 @@
 
     <repositories>
         <repository>
-            <id>spring-plugins</id>
-            <name>spring-plugins</name>
-            <url>http://repo.spring.io/plugins-release/</url>
+            <id>jcenter</id>
+            <url>https://jcenter.bintray.com/</url>
         </repository>
     </repositories>
 
