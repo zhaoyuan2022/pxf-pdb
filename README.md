@@ -149,6 +149,11 @@ For subsequent minor changes to GPDB source you can simply do the following:
 ~/workspace/pxf/dev/install_gpdb.bash
 ```
 
+Run all the instructions below and run GROUP=smoke (in one script):
+```bash
+~/workspace/pxf/dev/smoke_shortcut.sh
+```
+
 Create Greenplum Cluster
 ```bash
 source /usr/local/greenplum-db-devel/greenplum_path.sh
@@ -202,21 +207,16 @@ make -C ~/workspace/pxf install
 
 # Initialize PXF
 export PXF_CONF=~/pxf
+export PXF_JVM_OPTS="-Xmx512m -Xms256m"
 $PXF_HOME/bin/pxf init
 
 # Start PXF
 $PXF_HOME/bin/pxf start
 ```
 
-Finally, if you don't have any servers configured, go ahead and copy the Hadoop templates to the default configuration location:
-
-```
-cp "${PXF_CONF}"/templates/*-site.xml "${PXF_CONF}/servers/default"
-```
-
 Install PXF client (ignore if this is already done)
 ```bash
-if [ -d ~/workspace/gpdb/gpAux/extensions/pxf ]; then
+if [[ -d ~/workspace/gpdb/gpAux/extensions/pxf ]]; then
 	PXF_EXTENSIONS_DIR=gpAux/extensions/pxf
 else
 	PXF_EXTENSIONS_DIR=gpcontrib/pxf
@@ -236,7 +236,7 @@ cp ~/pxf/templates/*.xml ~/pxf/servers/default
 # Run specific tests. Example: Hdfs Smoke Test
 make TEST=HdfsSmokeTest
 
-# Run all tests. This will be time consuming.
+# Run all tests. This will be very time consuming.
 make GROUP=gpdb
 
 # If you wish to run test(s) against a different storage protocol set the following variable (for eg: s3) 
@@ -261,8 +261,9 @@ To deploy your changes to PXF in the development environment.
 # So, if you have any config changes, you may want to back those up.
 $PXF_HOME/bin/pxf stop
 make -C ~/workspace/pxf install
-
 # Make any config changes you had backed up previously
+rm -rf $PXF_HOME/pxf-service
+yes | $PXF_HOME/bin/pxf init
 $PXF_HOME/bin/pxf start
 ```
 
