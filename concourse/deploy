@@ -71,6 +71,7 @@ def how_to_use_generated_pipeline_message():
 
     if ARGS.pipeline_type == 'pxf':
         cmd += '    -l ~/workspace/gp-continuous-integration/secrets/ccp_ci_secrets_ud.yml \\\n'
+        cmd += '    -l ' + ARGS.YML_FILE + ' \\\n'
     elif ARGS.pipeline_type == 'release':
         if ARGS.gpdb_branch == '5X_STABLE':
             cmd += '    -l ~/workspace/gp-continuous-integration/secrets/pxf-release-5x.prod.yml \\\n'
@@ -78,7 +79,6 @@ def how_to_use_generated_pipeline_message():
             cmd += '    -l ~/workspace/gp-continuous-integration/secrets/gpdb-6X_STABLE-release-secrets.prod.yml \\\n'
             cmd += '    -l ~/workspace/gp-continuous-integration/secrets/pxf-release-6x.prod.yml \\\n'
 
-    cmd += '    -l ' + ARGS.YML_FILE + ' \\\n'
     cmd += '    -v folder-prefix=' + ARGS.PREFIX + ' -v test-env=' + ARGS.TEST_ENV + ' \\\n'
     cmd += '    -v gpdb-branch=' + ARGS.gpdb_branch + ' \\\n'
     if ARGS.pipeline_type == 'pxf' and not ARGS.compile_gpdb:
