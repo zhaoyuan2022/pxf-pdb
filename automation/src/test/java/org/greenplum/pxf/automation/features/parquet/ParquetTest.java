@@ -14,20 +14,31 @@ public class ParquetTest extends BaseFeature {
     private final String pxfParquetTable = "pxf_parquet_primitive_types";
     private final String parquetWritePrimitives = "parquet_write_primitives";
     private final String parquetPrimitiveTypes = "parquet_primitive_types";
-    private final String[] parquet_table_columns = new String[] {
-            "t1    TEXT",
-            "t2    TEXT",
-            "num1  INTEGER",
-            "dub1  DOUBLE PRECISION",
-            "dec1  NUMERIC",
+    private final String[] parquet_table_columns = new String[]{
+            "s1    TEXT",
+            "s2    TEXT",
+            "n1    INTEGER",
+            "d1    DOUBLE PRECISION",
+            "dc1   NUMERIC",
             "tm    TIMESTAMP",
-            "r     REAL",
+            "f     REAL",
             "bg    BIGINT",
             "b     BOOLEAN",
             "tn    SMALLINT",
-            "sml   SMALLINT",
             "vc1   VARCHAR(5)",
+            "sml   SMALLINT",
             "c1    CHAR(3)",
+            "bin   BYTEA"
+    };
+
+    private final String pxfParquetSubsetTable = "pxf_parquet_subset";
+    private final String[] parquet_table_columns_subset = new String[]{
+            "s1    TEXT",
+            "n1    INTEGER",
+            "d1    DOUBLE PRECISION",
+            "f     REAL",
+            "b     BOOLEAN",
+            "vc1   VARCHAR(5)",
             "bin   BYTEA"
     };
 
@@ -40,7 +51,6 @@ public class ParquetTest extends BaseFeature {
         hdfs.copyFromLocal(resourcePath + parquetPrimitiveTypes, hdfsPath + parquetPrimitiveTypes);
     }
 
-
     @Test(groups = {"features", "gpdb", "hcfs"})
     public void parquetReadPrimitives() throws Exception {
 
@@ -52,12 +62,26 @@ public class ParquetTest extends BaseFeature {
         exTable.setProfile(ProtocolUtils.getProtocol().value() + ":parquet");
 
         gpdb.createTableAndVerify(exTable);
-        gpdb.runQuery("CREATE OR REPLACE VIEW parquet_view AS SELECT t1, t2, num1, dub1, dec1, " +
-                "CAST (((CAST(tm AS TIMESTAMP WITH TIME ZONE) AT TIME ZONE 'PDT') AT TIME ZONE " +
-                "current_setting('TIMEZONE')) AS TIMESTAMP WITHOUT TIME ZONE) as tm, " +
-                "r, bg, b, tn, sml, vc1, c1, bin FROM " + pxfParquetTable);
+
+        gpdb.runQuery("CREATE OR REPLACE VIEW parquet_view AS SELECT s1, s2, n1, d1, dc1, " +
+                "CAST(tm AS TIMESTAMP WITH TIME ZONE) AT TIME ZONE 'PDT' as tm, " +
+                "f, bg, b, tn, sml, vc1, c1, bin FROM " + pxfParquetTable);
 
         runTincTest("pxf.features.parquet.primitive_types.runTest");
+    }
+
+    @Test(groups = {"features", "gpdb", "hcfs"})
+    public void parquetReadSubset() throws Exception {
+        exTable = new ReadableExternalTable(pxfParquetSubsetTable,
+                parquet_table_columns_subset, hdfsPath + parquetPrimitiveTypes, "custom");
+        exTable.setHost(pxfHost);
+        exTable.setPort(pxfPort);
+        exTable.setFormatter("pxfwritable_import");
+        exTable.setProfile(ProtocolUtils.getProtocol().value() + ":parquet");
+
+        gpdb.createTableAndVerify(exTable);
+
+        runTincTest("pxf.features.parquet.read_subset.runTest");
     }
 
     @Test(groups = {"features", "gpdb", "hcfs"})
@@ -71,8 +95,8 @@ public class ParquetTest extends BaseFeature {
         exTable.setProfile(ProtocolUtils.getProtocol().value() + ":parquet");
 
         gpdb.createTableAndVerify(exTable);
-        gpdb.runQuery("INSERT INTO " + exTable.getName() + " SELECT t1, t2, num1, dub1, dec1, " +
-                "tm, r, bg, b, tn, sml, vc1, c1, bin FROM " + pxfParquetTable);
+        gpdb.runQuery("INSERT INTO " + exTable.getName() + " SELECT s1, s2, n1, d1, dc1, tm, " +
+                "f, bg, b, tn, vc1, sml, c1, bin FROM " + pxfParquetTable);
 
         exTable = new ReadableExternalTable("pxf_parquet_read_primitives",
                 parquet_table_columns, hdfsPath + parquetWritePrimitives, "custom");
@@ -81,10 +105,9 @@ public class ParquetTest extends BaseFeature {
         exTable.setFormatter("pxfwritable_import");
         exTable.setProfile(ProtocolUtils.getProtocol().value() + ":parquet");
         gpdb.createTableAndVerify(exTable);
-        gpdb.runQuery("CREATE OR REPLACE VIEW parquet_view AS SELECT t1, t2, num1, dub1, dec1, " +
-                "CAST (((CAST(tm AS TIMESTAMP WITH TIME ZONE) AT TIME ZONE 'PDT') AT TIME ZONE " +
-                "current_setting('TIMEZONE')) AS TIMESTAMP WITHOUT TIME ZONE) as tm, " +
-                "r, bg, b, tn, sml, vc1, c1, bin FROM pxf_parquet_read_primitives");
+        gpdb.runQuery("CREATE OR REPLACE VIEW parquet_view AS SELECT s1, s2, n1, d1, dc1, " +
+                "CAST(tm AS TIMESTAMP WITH TIME ZONE) AT TIME ZONE 'PDT' as tm, " +
+                "f, bg, b, tn, sml, vc1, c1, bin FROM pxf_parquet_read_primitives");
 
         runTincTest("pxf.features.parquet.primitive_types.runTest");
     }

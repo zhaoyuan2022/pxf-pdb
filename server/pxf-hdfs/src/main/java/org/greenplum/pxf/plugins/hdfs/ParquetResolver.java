@@ -32,21 +32,16 @@ import org.greenplum.pxf.api.OneRow;
 import org.greenplum.pxf.api.io.DataType;
 import org.greenplum.pxf.api.model.BasePlugin;
 import org.greenplum.pxf.api.model.Resolver;
+import org.greenplum.pxf.api.utilities.ColumnDescriptor;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.util.LinkedList;
 import java.util.List;
 
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 
 public class ParquetResolver extends BasePlugin implements Resolver {
-
-    private static final int SECOND_IN_MILLIS = 1000;
-    private static final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private MessageType schema;
     private SimpleGroupFactory groupFactory;
@@ -57,15 +52,21 @@ public class ParquetResolver extends BasePlugin implements Resolver {
         validateSchema();
         Group group = (Group) row.getData();
         List<OneField> output = new LinkedList<>();
+        int columnIndex = 0;
 
-        for (int columnIndex = 0; columnIndex < schema.getFieldCount(); columnIndex++) {
-
-            Type type = schema.getType(columnIndex);
-            if (schema.getType(columnIndex).isPrimitive()) {
-                output.add(resolvePrimitive(group, columnIndex, type, 0));
+        // schema is the readSchema, if there is column projection
+        // the schema will be a subset of tuple descriptions
+        for (ColumnDescriptor columnDescriptor : context.getTupleDescription()) {
+            OneField oneField;
+            if (!columnDescriptor.isProjected()) {
+                oneField = new OneField(columnDescriptor.columnTypeCode(), null);
+            } else if (schema.getType(columnIndex).isPrimitive()) {
+                oneField = resolvePrimitive(group, columnIndex, schema.getType(columnIndex), 0);
+                columnIndex++;
             } else {
                 throw new UnsupportedOperationException("Parquet complex type support is not yet available.");
             }
+            output.add(oneField);
         }
         return output;
     }
@@ -124,9 +125,7 @@ public class ParquetResolver extends BasePlugin implements Resolver {
                 group.add(index, Binary.fromReusedByteArray(bytes));
                 break;
             case INT96:
-                LocalDateTime date = LocalDateTime.parse((String) field.val, dateFormatter);
-                long millisSinceEpoch = date.toEpochSecond(ZoneOffset.UTC) * SECOND_IN_MILLIS;
-                group.add(index, ParquetTypeConverter.getBinary(millisSinceEpoch));
+                group.add(index, ParquetTypeConverter.getBinaryFromTimestamp((String) field.val));
                 break;
             case BOOLEAN:
                 group.add(index, (Boolean) field.val);
@@ -141,7 +140,7 @@ public class ParquetResolver extends BasePlugin implements Resolver {
     //       Then validateSchema can be done during initialize phase
     private void validateSchema() {
         if (schema == null) {
-            schema = (MessageType)context.getMetadata();
+            schema = (MessageType) context.getMetadata();
             if (schema == null)
                 throw new RuntimeException("No schema detected in request context");
             groupFactory = new SimpleGroupFactory(schema);

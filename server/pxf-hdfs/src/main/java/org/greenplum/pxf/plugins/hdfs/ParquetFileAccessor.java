@@ -56,7 +56,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Parquet file accessor.
@@ -72,7 +75,6 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
     private static final int DEFAULT_DICTIONARY_PAGE_SIZE = 512 * 1024;
     private static final WriterVersion DEFAULT_PARQUET_VERSION = WriterVersion.PARQUET_1_0;
 
-    private MessageType schema;
     private ParquetFileReader fileReader;
     private MessageColumnIO columnIO;
     private CompressionCodecName codecName;
@@ -98,6 +100,7 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
      */
     @Override
     public boolean openForRead() throws IOException {
+        MessageType schema, readSchema;
 
         file = new Path(context.getDataSource());
         FileSplit fileSplit = HdfsUtilities.parseFileSplit(context);
@@ -108,8 +111,10 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
         try {
             ParquetMetadata metadata = fileReader.getFooter();
             schema = metadata.getFileMetaData().getSchema();
-            columnIO = new ColumnIOFactory().getColumnIO(schema);
-            groupRecordConverter = new GroupRecordConverter(schema);
+            readSchema = buildReadSchema(schema);
+
+            columnIO = new ColumnIOFactory().getColumnIO(readSchema, schema);
+            groupRecordConverter = new GroupRecordConverter(readSchema);
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Reading file {} with {} records in {} rowgroups",
                         file.getName(), fileReader.getRecordCount(),
@@ -119,7 +124,7 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
             fileReader.close();
             throw new IOException(e);
         }
-        context.setMetadata(schema);
+        context.setMetadata(readSchema);
         return true;
     }
 
@@ -207,7 +212,7 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
 
         // Read schema file, if given
         String schemaFile = context.getOption("SCHEMA");
-        schema = (schemaFile != null) ? readSchemaFile(schemaFile) :
+        MessageType schema = (schemaFile != null) ? readSchemaFile(schemaFile) :
                 generateParquetSchema(context.getTupleDescription());
         LOG.debug("Schema fields = {}", schema.getFields());
         GroupWriteSupport.setSchema(schema, configuration);
@@ -257,6 +262,39 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
             totalRowsWritten += rowsWritten;
         }
         LOG.debug("Wrote a TOTAL of {} rows", totalRowsWritten);
+    }
+
+    /**
+     * Generates a read schema when there is column projection
+     *
+     * @param originalSchema the original read schema
+     */
+    private MessageType buildReadSchema(MessageType originalSchema) {
+        Map<String, Type> originalFields = new HashMap<>(originalSchema.getFieldCount() * 2);
+
+        // We need to add the original name and lower cased name to
+        // the map to support mixed case where in GPDB the column name
+        // was created with quotes i.e "mIxEd CaSe". When quotes are not
+        // used to create a table in GPDB, the name of the column will
+        // always come in lower-case
+        originalSchema.getFields().forEach(t -> {
+            String columnName = t.getName();
+            originalFields.put(columnName, t);
+            originalFields.put(columnName.toLowerCase(), t);
+        });
+
+        List<Type> projectedFields = context.getTupleDescription().stream()
+                .filter(ColumnDescriptor::isProjected)
+                .map(c -> {
+                    Type t = originalFields.get(c.columnName());
+
+                    if (t == null) {
+                        throw new IllegalArgumentException(String.format("Column %s is missing from parquet schema", c.columnName()));
+                    }
+                    return t;
+                })
+                .collect(Collectors.toList());
+        return new MessageType(originalSchema.getName(), projectedFields);
     }
 
     private void createParquetWriter() throws IOException {
