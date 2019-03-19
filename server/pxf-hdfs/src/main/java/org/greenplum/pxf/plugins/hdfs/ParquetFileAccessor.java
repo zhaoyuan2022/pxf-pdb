@@ -85,13 +85,9 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
     private FileSystem fs;
     private Path file;
     private String filePrefix;
-    private int fileIndex;
-    private long rowsRead;
-    private long rowsWritten;
-    private long totalRowsRead;
-    private long totalRowsWritten;
-    private long rowsInRowGroup;
-    private long rowGroupsReadCount;
+    private int fileIndex, pageSize, rowgroupSize, dictionarySize;
+    private long rowsRead, rowsWritten, totalRowsRead, totalRowsWritten;
+    private long rowsInRowGroup, rowGroupsReadCount;
 
     /**
      * Opens the resource for read.
@@ -179,6 +175,11 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
         return codecName;
     }
 
+    private int getOption(String optionName, int defaultValue) {
+        String optionStr = context.getOption(optionName);
+        return optionStr != null ? Integer.parseInt(optionStr) : defaultValue;
+    }
+
     /**
      * Closes the resource for read.
      *
@@ -209,6 +210,13 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
         filePrefix = hcfsType.getDataUri(configuration, context);
         String compressCodec = context.getOption("COMPRESSION_CODEC");
         codecName = getCodec(compressCodec);
+
+        // Options for parquet write
+        pageSize = getOption("PAGE_SIZE", DEFAULT_PAGE_SIZE);
+        rowgroupSize = getOption("ROWGROUP_SIZE", DEFAULT_ROWGROUP_SIZE);
+        dictionarySize = getOption("DICTIONARY_PAGE_SIZE", DEFAULT_DICTIONARY_PAGE_SIZE);
+        LOG.debug("Parquet options: PAGE_SIZE = {}, ROWGROUP_SIZE = {}, DICTIONARY_PAGE_SIZE = {}",
+                pageSize, rowgroupSize, dictionarySize);
 
         // Read schema file, if given
         String schemaFile = context.getOption("SCHEMA");
@@ -287,9 +295,9 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
                 .filter(ColumnDescriptor::isProjected)
                 .map(c -> {
                     Type t = originalFields.get(c.columnName());
-
                     if (t == null) {
-                        throw new IllegalArgumentException(String.format("Column %s is missing from parquet schema", c.columnName()));
+                        throw new IllegalArgumentException(
+                                String.format("Column %s is missing from parquet schema", c.columnName()));
                     }
                     return t;
                 })
@@ -308,7 +316,7 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
 
         //noinspection deprecation
         parquetWriter = new ParquetWriter<>(file, groupWriteSupport, codecName,
-                DEFAULT_ROWGROUP_SIZE, DEFAULT_PAGE_SIZE, DEFAULT_DICTIONARY_PAGE_SIZE,
+                rowgroupSize, pageSize, dictionarySize,
                 true, false, DEFAULT_PARQUET_VERSION, configuration);
     }
 
