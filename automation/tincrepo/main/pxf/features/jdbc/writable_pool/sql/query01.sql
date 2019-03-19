@@ -1,9 +1,9 @@
--- @description query01 for JDBC writable query
-ALTER TABLE gpdb_types_target ADD CONSTRAINT gpdb_types_target_t1_key UNIQUE (t1);
+-- @description query for JDBC writable query
+ALTER TABLE gpdb_types_pool_target ADD CONSTRAINT gpdb_types_pool_target_t1_key UNIQUE (t1);
 
-INSERT INTO pxf_jdbc_writable SELECT * FROM gpdb_types;
+INSERT INTO pxf_jdbc_writable_pool SELECT t1, t2, num1 FROM gpdb_types;
 
-SELECT * FROM gpdb_types_target ORDER BY t1;
+SELECT * FROM gpdb_types_pool_target ORDER BY t1;
 
 -- start_matchsubs
 --
@@ -33,4 +33,4 @@ SELECT * FROM gpdb_types_target ORDER BY t1;
 -- s/line \d* of //g
 --
 -- end_matchsubs
-INSERT INTO pxf_jdbc_writable SELECT * FROM gpdb_types;
+INSERT INTO pxf_jdbc_writable_pool SELECT t1, t2, num1 FROM gpdb_types;
