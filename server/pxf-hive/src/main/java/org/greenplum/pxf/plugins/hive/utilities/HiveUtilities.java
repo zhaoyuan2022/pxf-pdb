@@ -21,8 +21,6 @@ package org.greenplum.pxf.plugins.hive.utilities;
 
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.conf.HiveConf;
@@ -49,9 +47,13 @@ import org.greenplum.pxf.plugins.hive.HiveInputFormatFragmenter;
 import org.greenplum.pxf.plugins.hive.HiveInputFormatFragmenter.PXF_HIVE_INPUT_FORMATS;
 import org.greenplum.pxf.plugins.hive.HiveTablePartition;
 import org.greenplum.pxf.plugins.hive.HiveUserData;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -59,13 +61,16 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Properties;
 
+import static org.greenplum.pxf.api.model.ConfigurationFactory.PXF_CONFIG_RESOURCE_PATH_PROPERTY;
+
+
 /**
  * Class containing helper functions connecting
  * and interacting with Hive.
  */
 public class HiveUtilities {
 
-    private static final Log LOG = LogFactory.getLog(HiveUtilities.class);
+    private static final Logger LOG = LoggerFactory.getLogger(HiveUtilities.class);
     private static final String WILDCARD = "*";
 
     /**
@@ -79,19 +84,44 @@ public class HiveUtilities {
     private static final int DEFAULT_DELIMITER_CODE = 44;
 
     /**
+     * Initializes HiveConf configuration object from request configuration. Since hive-site.xml
+     * is not available on classpath due to multi-server support, it is added explicitly based
+     * on location for a given PXF configuration server
+     * @param configuration request configuration
+     * @return instance of HiveConf object
+     */
+    public static HiveConf getHiveConf(Configuration configuration) {
+        // prepare hiveConf object and explicitly add this request's hive-site.xml file to it
+        HiveConf hiveConf = new HiveConf(configuration, HiveConf.class);
+
+        String hiveSiteUrl = configuration.get(String.format("%s.%s", PXF_CONFIG_RESOURCE_PATH_PROPERTY, "hive-site.xml"));
+        if (hiveSiteUrl != null) {
+            try {
+                hiveConf.addResource(new URL(hiveSiteUrl));
+            } catch (MalformedURLException e) {
+                throw new RuntimeException(
+                        String.format("Failed to add %s to hive configuration", hiveSiteUrl), e);
+            }
+        }
+        return hiveConf;
+    }
+    /**
      * Initializes the HiveMetaStoreClient
      * Uses classpath configuration files to locate the MetaStore
      *
      * @return initialized client
      */
     public static HiveMetaStoreClient initHiveClient(Configuration configuration) {
+        HiveConf hiveConf = HiveUtilities.getHiveConf(configuration);
         try {
-            if (UserGroupInformation.isSecurityEnabled() && Utilities.isUserImpersonationEnabled()) {
+            if (UserGroupInformation.isSecurityEnabled()) {
+                LOG.debug("initialize HiveMetaStoreClient as login user '{}'", UserGroupInformation.getLoginUser().getUserName());
+                // wrap in doAs for Kerberos to propagate kerberos tokens from login Subject
                 return UserGroupInformation.getLoginUser().
                         doAs((PrivilegedExceptionAction<HiveMetaStoreClient>) () ->
-                                new HiveMetaStoreClient(new HiveConf(configuration, HiveConf.class)));
+                                new HiveMetaStoreClient(hiveConf));
             } else {
-                return new HiveMetaStoreClient(new HiveConf(configuration, HiveConf.class));
+                return new HiveMetaStoreClient(hiveConf);
             }
         } catch (MetaException | InterruptedException | IOException e) {
             throw new RuntimeException("Failed connecting to Hive MetaStore service: " + e.getMessage(), e);
