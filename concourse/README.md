@@ -26,6 +26,13 @@ pushd ~/workspace/gp-continuous-integration && git pull && popd
 ./deploy prod 5x
 ```
 
+The following commands will expose these pipelines:
+```
+fly -t ud expose-pipeline -p pxf_master
+fly -t ud expose-pipeline -p pxf_6X_STABLE
+fly -t ud expose-pipeline -p pxf_5X_STABLE
+```
+
 # Deploy the pull-request pipeline
 
 ```
