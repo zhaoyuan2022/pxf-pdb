@@ -35,6 +35,7 @@ resources:
 jobs:
 
 - name: compile_pxf
+  public: true
   on_failure:
     put: pxf_src
     params:
@@ -63,6 +64,7 @@ jobs:
     file: pxf_src/concourse/tasks/compile_pxf.yml
 
 - name: test_pxf
+  public: true
   on_failure:
     put: pxf_src
     params:
