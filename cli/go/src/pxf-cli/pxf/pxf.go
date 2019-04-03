@@ -2,15 +2,11 @@ package pxf
 
 import (
 	"errors"
-	"github.com/greenplum-db/gp-common-go-libs/operating"
+	"fmt"
 	"os"
-)
 
-type CliInputs struct {
-	Gphome  string
-	PxfConf string
-	Cmd     Command
-}
+	"github.com/greenplum-db/gp-common-go-libs/cluster"
+)
 
 type EnvVar string
 
@@ -19,51 +15,113 @@ const (
 	PxfConf EnvVar = "PXF_CONF"
 )
 
-type Command string
+type MessageType int
 
 const (
-	Init  Command = "init"
-	Start Command = "start"
-	Stop  Command = "stop"
-	Sync  Command = "sync"
+	Success MessageType = iota
+	Status
+	Error
 )
 
-var (
-	SuccessMessage = map[Command]string{
-		Init:  "PXF initialized successfully on %d out of %d hosts\n",
-		Start: "PXF started successfully on %d out of %d hosts\n",
-		Stop:  "PXF stopped successfully on %d out of %d hosts\n",
-		Sync:  "PXF configs synced successfully on %d out of %d hosts\n",
-	}
+type Command struct {
+	commandName string
+	messages    map[MessageType]string
+	whereToRun  int
+	envVars     []EnvVar
+}
 
-	ErrorMessage = map[Command]string{
-		Init:  "PXF failed to initialize on %d out of %d hosts\n",
-		Start: "PXF failed to start on %d out of %d hosts\n",
-		Stop:  "PXF failed to stop on %d out of %d hosts\n",
-		Sync:  "PXF configs failed to sync on %d out of %d hosts\n",
-	}
+func (c *Command) requiredEnvVars() []EnvVar {
+	return c.envVars
+}
 
-	StatusMessage = map[Command]string{
-		Init:  "Initializing PXF on master and %d segment hosts...\n",
-		Start: "Starting PXF on %d segment hosts...\n",
-		Stop:  "Stopping PXF on %d segment hosts...\n",
-		Sync:  "Syncing PXF configuration files to %d hosts...\n",
-	}
-)
+func (c *Command) WhereToRun() int {
+	return c.whereToRun
+}
 
-func makeValidCliInputs(cmd Command) (*CliInputs, error) {
-	gphome, err := validateEnvVar(Gphome)
+func (c *Command) Messages(messageType MessageType) string {
+	return c.messages[messageType]
+}
+
+func (c *Command) GetFunctionToExecute() (func(string) string, error) {
+	inputs, err := makeValidCliInputs(c)
 	if err != nil {
 		return nil, err
 	}
-	pxfConf := ""
-	if cmd == Init {
-		pxfConf, err = validateEnvVar(PxfConf)
+
+	switch c.commandName {
+	case "sync":
+		return func(hostname string) string {
+			return fmt.Sprintf(
+				"rsync -az -e 'ssh -o StrictHostKeyChecking=no' '%s/conf' '%s/lib' '%s/servers' '%s:%s'",
+				inputs[PxfConf],
+				inputs[PxfConf],
+				inputs[PxfConf],
+				hostname,
+				inputs[PxfConf])
+		}, nil
+	default:
+		pxfCommand := ""
+		if inputs[PxfConf] != "" {
+			pxfCommand += "PXF_CONF=" + inputs[PxfConf] + " "
+		}
+		pxfCommand += inputs[Gphome] + "/pxf/bin/pxf" + " " + c.commandName
+		return func(_ string) string { return pxfCommand }, nil
+	}
+}
+
+var (
+	Init = Command{
+		commandName: "init",
+		messages: map[MessageType]string{
+			Success: "PXF initialized successfully on %d out of %d hosts\n",
+			Status:  "Initializing PXF on master and %d segment hosts...\n",
+			Error:   "PXF failed to initialize on %d out of %d hosts\n",
+		},
+		envVars:    []EnvVar{Gphome, PxfConf},
+		whereToRun: cluster.ON_HOSTS_AND_MASTER,
+	}
+	Start = Command{
+		commandName: "start",
+		messages: map[MessageType]string{
+			Success: "PXF started successfully on %d out of %d hosts\n",
+			Status:  "Starting PXF on %d segment hosts...\n",
+			Error:   "PXF failed to start on %d out of %d hosts\n",
+		},
+		envVars:    []EnvVar{Gphome},
+		whereToRun: cluster.ON_HOSTS,
+	}
+	Stop = Command{
+		commandName: "stop",
+		messages: map[MessageType]string{
+			Success: "PXF stopped successfully on %d out of %d hosts\n",
+			Status:  "Stopping PXF on %d segment hosts...\n",
+			Error:   "PXF failed to stop on %d out of %d hosts\n",
+		},
+		envVars:    []EnvVar{Gphome},
+		whereToRun: cluster.ON_HOSTS,
+	}
+	Sync = Command{
+		commandName: "sync",
+		messages: map[MessageType]string{
+			Success: "PXF configs synced successfully on %d out of %d hosts\n",
+			Status:  "Syncing PXF configuration files to %d hosts...\n",
+			Error:   "PXF configs failed to sync on %d out of %d hosts\n",
+		},
+		envVars:    []EnvVar{PxfConf},
+		whereToRun: cluster.ON_MASTER_TO_HOSTS,
+	}
+)
+
+func makeValidCliInputs(c *Command) (map[EnvVar]string, error) {
+	envVars := make(map[EnvVar]string)
+	for _, e := range c.requiredEnvVars() {
+		val, err := validateEnvVar(e)
 		if err != nil {
 			return nil, err
 		}
+		envVars[e] = val
 	}
-	return &CliInputs{Cmd: cmd, Gphome: gphome, PxfConf: pxfConf}, nil
+	return envVars, nil
 }
 
 func validateEnvVar(envVar EnvVar) (string, error) {
@@ -75,23 +133,4 @@ func validateEnvVar(envVar EnvVar) (string, error) {
 		return "", errors.New(string(envVar) + " cannot be blank")
 	}
 	return envVarValue, nil
-}
-
-func RemoteCommandToRunOnSegments(command Command) (string, error) {
-	inputs, err := makeValidCliInputs(command)
-	if err != nil {
-		return "", err
-	}
-	pxfCommand := ""
-	if inputs.PxfConf != "" {
-		pxfCommand += "PXF_CONF=" + inputs.PxfConf + " "
-	}
-	pxfCommand += inputs.Gphome + "/pxf/bin/pxf" + " " + string(inputs.Cmd)
-
-	if command == Sync {
-		hostname, _ := operating.System.Hostname()
-		pxfCommand += " " + hostname
-	}
-
-	return pxfCommand, nil
 }

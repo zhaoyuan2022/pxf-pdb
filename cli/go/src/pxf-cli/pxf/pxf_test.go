@@ -2,87 +2,122 @@ package pxf_test
 
 import (
 	"errors"
-	"github.com/greenplum-db/gp-common-go-libs/operating"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"os"
 	"pxf-cli/pxf"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("RemoteCommandToRunOnSegments", func() {
-	BeforeEach(func() {
-		_ = os.Setenv("GPHOME", "/test/gphome")
-		_ = os.Setenv("PXF_CONF", "/test/gphome/pxf_conf")
+var _ = Describe("CommandFunc", func() {
+	Context("when PXF_CONF and GPHOME are set", func() {
+		BeforeEach(func() {
+			_ = os.Setenv("GPHOME", "/test/gphome")
+			_ = os.Setenv("PXF_CONF", "/test/gphome/pxf_conf")
+		})
+
+		It("successfully generates init command", func() {
+			commandFunc, err := pxf.Init.GetFunctionToExecute()
+			Expect(err).To(BeNil())
+			expected := "PXF_CONF=/test/gphome/pxf_conf /test/gphome/pxf/bin/pxf init"
+			Expect(commandFunc("foo")).To(Equal(expected))
+		})
 	})
 
-	It("Is successful when GPHOME and PXF_CONF are set and init is called", func() {
-		command, err := pxf.RemoteCommandToRunOnSegments(pxf.Init)
-		Expect(err).To(BeNil())
-		expected := "PXF_CONF=/test/gphome/pxf_conf /test/gphome/pxf/bin/pxf init"
-		Expect(command).To(Equal(expected))
+	Context("when only GPHOME is set", func() {
+		BeforeEach(func() {
+			_ = os.Setenv("GPHOME", "/test/gphome")
+			_ = os.Unsetenv("PXF_CONF")
+		})
+
+		It("successfully generates start and stop commands", func() {
+			commandFunc, err := pxf.Start.GetFunctionToExecute()
+			Expect(err).To(BeNil())
+			Expect(commandFunc("foo")).To(Equal("/test/gphome/pxf/bin/pxf start"))
+			commandFunc, err = pxf.Stop.GetFunctionToExecute()
+			Expect(err).To(BeNil())
+			Expect(commandFunc("foo")).To(Equal("/test/gphome/pxf/bin/pxf stop"))
+		})
+		It("fails to init or sync", func() {
+			commandFunc, err := pxf.Init.GetFunctionToExecute()
+			Expect(commandFunc).To(BeNil())
+			Expect(err).To(Equal(errors.New("PXF_CONF must be set")))
+			commandFunc, err = pxf.Sync.GetFunctionToExecute()
+			Expect(commandFunc).To(BeNil())
+			Expect(err).To(Equal(errors.New("PXF_CONF must be set")))
+		})
+
+	})
+	Context("when only PXF_CONF is set", func() {
+		BeforeEach(func() {
+			_ = os.Setenv("PXF_CONF", "/test/gphome/pxf_conf")
+			_ = os.Unsetenv("GPHOME")
+		})
+
+		It("sets up rsync commands of $PXF_CONF/{conf,lib,servers} dirs", func() {
+			commandFunc, err := pxf.Sync.GetFunctionToExecute()
+			Expect(err).To(BeNil())
+			Expect(commandFunc("sdw1")).To(Equal(
+				"rsync -az -e 'ssh -o StrictHostKeyChecking=no' " +
+					"'/test/gphome/pxf_conf/conf' " +
+					"'/test/gphome/pxf_conf/lib' " +
+					"'/test/gphome/pxf_conf/servers' " +
+					"'sdw1:/test/gphome/pxf_conf'",
+			))
+			Expect(commandFunc("sdw2")).To(Equal(
+				"rsync -az -e 'ssh -o StrictHostKeyChecking=no' " +
+					"'/test/gphome/pxf_conf/conf' " +
+					"'/test/gphome/pxf_conf/lib' " +
+					"'/test/gphome/pxf_conf/servers' " +
+					"'sdw2:/test/gphome/pxf_conf'",
+			))
+		})
+
+		It("fails to init, start, or stop", func() {
+			commandFunc, err := pxf.Init.GetFunctionToExecute()
+			Expect(commandFunc).To(BeNil())
+			Expect(err).To(Equal(errors.New("GPHOME must be set")))
+			commandFunc, err = pxf.Start.GetFunctionToExecute()
+			Expect(commandFunc).To(BeNil())
+			Expect(err).To(Equal(errors.New("GPHOME must be set")))
+			commandFunc, err = pxf.Stop.GetFunctionToExecute()
+			Expect(commandFunc).To(BeNil())
+			Expect(err).To(Equal(errors.New("GPHOME must be set")))
+		})
 	})
 
-	It("Is successful when GPHOME is set and start/stop are called", func() {
-		command, err := pxf.RemoteCommandToRunOnSegments(pxf.Start)
-		Expect(err).To(BeNil())
-		Expect(command).To(Equal("/test/gphome/pxf/bin/pxf start"))
-		command, err = pxf.RemoteCommandToRunOnSegments(pxf.Stop)
-		Expect(err).To(BeNil())
-		Expect(command).To(Equal("/test/gphome/pxf/bin/pxf stop"))
+	Context("when PXF_CONF is set to empty string", func() {
+		BeforeEach(func() {
+			_ = os.Setenv("PXF_CONF", "")
+			_ = os.Setenv("GPHOME", "/test/gphome")
+		})
+		It("fails to init or sync", func() {
+			_ = os.Setenv("PXF_CONF", "")
+			commandFunc, err := pxf.Init.GetFunctionToExecute()
+			Expect(commandFunc).To(BeNil())
+			Expect(err).To(Equal(errors.New("PXF_CONF cannot be blank")))
+			commandFunc, err = pxf.Sync.GetFunctionToExecute()
+			Expect(commandFunc).To(BeNil())
+			Expect(err).To(Equal(errors.New("PXF_CONF cannot be blank")))
+		})
 	})
 
-	It("Fails to init when PXF_CONF is not set", func() {
-		_ = os.Unsetenv("PXF_CONF")
-		command, err := pxf.RemoteCommandToRunOnSegments(pxf.Init)
-		Expect(command).To(Equal(""))
-		Expect(err).To(Equal(errors.New("PXF_CONF must be set")))
-	})
-
-	It("Fails to init when PXF_CONF is blank", func() {
-		_ = os.Setenv("PXF_CONF", "")
-		command, err := pxf.RemoteCommandToRunOnSegments(pxf.Init)
-		Expect(command).To(Equal(""))
-		Expect(err).To(Equal(errors.New("PXF_CONF cannot be blank")))
-	})
-
-	It("Fails to init, start, sync, or stop when GPHOME is not set", func() {
-		_ = os.Unsetenv("GPHOME")
-		command, err := pxf.RemoteCommandToRunOnSegments(pxf.Init)
-		Expect(command).To(Equal(""))
-		Expect(err).To(Equal(errors.New("GPHOME must be set")))
-		command, err = pxf.RemoteCommandToRunOnSegments(pxf.Start)
-		Expect(command).To(Equal(""))
-		Expect(err).To(Equal(errors.New("GPHOME must be set")))
-		command, err = pxf.RemoteCommandToRunOnSegments(pxf.Sync)
-		Expect(command).To(Equal(""))
-		Expect(err).To(Equal(errors.New("GPHOME must be set")))
-		command, err = pxf.RemoteCommandToRunOnSegments(pxf.Stop)
-		Expect(command).To(Equal(""))
-		Expect(err).To(Equal(errors.New("GPHOME must be set")))
-	})
-
-	It("Fails to init, start, sync, or stop when GPHOME is blank", func() {
-		_ = os.Setenv("GPHOME", "")
-		command, err := pxf.RemoteCommandToRunOnSegments(pxf.Init)
-		Expect(command).To(Equal(""))
-		Expect(err).To(Equal(errors.New("GPHOME cannot be blank")))
-		command, err = pxf.RemoteCommandToRunOnSegments(pxf.Start)
-		Expect(command).To(Equal(""))
-		Expect(err).To(Equal(errors.New("GPHOME cannot be blank")))
-		command, err = pxf.RemoteCommandToRunOnSegments(pxf.Sync)
-		Expect(command).To(Equal(""))
-		Expect(err).To(Equal(errors.New("GPHOME cannot be blank")))
-		command, err = pxf.RemoteCommandToRunOnSegments(pxf.Stop)
-		Expect(command).To(Equal(""))
-		Expect(err).To(Equal(errors.New("GPHOME cannot be blank")))
-	})
-
-	It("Appends the master hostname when syncing", func() {
-		operating.System.Hostname = func() (string, error) {
-			return "fake-host", nil
-		}
-		command, err := pxf.RemoteCommandToRunOnSegments(pxf.Sync)
-		Expect(err).To(BeNil())
-		Expect(command).To(Equal("/test/gphome/pxf/bin/pxf sync fake-host"))
+	Context("when GPHOME is set to empty string", func() {
+		BeforeEach(func() {
+			_ = os.Setenv("GPHOME", "")
+			_ = os.Unsetenv("PXF_CONF")
+		})
+		It("fails to init, start, or stop", func() {
+			_ = os.Setenv("GPHOME", "")
+			commandFunc, err := pxf.Init.GetFunctionToExecute()
+			Expect(commandFunc).To(BeNil())
+			Expect(err).To(Equal(errors.New("GPHOME cannot be blank")))
+			commandFunc, err = pxf.Start.GetFunctionToExecute()
+			Expect(commandFunc).To(BeNil())
+			Expect(err).To(Equal(errors.New("GPHOME cannot be blank")))
+			commandFunc, err = pxf.Stop.GetFunctionToExecute()
+			Expect(commandFunc).To(BeNil())
+			Expect(err).To(Equal(errors.New("GPHOME cannot be blank")))
+		})
 	})
 })
