@@ -233,12 +233,13 @@ if __name__ == "__main__":
 
     if ARGS.pipeline_type == 'release' and ARGS.deploy_env == 'prod':
         ARGS.TARGET = 'gpdb-prod'
-        if ARGS.gpdb_branch == 'master':
-            ARGS.PIPELINE_NAME = 'pxf_release_master'
-        elif ARGS.gpdb_branch == '6X_STABLE':
+        if ARGS.gpdb_branch == '6X_STABLE':
             ARGS.PIPELINE_NAME = 'pxf_release_6x'
         elif ARGS.gpdb_branch == '5X_STABLE':
             ARGS.PIPELINE_NAME = 'pxf_release_5x'
+        else:
+            sys.stderr.write('error: Only 6x and 5x branches are supported for GPDB release.\n')
+            sys.exit(1)
     else:
         ARGS.TARGET = 'ud'
 
