@@ -3,7 +3,11 @@ package org.greenplum.pxf.plugins.hdfs;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.io.compress.CompressionCodec;
 import org.greenplum.pxf.api.model.RequestContext;
+import org.greenplum.pxf.plugins.hdfs.utilities.HdfsUtilities;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.util.Arrays;
@@ -44,6 +48,8 @@ public enum HcfsType {
     // We prefer WASBS over WASB for Azure Blob Storage,
     // as it uses SSL for communication to Azure servers
     WASBS;
+
+    protected Logger LOG = LoggerFactory.getLogger(this.getClass());
 
     private static final String FILE_SCHEME = "file";
     private String prefix;
@@ -103,6 +109,35 @@ public enum HcfsType {
                     String.format("profile protocol (%s) is not compatible with server filesystem (%s)",
                             schemeFromContext, defaultFSScheme));
         }
+    }
+
+    /**
+     * Returns a unique fully resolved URI including the protocol for write.
+     * The filename is generated with the transaction and segment IDs resulting
+     * in <TRANSACTION-ID>_<SEGMENT-ID>. If a COMPRESSION_CODEC is provided, the
+     * default codec extension will be appended to the name of the file.
+     *
+     * @param configuration The hadoop configurations
+     * @param context       The input data parameters
+     * @return an absolute data path for write
+     */
+    public String getUriForWrite(Configuration configuration, RequestContext context) {
+        String fileName = StringUtils.removeEnd(getDataUri(configuration, context), "/") +
+                "/" +
+                context.getTransactionId() +
+                "_" +
+                context.getSegmentId();
+
+        String compressCodec = context.getOption("COMPRESSION_CODEC");
+        if (compressCodec != null) {
+            // get compression codec
+            CompressionCodec codec = HdfsUtilities.getCodec(configuration, compressCodec);
+            // append codec extension to the filename
+            fileName += codec.getDefaultExtension();
+        }
+
+        LOG.debug("File name for write: {}", fileName);
+        return fileName;
     }
 
     /**
