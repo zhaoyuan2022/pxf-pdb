@@ -82,7 +82,7 @@ def how_to_use_generated_pipeline_message():
     cmd += '    -v folder-prefix=' + ARGS.PREFIX + ' -v test-env=' + ARGS.TEST_ENV + ' \\\n'
     if ARGS.pipeline_type == 'pxf' and not ARGS.compile_gpdb:
         cmd += '    -v icw_green_bucket=' + ARGS.ICW_GREEN_BUCKET + ' \\\n'
-        if ARGS.gpdb_branch == 'master':
+        if ARGS.gpdb_branch != '5X_STABLE':
             cmd += '    -v gcs-bucket-intermediates=pivotal-gpdb-concourse-resources-intermediates-prod \\\n'
     if ARGS.compile_gpdb:
         cmd += '    -v configure_flags=--enable-cassert -v gpaddon-git-branch=master \\\n'
