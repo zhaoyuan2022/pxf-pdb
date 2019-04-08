@@ -25,22 +25,14 @@ var (
 	}
 )
 
-var _ = Describe("CountHostsAndValidateMaster()", func() {
+var _ = Describe("CountHostsExcludingMaster()", func() {
 	It("calculates the correct number of hosts when run from master", func() {
 		operating.System.Hostname = func() (string, error) {
 			return "mdw", nil
 		}
-		err := clusterData.CountHostsAndValidateMaster()
+		err := clusterData.CountHostsExcludingMaster()
 		Expect(err).To(BeNil())
 		Expect(clusterData.NumHosts).To(Equal(2))
-	})
-	It("returns an error if not run from master host; number of hosts set to -1", func() {
-		operating.System.Hostname = func() (string, error) {
-			return "wrong-hostname", nil
-		}
-		err := clusterData.CountHostsAndValidateMaster()
-		Expect(err.Error()).To(Equal("ERROR: pxf cluster commands should only be run from Greenplum master"))
-		Expect(clusterData.NumHosts).To(Equal(-1))
 	})
 })
 

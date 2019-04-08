@@ -7,8 +7,6 @@ import (
 	"pxf-cli/pxf"
 	"strings"
 
-	"github.com/greenplum-db/gp-common-go-libs/operating"
-
 	"github.com/greenplum-db/gp-common-go-libs/cluster"
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
@@ -92,18 +90,10 @@ func exitWithReturnCode(err error) {
 	os.Exit(0)
 }
 
-func (r *ClusterData) CountHostsAndValidateMaster() error {
+func (r *ClusterData) CountHostsExcludingMaster() error {
 	hostSegMap := make(map[string]int, 0)
-	master, err := operating.System.Hostname()
-	if err != nil {
-		return err
-	}
 	for contentID, seg := range r.Cluster.Segments {
 		if contentID == -1 {
-			if seg.Hostname != master {
-				r.NumHosts = -1
-				return errors.New("ERROR: pxf cluster commands should only be run from Greenplum master")
-			}
 			continue
 		}
 		hostSegMap[seg.Hostname]++
@@ -160,7 +150,7 @@ func doSetup() (*ClusterData, error) {
 	}
 	segConfigs := cluster.MustGetSegmentConfiguration(connectionPool)
 	clusterData := &ClusterData{Cluster: cluster.NewCluster(segConfigs), connectionPool: connectionPool}
-	err = clusterData.CountHostsAndValidateMaster()
+	err = clusterData.CountHostsExcludingMaster()
 	if err != nil {
 		gplog.Error(err.Error())
 		return nil, err
