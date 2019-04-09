@@ -14,10 +14,10 @@ import (
 )
 
 type ClusterData struct {
-	Cluster        *cluster.Cluster
-	Output         *cluster.RemoteOutput
-	NumHosts       int
-	connectionPool *dbconn.DBConn
+	Cluster    *cluster.Cluster
+	Output     *cluster.RemoteOutput
+	NumHosts   int
+	connection *dbconn.DBConn
 }
 
 var (
@@ -30,9 +30,10 @@ var (
 		Use:   "init",
 		Short: "Initialize the local PXF server instance",
 		Run: func(cmd *cobra.Command, args []string) {
-			clusterData, err := doSetup()
+			command := &pxf.InitCommand
+			clusterData, err := doSetup(command)
 			if err == nil {
-				err = clusterRun(&pxf.Init, clusterData)
+				err = clusterRun(command, clusterData)
 			}
 			exitWithReturnCode(err)
 		},
@@ -42,10 +43,12 @@ var (
 		Use:   "start",
 		Short: "Start the local PXF server instance",
 		Run: func(cmd *cobra.Command, args []string) {
-			clusterData, err := doSetup()
+			command := &pxf.StartCommand
+			clusterData, err := doSetup(command)
 			if err == nil {
-				err = clusterRun(&pxf.Start, clusterData)
+				err = clusterRun(command, clusterData)
 			}
+
 			exitWithReturnCode(err)
 		},
 	}
@@ -54,10 +57,12 @@ var (
 		Use:   "stop",
 		Short: "Stop the local PXF server instance",
 		Run: func(cmd *cobra.Command, args []string) {
-			clusterData, err := doSetup()
+			command := &pxf.StopCommand
+			clusterData, err := doSetup(command)
 			if err == nil {
-				err = clusterRun(&pxf.Stop, clusterData)
+				err = clusterRun(command, clusterData)
 			}
+
 			exitWithReturnCode(err)
 		},
 	}
@@ -66,10 +71,12 @@ var (
 		Use:   "sync",
 		Short: "Sync PXF configs from master to all segment hosts",
 		Run: func(cmd *cobra.Command, args []string) {
-			clusterData, err := doSetup()
+			command := &pxf.SyncCommand
+			clusterData, err := doSetup(command)
 			if err == nil {
-				err = clusterRun(&pxf.Sync, clusterData)
+				err = clusterRun(command, clusterData)
 			}
+
 			exitWithReturnCode(err)
 		},
 	}
@@ -90,15 +97,15 @@ func exitWithReturnCode(err error) {
 	os.Exit(0)
 }
 
-func (r *ClusterData) CountHostsExcludingMaster() error {
+func (c *ClusterData) CountHostsExcludingMaster() error {
 	hostSegMap := make(map[string]int, 0)
-	for contentID, seg := range r.Cluster.Segments {
+	for contentID, seg := range c.Cluster.Segments {
 		if contentID == -1 {
 			continue
 		}
 		hostSegMap[seg.Hostname]++
 	}
-	r.NumHosts = len(hostSegMap)
+	c.NumHosts = len(hostSegMap)
 	return nil
 }
 
@@ -140,16 +147,22 @@ func GenerateOutput(command *pxf.Command, clusterData *ClusterData) error {
 	return errors.New(response)
 }
 
-func doSetup() (*ClusterData, error) {
-	connectionPool := dbconn.NewDBConnFromEnvironment("postgres")
-	err := connectionPool.Connect(1)
+func doSetup(command *pxf.Command) (*ClusterData, error) {
+	connection := dbconn.NewDBConnFromEnvironment("postgres")
+	err := connection.Connect(1)
 	if err != nil {
 		gplog.Error(fmt.Sprintf("ERROR: Could not connect to GPDB.\n%s\n"+
 			"Please make sure that your Greenplum database is running and you are on the master node.", err.Error()))
 		return nil, err
 	}
-	segConfigs := cluster.MustGetSegmentConfiguration(connectionPool)
-	clusterData := &ClusterData{Cluster: cluster.NewCluster(segConfigs), connectionPool: connectionPool}
+	segConfigs := cluster.MustGetSegmentConfiguration(connection)
+	clusterData := &ClusterData{Cluster: cluster.NewCluster(segConfigs), connection: connection}
+	if command.Name() == pxf.Sync || command.Name() == pxf.Init {
+		err = clusterData.appendMasterStandby()
+		if err != nil {
+			return nil, err
+		}
+	}
 	err = clusterData.CountHostsExcludingMaster()
 	if err != nil {
 		gplog.Error(err.Error())
@@ -165,7 +178,7 @@ func adaptContentIDToHostname(cluster *cluster.Cluster, f func(string) string) f
 }
 
 func clusterRun(command *pxf.Command, clusterData *ClusterData) error {
-	defer clusterData.connectionPool.Close()
+	defer clusterData.connection.Close()
 	f, err := command.GetFunctionToExecute()
 	if err != nil {
 		gplog.Error(fmt.Sprintf("Error: %s", err))
@@ -179,4 +192,44 @@ func clusterRun(command *pxf.Command, clusterData *ClusterData) error {
 		command.WhereToRun(),
 	)
 	return GenerateOutput(command, clusterData)
+}
+
+func (c *ClusterData) appendMasterStandby() error {
+	query := ""
+	if c.connection.Version.Before("6") {
+		query = `
+SELECT
+        s.dbid,
+        s.content as contentid,
+        s.port,
+        s.hostname,
+        e.fselocation as datadir
+FROM gp_segment_configuration s
+JOIN pg_filespace_entry e ON s.dbid = e.fsedbid
+JOIN pg_filespace f ON e.fsefsoid = f.oid
+WHERE s.role = 'm' AND f.fsname = 'pg_system' AND s.content = '-1'
+ORDER BY s.content;`
+	} else {
+		query = `
+SELECT
+        dbid,
+        content as contentid,
+        port,
+        hostname,
+        datadir
+FROM gp_segment_configuration
+WHERE role = 'm' AND content = '-1'
+ORDER BY content;`
+	}
+
+	results := make([]cluster.SegConfig, 0)
+	err := c.connection.Select(&results, query)
+	if err != nil {
+		return err
+	}
+	standbyMasterContentID := len(c.Cluster.Segments)
+	if len(results) > 0 {
+		c.Cluster.Segments[standbyMasterContentID] = results[0]
+	}
+	return nil
 }

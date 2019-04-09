@@ -30,6 +30,10 @@ type Command struct {
 	envVars     []EnvVar
 }
 
+func (c *Command) Name() string {
+	return c.commandName
+}
+
 func (c *Command) requiredEnvVars() []EnvVar {
 	return c.envVars
 }
@@ -69,19 +73,28 @@ func (c *Command) GetFunctionToExecute() (func(string) string, error) {
 	}
 }
 
+type CommandName string
+
+const (
+	Init  = "init"
+	Start = "start"
+	Stop  = "stop"
+	Sync  = "sync"
+)
+
 var (
-	Init = Command{
-		commandName: "init",
+	InitCommand = Command{
+		commandName: Init,
 		messages: map[MessageType]string{
 			Success: "PXF initialized successfully on %d out of %d hosts\n",
-			Status:  "Initializing PXF on master and %d segment hosts...\n",
+			Status:  "Initializing PXF on master and %d other hosts...\n",
 			Error:   "PXF failed to initialize on %d out of %d hosts\n",
 		},
 		envVars:    []EnvVar{Gphome, PxfConf},
 		whereToRun: cluster.ON_HOSTS_AND_MASTER,
 	}
-	Start = Command{
-		commandName: "start",
+	StartCommand = Command{
+		commandName: Start,
 		messages: map[MessageType]string{
 			Success: "PXF started successfully on %d out of %d hosts\n",
 			Status:  "Starting PXF on %d segment hosts...\n",
@@ -90,8 +103,8 @@ var (
 		envVars:    []EnvVar{Gphome},
 		whereToRun: cluster.ON_HOSTS,
 	}
-	Stop = Command{
-		commandName: "stop",
+	StopCommand = Command{
+		commandName: Stop,
 		messages: map[MessageType]string{
 			Success: "PXF stopped successfully on %d out of %d hosts\n",
 			Status:  "Stopping PXF on %d segment hosts...\n",
@@ -100,8 +113,8 @@ var (
 		envVars:    []EnvVar{Gphome},
 		whereToRun: cluster.ON_HOSTS,
 	}
-	Sync = Command{
-		commandName: "sync",
+	SyncCommand = Command{
+		commandName: Sync,
 		messages: map[MessageType]string{
 			Success: "PXF configs synced successfully on %d out of %d hosts\n",
 			Status:  "Syncing PXF configuration files to %d hosts...\n",

@@ -17,7 +17,7 @@ var _ = Describe("CommandFunc", func() {
 		})
 
 		It("successfully generates init command", func() {
-			commandFunc, err := pxf.Init.GetFunctionToExecute()
+			commandFunc, err := pxf.InitCommand.GetFunctionToExecute()
 			Expect(err).To(BeNil())
 			expected := "PXF_CONF=/test/gphome/pxf_conf /test/gphome/pxf/bin/pxf init"
 			Expect(commandFunc("foo")).To(Equal(expected))
@@ -31,18 +31,18 @@ var _ = Describe("CommandFunc", func() {
 		})
 
 		It("successfully generates start and stop commands", func() {
-			commandFunc, err := pxf.Start.GetFunctionToExecute()
+			commandFunc, err := pxf.StartCommand.GetFunctionToExecute()
 			Expect(err).To(BeNil())
 			Expect(commandFunc("foo")).To(Equal("/test/gphome/pxf/bin/pxf start"))
-			commandFunc, err = pxf.Stop.GetFunctionToExecute()
+			commandFunc, err = pxf.StopCommand.GetFunctionToExecute()
 			Expect(err).To(BeNil())
 			Expect(commandFunc("foo")).To(Equal("/test/gphome/pxf/bin/pxf stop"))
 		})
 		It("fails to init or sync", func() {
-			commandFunc, err := pxf.Init.GetFunctionToExecute()
+			commandFunc, err := pxf.InitCommand.GetFunctionToExecute()
 			Expect(commandFunc).To(BeNil())
 			Expect(err).To(Equal(errors.New("PXF_CONF must be set")))
-			commandFunc, err = pxf.Sync.GetFunctionToExecute()
+			commandFunc, err = pxf.SyncCommand.GetFunctionToExecute()
 			Expect(commandFunc).To(BeNil())
 			Expect(err).To(Equal(errors.New("PXF_CONF must be set")))
 		})
@@ -55,7 +55,7 @@ var _ = Describe("CommandFunc", func() {
 		})
 
 		It("sets up rsync commands of $PXF_CONF/{conf,lib,servers} dirs", func() {
-			commandFunc, err := pxf.Sync.GetFunctionToExecute()
+			commandFunc, err := pxf.SyncCommand.GetFunctionToExecute()
 			Expect(err).To(BeNil())
 			Expect(commandFunc("sdw1")).To(Equal(
 				"rsync -az -e 'ssh -o StrictHostKeyChecking=no' " +
@@ -74,13 +74,13 @@ var _ = Describe("CommandFunc", func() {
 		})
 
 		It("fails to init, start, or stop", func() {
-			commandFunc, err := pxf.Init.GetFunctionToExecute()
+			commandFunc, err := pxf.InitCommand.GetFunctionToExecute()
 			Expect(commandFunc).To(BeNil())
 			Expect(err).To(Equal(errors.New("GPHOME must be set")))
-			commandFunc, err = pxf.Start.GetFunctionToExecute()
+			commandFunc, err = pxf.StartCommand.GetFunctionToExecute()
 			Expect(commandFunc).To(BeNil())
 			Expect(err).To(Equal(errors.New("GPHOME must be set")))
-			commandFunc, err = pxf.Stop.GetFunctionToExecute()
+			commandFunc, err = pxf.StopCommand.GetFunctionToExecute()
 			Expect(commandFunc).To(BeNil())
 			Expect(err).To(Equal(errors.New("GPHOME must be set")))
 		})
@@ -93,10 +93,10 @@ var _ = Describe("CommandFunc", func() {
 		})
 		It("fails to init or sync", func() {
 			_ = os.Setenv("PXF_CONF", "")
-			commandFunc, err := pxf.Init.GetFunctionToExecute()
+			commandFunc, err := pxf.InitCommand.GetFunctionToExecute()
 			Expect(commandFunc).To(BeNil())
 			Expect(err).To(Equal(errors.New("PXF_CONF cannot be blank")))
-			commandFunc, err = pxf.Sync.GetFunctionToExecute()
+			commandFunc, err = pxf.SyncCommand.GetFunctionToExecute()
 			Expect(commandFunc).To(BeNil())
 			Expect(err).To(Equal(errors.New("PXF_CONF cannot be blank")))
 		})
@@ -109,13 +109,13 @@ var _ = Describe("CommandFunc", func() {
 		})
 		It("fails to init, start, or stop", func() {
 			_ = os.Setenv("GPHOME", "")
-			commandFunc, err := pxf.Init.GetFunctionToExecute()
+			commandFunc, err := pxf.InitCommand.GetFunctionToExecute()
 			Expect(commandFunc).To(BeNil())
 			Expect(err).To(Equal(errors.New("GPHOME cannot be blank")))
-			commandFunc, err = pxf.Start.GetFunctionToExecute()
+			commandFunc, err = pxf.StartCommand.GetFunctionToExecute()
 			Expect(commandFunc).To(BeNil())
 			Expect(err).To(Equal(errors.New("GPHOME cannot be blank")))
-			commandFunc, err = pxf.Stop.GetFunctionToExecute()
+			commandFunc, err = pxf.StopCommand.GetFunctionToExecute()
 			Expect(commandFunc).To(BeNil())
 			Expect(err).To(Equal(errors.New("GPHOME cannot be blank")))
 		})
