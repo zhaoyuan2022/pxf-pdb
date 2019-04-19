@@ -57,12 +57,12 @@ public class DbProductTest {
      */
     @Test
     public void testUnknownDates() {
-        final String[] EXPECTED = {"date'2001-01-01'"};
+        final String[] expected = {"date'2001-01-01'"};
 
         DbProduct dbProduct = DbProduct.getDbProduct(DB_NAME_UNKNOWN);
 
         for (int i = 0; i < DATES.length; i++) {
-            assertEquals(EXPECTED[i], dbProduct.wrapDate(DATES[i]));
+            assertEquals(expected[i], dbProduct.wrapDate(DATES[i]));
         }
     }
 
@@ -71,12 +71,12 @@ public class DbProductTest {
      */
     @Test
     public void testUnknownTimestamps() {
-        final String[] EXPECTED = {"'2001-01-01 00:00:00.0'"};
+        final String[] expected = {"'2001-01-01 00:00:00.0'"};
 
         DbProduct dbProduct = DbProduct.getDbProduct(DB_NAME_UNKNOWN);
 
         for (int i = 0; i < TIMESTAMPS.length; i++) {
-            assertEquals(EXPECTED[i], dbProduct.wrapTimestamp(TIMESTAMPS[i]));
+            assertEquals(expected[i], dbProduct.wrapTimestamp(TIMESTAMPS[i]));
         }
     }
 
@@ -85,23 +85,23 @@ public class DbProductTest {
 
     @Test
     public void testOracleDates() {
-        final String[] EXPECTED = {"to_date('2001-01-01', 'YYYY-MM-DD')"};
+        final String[] expected = {"to_date('2001-01-01', 'YYYY-MM-DD')"};
 
         DbProduct dbProduct = DbProduct.getDbProduct(DB_NAME_ORACLE);
 
         for (int i = 0; i < DATES.length; i++) {
-            assertEquals(EXPECTED[i], dbProduct.wrapDate(DATES[i]));
+            assertEquals(expected[i], dbProduct.wrapDate(DATES[i]));
         }
     }
 
     @Test
     public void testOracleTimestamps() {
-        final String[] EXPECTED = {"to_timestamp('2001-01-01 00:00:00.0', 'YYYY-MM-DD HH:MI:SS.FF')"};
+        final String[] expected = {"to_timestamp('2001-01-01 00:00:00.0', 'YYYY-MM-DD HH:MI:SS.FF')"};
 
         DbProduct dbProduct = DbProduct.getDbProduct(DB_NAME_ORACLE);
 
         for (int i = 0; i < TIMESTAMPS.length; i++) {
-            assertEquals(EXPECTED[i], dbProduct.wrapTimestamp(TIMESTAMPS[i]));
+            assertEquals(expected[i], dbProduct.wrapTimestamp(TIMESTAMPS[i]));
         }
     }
 
@@ -110,12 +110,12 @@ public class DbProductTest {
 
     @Test
     public void testMicrosoftDates() {
-        final String[] EXPECTED = {"'2001-01-01'"};
+        final String[] expected = {"'2001-01-01'"};
 
         DbProduct dbProduct = DbProduct.getDbProduct(DB_NAME_MICROSOFT);
 
         for (int i = 0; i < DATES.length; i++) {
-            assertEquals(EXPECTED[i], dbProduct.wrapDate(DATES[i]));
+            assertEquals(expected[i], dbProduct.wrapDate(DATES[i]));
         }
     }
 
@@ -124,12 +124,12 @@ public class DbProductTest {
 
     @Test
     public void testMySQLDates() {
-        final String[] EXPECTED = {"DATE('2001-01-01')"};
+        final String[] expected = {"DATE('2001-01-01')"};
 
         DbProduct dbProduct = DbProduct.getDbProduct(DB_NAME_MYSQL);
 
         for (int i = 0; i < DATES.length; i++) {
-            assertEquals(EXPECTED[i], dbProduct.wrapDate(DATES[i]));
+            assertEquals(expected[i], dbProduct.wrapDate(DATES[i]));
         }
     }
 }

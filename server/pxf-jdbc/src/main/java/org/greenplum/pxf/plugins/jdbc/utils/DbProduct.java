@@ -31,6 +31,11 @@ public enum DbProduct {
         public String wrapDate(Object val){
             return "'" + val + "'";
         }
+
+        @Override
+        public String buildSessionQuery(String key, String value) {
+            return String.format("SET %s %s", key, value);
+        }
     },
 
     MYSQL {
@@ -49,6 +54,11 @@ public enum DbProduct {
         @Override
         public String wrapTimestamp(Object val) {
             return "to_timestamp('" + val + "', 'YYYY-MM-DD HH:MI:SS.FF')";
+        }
+
+        @Override
+        public String buildSessionQuery(String key, String value) {
+            return String.format("ALTER SESSION SET %s = %s", key, value);
         }
     },
 
@@ -75,6 +85,18 @@ public enum DbProduct {
      */
     public String wrapTimestamp(Object val) {
         return "'" + val + "'";
+    }
+
+    /**
+     * Build a query to set session-level variables for target database
+     *
+     * @param key variable name (key)
+     * @param value variable value
+     *
+     * @return a string with template SET query
+     */
+    public String buildSessionQuery(String key, String value) {
+        return String.format("SET %s = %s", key, value);
     }
 
     /**

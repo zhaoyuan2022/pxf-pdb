@@ -66,9 +66,9 @@ public class JdbcAccessor extends JdbcBasePlugin implements Accessor {
         }
 
         Connection connection = super.getConnection();
-
-        // Build SQL query
         SQLQueryBuilder sqlQueryBuilder = new SQLQueryBuilder(context, connection.getMetaData());
+
+        // Build SELECT query
         if (quoteColumns == null) {
             sqlQueryBuilder.autoSetQuoteString();
         }
@@ -78,6 +78,7 @@ public class JdbcAccessor extends JdbcBasePlugin implements Accessor {
         queryRead = sqlQueryBuilder.buildSelectQuery();
         LOG.trace("Select query: {}", queryRead);
 
+        // Execute queries
         statementRead = connection.createStatement();
         resultSetRead = statementRead.executeQuery(queryRead);
 
@@ -103,8 +104,8 @@ public class JdbcAccessor extends JdbcBasePlugin implements Accessor {
      * closeForRead() implementation
      */
     @Override
-    public void closeForRead() {
-        JdbcBasePlugin.closeStatement(statementRead);
+    public void closeForRead() throws SQLException {
+        JdbcBasePlugin.closeStatementAndConnection(statementRead);
     }
 
     /**
@@ -124,9 +125,9 @@ public class JdbcAccessor extends JdbcBasePlugin implements Accessor {
         }
 
         Connection connection = super.getConnection();
-
-        // Build SQL query
         SQLQueryBuilder sqlQueryBuilder = new SQLQueryBuilder(context, connection.getMetaData());
+
+        // Build INSERT query
         if (quoteColumns == null) {
             sqlQueryBuilder.autoSetQuoteString();
         }
@@ -266,7 +267,7 @@ public class JdbcAccessor extends JdbcBasePlugin implements Accessor {
             }
         }
         finally {
-            JdbcBasePlugin.closeStatement(statementWrite);
+            JdbcBasePlugin.closeStatementAndConnection(statementWrite);
         }
     }
 
