@@ -28,6 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -40,7 +41,7 @@ import java.util.stream.Collectors;
 
 /**
  * JDBC tables plugin (base class)
- *
+ * <p>
  * Implemented subclasses: {@link JdbcAccessor}, {@link JdbcResolver}.
  */
 public class JdbcBasePlugin extends BasePlugin {
@@ -57,11 +58,36 @@ public class JdbcBasePlugin extends BasePlugin {
     private static final String JDBC_SESSION_PROPERTY_PREFIX = "jdbc.session.property.";
     private static final String JDBC_CONNECTION_PROPERTY_PREFIX = "jdbc.connection.property.";
 
+    // connection parameter names
+    private static final String JDBC_CONNECTION_TRANSACTION_ISOLATION = "jdbc.connection.transactionIsolation";
+
     // DDL option names
     private static final String JDBC_DRIVER_OPTION_NAME = "JDBC_DRIVER";
     private static final String JDBC_URL_OPTION_NAME = "DB_URL";
 
     private static final String FORBIDDEN_SESSION_PROPERTY_CHARACTERS = ";\n\b\0";
+
+    private enum TransactionIsolation {
+        READ_UNCOMMITTED(1),
+        READ_COMMITTED(2),
+        REPEATABLE_READ(4),
+        SERIALIZABLE(8),
+        NOT_PROVIDED(-1);
+
+        private int isolationLevel;
+
+        TransactionIsolation(int transactionIsolation) {
+            isolationLevel = transactionIsolation;
+        }
+
+        public int getLevel() {
+            return isolationLevel;
+        }
+
+        public static TransactionIsolation typeOf(String str) {
+            return valueOf(str);
+        }
+    }
 
     // JDBC parameters from config file or specified in DDL
     private String jdbcUrl = null;
@@ -84,6 +110,9 @@ public class JdbcBasePlugin extends BasePlugin {
     // Properties object to pass to JDBC Driver when connection is created
     protected Properties connectionConfiguration = new Properties();
 
+    // Transaction isolation level that a user can configure
+    private TransactionIsolation transactionIsolation = TransactionIsolation.NOT_PROVIDED;
+
     // Columns description
     protected List<ColumnDescriptor> columns = null;
 
@@ -99,8 +128,7 @@ public class JdbcBasePlugin extends BasePlugin {
         try {
             LOG.debug("JDBC driver: '{}'", jdbcDriver);
             Class.forName(jdbcDriver);
-        }
-        catch (ClassNotFoundException e) {
+        } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
 
@@ -140,27 +168,31 @@ public class JdbcBasePlugin extends BasePlugin {
         // However, SET queries cannot be executed this way. This is why we do this check
         if (sessionConfiguration.entrySet().stream()
                 .anyMatch(
-                    entry ->
-                        StringUtils.containsAny(
-                            entry.getKey(), FORBIDDEN_SESSION_PROPERTY_CHARACTERS
-                        ) ||
-                        StringUtils.containsAny(
-                            entry.getValue(), FORBIDDEN_SESSION_PROPERTY_CHARACTERS
-                        )
+                        entry ->
+                                StringUtils.containsAny(
+                                        entry.getKey(), FORBIDDEN_SESSION_PROPERTY_CHARACTERS
+                                ) ||
+                                        StringUtils.containsAny(
+                                                entry.getValue(), FORBIDDEN_SESSION_PROPERTY_CHARACTERS
+                                        )
                 )
         ) {
             throw new IllegalArgumentException("Some session configuration parameter contains forbidden characters");
         }
         if (LOG.isDebugEnabled()) {
             LOG.debug("Session configuration: {}",
-                sessionConfiguration.entrySet().stream()
-                        .map(entry -> "'" + entry.getKey() + "'='" + entry.getValue() + "'")
-                        .collect(Collectors.joining(", "))
+                    sessionConfiguration.entrySet().stream()
+                            .map(entry -> "'" + entry.getKey() + "'='" + entry.getValue() + "'")
+                            .collect(Collectors.joining(", "))
             );
         }
 
         // Optional parameter. The default value is empty map
         connectionConfiguration.putAll(configuration.getPropsWithPrefix(JDBC_CONNECTION_PROPERTY_PREFIX));
+
+        // Optional parameter. The default value depends on the database
+        String transactionIsolationString = configuration.get(JDBC_CONNECTION_TRANSACTION_ISOLATION, "NOT_PROVIDED");
+        transactionIsolation = TransactionIsolation.typeOf(transactionIsolationString);
 
         // Optional parameter. By default, corresponding connectionConfiguration property is not set
         String jdbcUser = configuration.get(JDBC_USER_PROPERTY_NAME);
@@ -170,11 +202,12 @@ public class JdbcBasePlugin extends BasePlugin {
 
         if (LOG.isDebugEnabled()) {
             LOG.debug("Connection configuration: {}",
-                connectionConfiguration.entrySet().stream()
-                        .map(entry -> "'" + entry.getKey() + "'='" + entry.getValue() + "'")
-                        .collect(Collectors.joining(", "))
+                    connectionConfiguration.entrySet().stream()
+                            .map(entry -> "'" + entry.getKey() + "'='" + entry.getValue() + "'")
+                            .collect(Collectors.joining(", "))
             );
         }
+
 
         // This must be the last parameter parsed, as we output connectionConfiguration earlier
         // Optional parameter. By default, corresponding connectionConfiguration property is not set
@@ -190,20 +223,16 @@ public class JdbcBasePlugin extends BasePlugin {
     /**
      * Open a new JDBC connection
      *
-     * @throws SQLException if a database access or connection error occurs
-     *
      * @return {@link Connection}
+     * @throws SQLException if a database access or connection error occurs
      */
     public Connection getConnection() throws SQLException {
-        LOG.debug("New JDBC connection. URL: '{}'; Table: '{}'",
-            jdbcUrl, tableName
-        );
+        LOG.debug("New JDBC connection. URL: '{}'; Table: '{}'", jdbcUrl, tableName);
 
         Connection connection = DriverManager.getConnection(jdbcUrl, connectionConfiguration);
         try {
             prepareConnection(connection);
-        }
-        catch (SQLException e) {
+        } catch (SQLException e) {
             closeConnection(connection);
             throw e;
         }
@@ -215,10 +244,8 @@ public class JdbcBasePlugin extends BasePlugin {
      * Prepare a JDBC PreparedStatement
      *
      * @param connection connection to use for creating the statement
-     * @param query query to execute
-     *
+     * @param query      query to execute
      * @return PreparedStatement
-     *
      * @throws SQLException if a database access error occurs
      */
     public PreparedStatement getPreparedStatement(Connection connection, String query) throws SQLException {
@@ -232,7 +259,6 @@ public class JdbcBasePlugin extends BasePlugin {
      * Close a JDBC statement and underlying {@link Connection}
      *
      * @param statement statement to close
-     *
      * @throws SQLException
      */
     public static void closeStatementAndConnection(Statement statement) throws SQLException {
@@ -245,24 +271,21 @@ public class JdbcBasePlugin extends BasePlugin {
 
         try {
             connection = statement.getConnection();
-        }
-        catch (SQLException e) {
+        } catch (SQLException e) {
             LOG.error("Exception when retrieving Connection from Statement", e);
             exception = e;
         }
 
         try {
             statement.close();
-        }
-        catch (SQLException e) {
+        } catch (SQLException e) {
             LOG.error("Exception when closing Statement", e);
             exception = e;
         }
 
         try {
             closeConnection(connection);
-        }
-        catch (SQLException e) {
+        } catch (SQLException e) {
             LOG.error("Exception when closing Connection", e);
             exception = e;
         }
@@ -276,7 +299,6 @@ public class JdbcBasePlugin extends BasePlugin {
      * Close a JDBC connection
      *
      * @param connection connection to close
-     *
      * @throws SQLException
      */
     private static void closeConnection(Connection connection) throws SQLException {
@@ -285,15 +307,19 @@ public class JdbcBasePlugin extends BasePlugin {
         }
         try {
             if (
-                !connection.isClosed() &&
-                connection.getMetaData().supportsTransactions() &&
-                !connection.getAutoCommit()
+                    !connection.isClosed() &&
+                            connection.getMetaData().supportsTransactions() &&
+                            !connection.getAutoCommit()
             ) {
                 connection.commit();
             }
-        }
-        finally {
-            connection.close();
+        } finally {
+            try {
+                connection.close();
+            } catch (Exception e) {
+                // ignore
+                LOG.warn("Failed to close JDBC connection, ignoring the error.", e);
+            }
         }
     }
 
@@ -307,20 +333,33 @@ public class JdbcBasePlugin extends BasePlugin {
             throw new IllegalArgumentException("The provided connection is null");
         }
 
+        DatabaseMetaData metadata = connection.getMetaData();
+        
+        // Handle optional connection transaction isolation level
+        if (transactionIsolation != TransactionIsolation.NOT_PROVIDED) {
+            // user wants to set isolation level explicitly
+            if (metadata.supportsTransactionIsolationLevel(transactionIsolation.getLevel())) {
+                LOG.debug("Setting transaction isolation level to {}", transactionIsolation.toString());
+                connection.setTransactionIsolation(transactionIsolation.getLevel());
+            } else {
+                throw new RuntimeException(
+                        String.format("Transaction isolation level %s is not supported", transactionIsolation.toString())
+                );
+            }
+        }
+
         // Disable autocommit
-        if (connection.getMetaData().supportsTransactions()) {
+        if (metadata.supportsTransactions()) {
             connection.setAutoCommit(false);
         }
 
         // Prepare session (process sessionConfiguration)
         if (!sessionConfiguration.isEmpty()) {
-            DbProduct dbProduct = DbProduct.getDbProduct(connection.getMetaData().getDatabaseProductName());
+            DbProduct dbProduct = DbProduct.getDbProduct(metadata.getDatabaseProductName());
 
             try (Statement statement = connection.createStatement()) {
                 for (Map.Entry<String, String> e : sessionConfiguration.entrySet()) {
-                    statement.execute(
-                        dbProduct.buildSessionQuery(e.getKey(), e.getValue())
-                    );
+                    statement.execute(dbProduct.buildSessionQuery(e.getKey(), e.getValue()));
                 }
             }
         }
@@ -328,8 +367,9 @@ public class JdbcBasePlugin extends BasePlugin {
 
     /**
      * Asserts whether a given parameter has non-empty value, throws IllegalArgumentException otherwise
-     * @param value value to check
-     * @param paramName parameter name
+     *
+     * @param value      value to check
+     * @param paramName  parameter name
      * @param optionName name of the option for a given parameter
      */
     private void assertMandatoryParameter(String value, String paramName, String optionName) {
@@ -342,6 +382,7 @@ public class JdbcBasePlugin extends BasePlugin {
 
     /**
      * Masks all password characters with asterisks, used for logging password values
+     *
      * @param password password to mask
      * @return masked value consisting of asterisks
      */
