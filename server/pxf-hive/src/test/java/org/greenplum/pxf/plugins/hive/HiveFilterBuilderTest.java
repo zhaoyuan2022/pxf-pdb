@@ -42,9 +42,9 @@ public class HiveFilterBuilderTest {
     @Test
     public void parseFilterWithThreeOperations() throws Exception {
         HiveFilterBuilder builder = new HiveFilterBuilder();
-        String[] consts = new String[] {"first", "2"};
-        Operation[] ops = new Operation[] {HDOP_EQ, HDOP_GT};
-        int[] idx = new int[] {1, 2};
+        String[] consts = new String[]{"first", "2"};
+        Operation[] ops = new Operation[]{HDOP_EQ, HDOP_GT};
+        int[] idx = new int[]{1, 2};
 
         LogicalFilter filterList = (LogicalFilter) builder.getFilterObject("a1c25s5dfirsto5a2c20s1d2o2l0");
         assertEquals(LogicalOperation.HDOP_AND, filterList.getOperator());
@@ -52,6 +52,20 @@ public class HiveFilterBuilderTest {
         assertEquals(consts[0], leftOperand.getConstant().constant());
         assertEquals(idx[0], leftOperand.getColumn().index());
         assertEquals(ops[0], leftOperand.getOperation());
+    }
+
+    @Test
+    public void testQueryWithNotOperator() throws Exception {
+        Map<String, String> partitionKeyTypes = new HashMap<>();
+        partitionKeyTypes.put("s2", "string");
+        partitionKeyTypes.put("n1", "int");
+
+        HiveFilterBuilder builder = new HiveFilterBuilder();
+        builder.setColumnDescriptors(getColumnDescriptors());
+        builder.setCanPushdownIntegral(true);
+        builder.setPartitionKeys(getPartitionKeyTypes());
+
+        assertEquals("(stringColumn >= \"9.0\" and ((NOT(bigIntColumn = \"4\")) or (NOT(intColumn = \"s_9\"))))", builder.buildFilterStringForHive("a1c701s1d9o4a3c23s1d4o5l2a2c25s3ds_9o5l2l1l0"));
     }
 
     @Test
@@ -194,7 +208,7 @@ public class HiveFilterBuilderTest {
     }
 
     @Test
-    public void buildFilterStringForHiveWithLogicalOps() throws Exception{
+    public void buildFilterStringForHiveWithLogicalOps() throws Exception {
 
         Map<String, String> partitionKeyTypes = new HashMap<>();
         partitionKeyTypes.put("stringColumn", "string");

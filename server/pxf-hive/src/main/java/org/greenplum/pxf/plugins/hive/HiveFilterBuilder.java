@@ -182,10 +182,20 @@ public class HiveFilterBuilder implements FilterParser.FilterBuilder {
                 serializedFilter = buildSingleFilter(f, filter.getOperator());
             }
             if (serializedFilter != null) {
-                if (filterString.length() > 0) {
-                    filterString.append(logicalOperator);
+                if (filter.getOperator() == FilterParser.LogicalOperation.HDOP_NOT) {
+                    filterString
+                            .append("NOT(")
+                            .append(serializedFilter)
+                            .append(")");
+                } else {
+                    // We only append the operator if there is something on the
+                    // filterString
+                    if (filterString.length() > 0) {
+                        filterString.append(logicalOperator);
+                    }
+                    filterString.append(serializedFilter);
                 }
-                filterString.append(serializedFilter);
+
             } else if (filter.getOperator() == FilterParser.LogicalOperation.HDOP_OR) {
                 // Case when one of the predicates is non-compliant and with OR operator
                 // P OR NP -> null
@@ -348,7 +358,7 @@ public class HiveFilterBuilder implements FilterParser.FilterBuilder {
         this.canPushdownIntegral = canPushdownIntegral;
     }
 
-    public void setPartitionKeys(Map <String, String> partitionKeys) {
+    public void setPartitionKeys(Map<String, String> partitionKeys) {
         this.partitionKeys = partitionKeys;
     }
 }
