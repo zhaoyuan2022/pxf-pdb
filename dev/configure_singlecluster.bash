@@ -181,9 +181,5 @@ EOF
 		<name>datanucleus.autoCreateTables</name>
 		<value>True</value>
 	</property>
-	<property>
-		<name>hive.metastore.integral.jdo.pushdown</name>
-		<value>True</value>
-	</property>
 </configuration>
 EOF

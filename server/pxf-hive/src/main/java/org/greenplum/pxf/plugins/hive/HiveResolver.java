@@ -93,6 +93,7 @@ public class HiveResolver extends HivePlugin implements Resolver {
         super.initialize(requestContext);
 
         hiveDefaultPartName = HiveConf.getVar(configuration, HiveConf.ConfVars.DEFAULTPARTITIONNAME);
+        LOG.debug("Hive's default partition name is " + hiveDefaultPartName);
 
         try {
             parseUserData(context);
@@ -190,6 +191,7 @@ public class HiveResolver extends HivePlugin implements Resolver {
             Object convertedValue = null;
             boolean isDefaultPartition = false;
 
+            LOG.debug("Partition type: " + type + ", value: " + val);
             // check if value is default partition
             isDefaultPartition = isDefaultPartition(type, val);
             // ignore the type's parameters
