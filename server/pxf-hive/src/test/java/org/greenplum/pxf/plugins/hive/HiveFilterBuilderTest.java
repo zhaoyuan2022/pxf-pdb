@@ -65,7 +65,8 @@ public class HiveFilterBuilderTest {
         builder.setCanPushdownIntegral(true);
         builder.setPartitionKeys(getPartitionKeyTypes());
 
-        assertEquals("(stringColumn >= \"9.0\" and ((NOT(bigIntColumn = \"4\")) or (NOT(intColumn = \"s_9\"))))", builder.buildFilterStringForHive("a1c701s1d9o4a3c23s1d4o5l2a2c25s3ds_9o5l2l1l0"));
+        assertNull(builder.buildFilterStringForHive("a3c23s1d4o5l2a2c25s3ds_9o5l2l1"));
+        assertEquals("(stringColumn >= \"9.0\")", builder.buildFilterStringForHive("a1c701s1d9o4a3c23s1d4o5l2a2c25s3ds_9o5l2l1l0"));
     }
 
     @Test
@@ -136,7 +137,7 @@ public class HiveFilterBuilderTest {
         builder.setCanPushdownIntegral(false);
         builder.setPartitionKeys(partitionKeyTypes);
 
-        assertEquals("textColumn != \"2016-01-03\"", builder.buildFilterStringForHive("a3c25s10d2016-01-03o6"));
+        assertEquals("textColumn <> \"2016-01-03\"", builder.buildFilterStringForHive("a3c25s10d2016-01-03o6"));
         assertEquals("textColumn = \"2016-01-03\"", builder.buildFilterStringForHive("a3c25s10d2016-01-03o5"));
         assertEquals("textColumn >= \"2016-01-03\"", builder.buildFilterStringForHive("a3c25s10d2016-01-03o4"));
         assertEquals("textColumn <= \"2016-01-03\"", builder.buildFilterStringForHive("a3c25s10d2016-01-03o3"));
@@ -159,22 +160,22 @@ public class HiveFilterBuilderTest {
 
         assertEquals("stringColumn >= \"2016-01-03\"", builder.buildFilterStringForHive("a1c25s10d2016-01-03o4"));
         assertEquals("stringColumn = \"2016-01-03\"", builder.buildFilterStringForHive("a1c25s10d2016-01-03o5"));
-        assertEquals("stringColumn != \"2016-01-03\"", builder.buildFilterStringForHive("a1c25s10d2016-01-03o6"));
+        assertEquals("stringColumn <> \"2016-01-03\"", builder.buildFilterStringForHive("a1c25s10d2016-01-03o6"));
 
         // Don't support > for integral types
         assertNull(builder.buildFilterStringForHive("a2c23s3d126o4"));
         // Support = for integral types
         assertEquals("intColumn = \"126\"", builder.buildFilterStringForHive("a2c23s3d126o5"));
-        // Support != for integral types
-        assertEquals("intColumn != \"126\"", builder.buildFilterStringForHive("a2c23s3d126o6"));
+        // Support <> for integral types
+        assertEquals("intColumn <> \"126\"", builder.buildFilterStringForHive("a2c23s3d126o6"));
 
         assertNull(builder.buildFilterStringForHive("a3c20s3d126o4"));
         assertEquals("bigIntColumn = \"126\"", builder.buildFilterStringForHive("a3c20s3d126o5"));
-        assertEquals("bigIntColumn != \"126\"", builder.buildFilterStringForHive("a3c20s3d126o6"));
+        assertEquals("bigIntColumn <> \"126\"", builder.buildFilterStringForHive("a3c20s3d126o6"));
 
         assertNull(builder.buildFilterStringForHive("a4c21s3d126o4"));
         assertEquals("smallIntColumn = \"126\"", builder.buildFilterStringForHive("a4c21s3d126o5"));
-        assertEquals("smallIntColumn != \"126\"", builder.buildFilterStringForHive("a4c21s3d126o6"));
+        assertEquals("smallIntColumn <> \"126\"", builder.buildFilterStringForHive("a4c21s3d126o6"));
     }
 
     @Test
@@ -191,7 +192,7 @@ public class HiveFilterBuilderTest {
 
         assertEquals("stringColumn >= \"2016-01-03\"", builder.buildFilterStringForHive("a1c25s10d2016-01-03o4"));
         assertEquals("stringColumn = \"2016-01-03\"", builder.buildFilterStringForHive("a1c25s10d2016-01-03o5"));
-        assertEquals("stringColumn != \"2016-01-03\"", builder.buildFilterStringForHive("a1c25s10d2016-01-03o6"));
+        assertEquals("stringColumn <> \"2016-01-03\"", builder.buildFilterStringForHive("a1c25s10d2016-01-03o6"));
 
         // Integral types not supported
         assertNull(builder.buildFilterStringForHive("a2c23s3d126o4"));
@@ -224,9 +225,9 @@ public class HiveFilterBuilderTest {
         // NP is a predicate based on either a non-partition column or an unsupported operator.
 
         // P1 AND P2 -> P1 AND P2
-        assertEquals("(stringColumn = \"foobar\" and intColumn != \"999\")", builder.buildFilterStringForHive("a1c25s6dfoobaro5a2c23s3d999o6l0"));
+        assertEquals("(stringColumn = \"foobar\" AND intColumn <> \"999\")", builder.buildFilterStringForHive("a1c25s6dfoobaro5a2c23s3d999o6l0"));
         // P1 OR P2 -> P1 OR P2
-        assertEquals("(stringColumn = \"foobar\" or intColumn != \"999\")", builder.buildFilterStringForHive("a1c25s6dfoobaro5a2c23s3d999o6l1"));
+        assertEquals("(stringColumn = \"foobar\" OR intColumn <> \"999\")", builder.buildFilterStringForHive("a1c25s6dfoobaro5a2c23s3d999o6l1"));
         // P1 AND NP1 -> P1
         assertEquals("(stringColumn = \"foobar\")", builder.buildFilterStringForHive("a1c25s6dfoobaro5a3c20s3d999o6l0"));
         // P1 OR NP1 -> null
@@ -236,7 +237,7 @@ public class HiveFilterBuilderTest {
         // (P1 AND P2) OR NP1 -> null
         assertNull(builder.buildFilterStringForHive("a1c25s6dfoobaro5a2c23s3d999o6l0a2c20s3d999o4l1"));
         // (P1 AND P2) AND (P3 OR NP1) -> P1 AND P2
-        assertEquals("((stringColumn = \"foobar\" and intColumn != \"999\"))", builder.buildFilterStringForHive("a1c25s6dfoobaro5a2c23s3d999o6l0a1c25s6dfoobaro5a3c20s3d999o6l1l0"));
+        assertEquals("((stringColumn = \"foobar\" AND intColumn <> \"999\"))", builder.buildFilterStringForHive("a1c25s6dfoobaro5a2c23s3d999o6l0a1c25s6dfoobaro5a3c20s3d999o6l1l0"));
     }
 
     private List<ColumnDescriptor> getColumnDescriptors() {
