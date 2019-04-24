@@ -19,14 +19,12 @@ package org.greenplum.pxf.service;
  * under the License.
  */
 
-import com.google.common.base.Ticker;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicLong;
 
 import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertEquals;
@@ -390,18 +388,5 @@ public class UGICacheTest {
     private void assertCacheSize(int expectedSize) {
         assertEquals(expectedSize, cache.size());
         assertEquals(expectedSize, cache.allQueuesSize());
-    }
-
-    static class FakeTicker extends Ticker {
-        private final AtomicLong nanos = new AtomicLong();
-
-        @Override
-        public long read() {
-            return nanos.get();
-        }
-
-        void advanceTime(long milliseconds) {
-            nanos.addAndGet(milliseconds * UGICache.NANOS_PER_MILLIS);
-        }
     }
 }

@@ -1,0 +1,55 @@
+-- start_ignore
+-- end_ignore
+-- @description query01 for PXF Hive partitioned table cases using union all queries
+SELECT DISTINCT t1, fmt FROM pxf_hive_partitioned_table WHERE fmt = 'avro'
+UNION ALL
+SELECT DISTINCT t1, fmt FROM pxf_hive_partitioned_table WHERE fmt = 'rc'
+UNION ALL
+SELECT DISTINCT t1, fmt FROM pxf_hive_partitioned_table WHERE fmt = 'txt'
+UNION ALL
+SELECT DISTINCT t1, fmt FROM pxf_hive_partitioned_table WHERE fmt = 'seq'
+ORDER BY fmt, t1;
+  t1   | fmt
+-------+------
+ row1  | avro
+ row10 | avro
+ row2  | avro
+ row3  | avro
+ row4  | avro
+ row5  | avro
+ row6  | avro
+ row7  | avro
+ row8  | avro
+ row9  | avro
+ row1  | rc
+ row10 | rc
+ row2  | rc
+ row3  | rc
+ row4  | rc
+ row5  | rc
+ row6  | rc
+ row7  | rc
+ row8  | rc
+ row9  | rc
+ row1  | seq
+ row10 | seq
+ row2  | seq
+ row3  | seq
+ row4  | seq
+ row5  | seq
+ row6  | seq
+ row7  | seq
+ row8  | seq
+ row9  | seq
+ row1  | txt
+ row10 | txt
+ row2  | txt
+ row3  | txt
+ row4  | txt
+ row5  | txt
+ row6  | txt
+ row7  | txt
+ row8  | txt
+ row9  | txt
+(40 rows)
+
