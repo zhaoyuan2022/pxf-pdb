@@ -28,7 +28,7 @@ var (
 
 	initCmd = &cobra.Command{
 		Use:   "init",
-		Short: "Initialize the local PXF server instance",
+		Short: "Initialize the PXF server instances on master, standby master, and the segment hosts",
 		Run: func(cmd *cobra.Command, args []string) {
 			command := &pxf.InitCommand
 			clusterData, err := doSetup(command)
@@ -41,7 +41,7 @@ var (
 
 	startCmd = &cobra.Command{
 		Use:   "start",
-		Short: "Start the local PXF server instance",
+		Short: "Start the PXF server instances on the segment hosts",
 		Run: func(cmd *cobra.Command, args []string) {
 			command := &pxf.StartCommand
 			clusterData, err := doSetup(command)
@@ -55,7 +55,7 @@ var (
 
 	stopCmd = &cobra.Command{
 		Use:   "stop",
-		Short: "Stop the local PXF server instance",
+		Short: "Stop the PXF server instances on the segment hosts",
 		Run: func(cmd *cobra.Command, args []string) {
 			command := &pxf.StopCommand
 			clusterData, err := doSetup(command)
@@ -69,7 +69,7 @@ var (
 
 	syncCmd = &cobra.Command{
 		Use:   "sync",
-		Short: "Sync PXF configs from master to all segment hosts",
+		Short: "Sync PXF configs from master to standby master and the segment hosts",
 		Run: func(cmd *cobra.Command, args []string) {
 			command := &pxf.SyncCommand
 			clusterData, err := doSetup(command)

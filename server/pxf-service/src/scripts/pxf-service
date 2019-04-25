@@ -322,18 +322,18 @@ doHelp() {
     local bold=$(tput bold)
     local tab=$(printf '\t')
     printUsage
-	cat <<-EOF
+    cat <<-EOF
 
 	${bold}List of commands${normal}:
-	  init      initialize the local PXF server instance
-	  start     start the local PXF server instance
-	  stop      stop the local PXF server instance
-	  restart   restart the local PXF server instance (not supported for cluster)
-	  status    show the status of the local PXF server instance (not supported for cluster)
-	  version   show the version of PXF server
-	  cluster   perform <command> on each segment host in the cluster
+	  init                initialize the local PXF server instance
+	  start               start the local PXF server instance
+	  stop                stop the local PXF server instance
+	  restart             restart the local PXF server instance (not supported for cluster)
+	  status              show the status of the local PXF server instance (not supported for cluster)
+	  version             show the version of PXF server
+	  cluster <command>   perform <command> on all the hosts in the cluster; try ${bold}pxf cluster help$normal
 
-	  sync <hostname>    sync PXF_CONF/{conf,lib,servers} directories
+	  sync <hostname>     sync \$PXF_CONF/{conf,lib,servers} directories onto <hostname>
 
 	${bold}Options${normal}:
 	  -h, --help    show command help
@@ -402,16 +402,16 @@ function doStatus()
 
 function doSync()
 {
-    local source_host=$1
-    if [[ -z ${source_host} ]]; then
-        fail "PXF config source host must be set to use this option"
+    local target_host=$1
+    if [[ -z $target_host ]]; then
+        fail "A destination hostname must be provided"
     fi
     instanceExists
     if (( $? != 0 )); then
         fail "Can't find PXF instance, maybe call init?"
     fi
     get_environment
-    rsync -az -e "ssh -o StrictHostKeyChecking=no" "${source_host}:${PXF_CONF}/"{conf,lib,servers} "${PXF_CONF}"
+    rsync -az -e "ssh -o StrictHostKeyChecking=no" "$PXF_CONF"/{conf,lib,servers} "${target_host}:$PXF_CONF"
 }
 
 function doCluster()
