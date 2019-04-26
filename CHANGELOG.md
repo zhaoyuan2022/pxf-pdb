@@ -1,10 +1,33 @@
 # Changelog
 
+## 5.3.0 (04/27/2019)
+
+#### Bug Fixes:
+
+- [#147](https://github.com/greenplum-db/pxf/pull/147) Reverse direction of rsync in pxf sync command
+- [#144](https://github.com/greenplum-db/pxf/pull/144) Remove support for Logical operator NOT with Hive Partition Filtering. NOT is an unsupported logical operator
+- [#138](https://github.com/greenplum-db/pxf/pull/138) Hive partition filtering with support for all Logical Operators
+- [#134](https://github.com/greenplum-db/pxf/pull/134) pxf cluster: stop checking that hostname is master
+
+#### Enhancements:
+
+- [#150](https://github.com/greenplum-db/pxf/pull/150) Add debug statements for the JDBC connection
+- [#149](https://github.com/greenplum-db/pxf/pull/149) pxf cli: Add cluster status command
+- [#142](https://github.com/greenplum-db/pxf/pull/142) Allow configuration of JDBC transaction isolation. Implements [#130](https://github.com/greenplum-db/pxf/issues/130)
+- [#145](https://github.com/greenplum-db/pxf/pull/145) Added integration test for JDBC session parameters
+- [#135](https://github.com/greenplum-db/pxf/pull/135) Cache Fragmenter calls to improve memory consumption during the fragmenter call
+- [#136](https://github.com/greenplum-db/pxf/pull/136) pxf-cli: Support sync and init on standby master
+- [#141](https://github.com/greenplum-db/pxf/pull/141) pxf-api: Fix BaseConfigurationFactory logging
+- [#118](https://github.com/greenplum-db/pxf/pull/118) PXF-JDBC: Enable external database configuration and connection settings modification. Implements [#129](https://github.com/greenplum-db/pxf/issues/129)
+- [#133](https://github.com/greenplum-db/pxf/pull/133) Add Changelog
+- pxf-cli: Use rsync on master host
+
 ## 5.2.1 (04/04/2019)
 
 #### Enhancements:
 
-- [#115](https://github.com/greenplum-db/pxf/pull/115) PXF no longer expects the path to contain
+- [#115](https://github.com/greenplum-db/pxf/pull/115)
+  PXF no longer expects the path to contain
   transaction and segment IDs during write. PXF will
   now construct the write path for Hadoop-Compatible
   FileSystems to include transaction and segment IDs. 
