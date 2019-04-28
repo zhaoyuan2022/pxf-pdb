@@ -1,6 +1,18 @@
 # Changelog
 
-## 5.3.0 (04/27/2019)
+## 5.3.1 (04/27/2019)
+
+#### Bug Fixes:
+
+- [#151](https://github.com/greenplum-db/pxf/pull/151) PXF cli: fix regression with version command
+
+#### Enhancements:
+
+- [#152](https://github.com/greenplum-db/pxf/pull/152) Ensure pxf version can be run before pxf init
+
+---
+
+## 5.3.0 (04/26/2019)
 
 #### Bug Fixes:
 
@@ -21,6 +33,8 @@
 - [#118](https://github.com/greenplum-db/pxf/pull/118) PXF-JDBC: Enable external database configuration and connection settings modification. Implements [#129](https://github.com/greenplum-db/pxf/issues/129)
 - [#133](https://github.com/greenplum-db/pxf/pull/133) Add Changelog
 - pxf-cli: Use rsync on master host
+
+---
 
 ## 5.2.1 (04/04/2019)
 
