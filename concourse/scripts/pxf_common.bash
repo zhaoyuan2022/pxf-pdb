@@ -265,7 +265,7 @@ function init_and_configure_pxf_server() {
 	pushd ${PXF_HOME} > /dev/null
 
 	echo 'Ensure pxf version can be run before pxf init'
-	./bin/pxf version | grep -E "^PXF version [0-9]+.[0-9]+.[0-9]+$" || exit 1
+	su gpadmin -c "./bin/pxf version | grep -E \"^PXF version [0-9]+.[0-9]+.[0-9]+$\"" || exit 1
 
 	echo 'Initializing PXF service'
 	su gpadmin -c "PXF_CONF=${PXF_CONF_DIR} ./bin/pxf init"
