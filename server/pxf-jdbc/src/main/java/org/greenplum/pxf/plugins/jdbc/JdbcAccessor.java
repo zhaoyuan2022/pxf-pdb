@@ -80,6 +80,8 @@ public class JdbcAccessor extends JdbcBasePlugin implements Accessor {
 
         // Execute queries
         statementRead = connection.createStatement();
+        statementRead.setFetchSize(fetchSize);
+        statementRead.setQueryTimeout(queryTimeout);
         resultSetRead = statementRead.executeQuery(queryRead);
 
         return true;
@@ -138,6 +140,7 @@ public class JdbcAccessor extends JdbcBasePlugin implements Accessor {
         LOG.trace("Insert query: {}", queryWrite);
 
         statementWrite = super.getPreparedStatement(connection, queryWrite);
+        statementWrite.setQueryTimeout(queryTimeout);
 
         // Process batchSize
         if (!connection.getMetaData().supportsBatchUpdates()) {

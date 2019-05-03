@@ -48,7 +48,9 @@ public class JdbcBasePlugin extends BasePlugin {
 
     // '100' is a recommended value: https://docs.oracle.com/cd/E11882_01/java.112/e16548/oraperf.htm#JJDBC28754
     private static final int DEFAULT_BATCH_SIZE = 100;
+    private static final int DEFAULT_FETCH_SIZE = 1000;
     private static final int DEFAULT_POOL_SIZE = 1;
+    private static final int DEFAULT_QUERY_TIMEOUT = 0;
 
     // configuration parameter names
     private static final String JDBC_DRIVER_PROPERTY_NAME = "jdbc.driver";
@@ -60,6 +62,11 @@ public class JdbcBasePlugin extends BasePlugin {
 
     // connection parameter names
     private static final String JDBC_CONNECTION_TRANSACTION_ISOLATION = "jdbc.connection.transactionIsolation";
+
+    // statement properties
+    private static final String JDBC_STATEMENT_BATCH_SIZE_PROPERTY_NAME = "jdbc.statement.batchSize";
+    private static final String JDBC_STATEMENT_FETCH_SIZE_PROPERTY_NAME = "jdbc.statement.fetchSize";
+    private static final String JDBC_STATEMENT_QUERY_TIMEOUT_PROPERTY_NAME = "jdbc.statement.queryTimeout";
 
     // DDL option names
     private static final String JDBC_DRIVER_OPTION_NAME = "JDBC_DRIVER";
@@ -90,16 +97,23 @@ public class JdbcBasePlugin extends BasePlugin {
     }
 
     // JDBC parameters from config file or specified in DDL
-    private String jdbcUrl = null;
 
-    protected String tableName = null;
+    private String jdbcUrl;
 
-    // After argument parsing, this value is guaranteed to be >= 1
-    protected int batchSize = DEFAULT_BATCH_SIZE;
+    protected String tableName;
+
+    // Write batch size
+    protected int batchSize;
     protected boolean batchSizeIsSetByUser = false;
 
+    // Read batch size
+    protected int fetchSize;
+
     // Thread pool size
-    protected int poolSize = DEFAULT_POOL_SIZE;
+    protected int poolSize;
+
+    // Query timeout.
+    protected int queryTimeout;
 
     // Quote columns setting set by user (three values are possible)
     protected Boolean quoteColumns = null;
@@ -145,15 +159,22 @@ public class JdbcBasePlugin extends BasePlugin {
         // Required metadata
         columns = context.getTupleDescription();
 
-        // Optional parameter. The default value is 100
-        batchSizeIsSetByUser = context.getOption("BATCH_SIZE") != null;
-        batchSize = context.getOption("BATCH_SIZE", DEFAULT_BATCH_SIZE, true);
+        // Optional parameters
+        batchSizeIsSetByUser = configuration.get(JDBC_STATEMENT_BATCH_SIZE_PROPERTY_NAME) != null;
+        batchSize = configuration.getInt(JDBC_STATEMENT_BATCH_SIZE_PROPERTY_NAME, DEFAULT_BATCH_SIZE);
+
         if (batchSize == 0) {
-            batchSize = 1; // if user set to 0, it is the same as batchsize of 1
+            batchSize = 1; // if user set to 0, it is the same as batchSize of 1
+        } else if(batchSize < 0) {
+            throw new IllegalArgumentException(String.format(
+                    "Property %s has incorrect value %s : must be a non-negative integer", JDBC_STATEMENT_BATCH_SIZE_PROPERTY_NAME, batchSize));
         }
 
-        // Optional parameter. The default value is 1
+        fetchSize = configuration.getInt(JDBC_STATEMENT_FETCH_SIZE_PROPERTY_NAME, DEFAULT_FETCH_SIZE);
+
         poolSize = context.getOption("POOL_SIZE", DEFAULT_POOL_SIZE);
+
+        queryTimeout = configuration.getInt(JDBC_STATEMENT_QUERY_TIMEOUT_PROPERTY_NAME, DEFAULT_QUERY_TIMEOUT);
 
         // Optional parameter. The default value is null
         String quoteColumnsRaw = context.getOption("QUOTE_COLUMNS");
