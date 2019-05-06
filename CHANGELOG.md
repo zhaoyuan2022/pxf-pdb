@@ -1,5 +1,13 @@
 # Changelog
 
+## 5.3.2 (05/06/2019)
+
+#### Bug Fixes:
+
+- [#156](https://github.com/greenplum-db/pxf/pull/156) JDBC statement properties including fetch size and timeout
+
+---
+
 ## 5.3.1 (04/27/2019)
 
 #### Bug Fixes:
