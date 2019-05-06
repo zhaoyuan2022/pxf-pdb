@@ -9,7 +9,9 @@ groups:
       - compile_gpdb_centos6
 {% endif %}
       - test_pxf_cdh_centos6
+{% if gpdb_type == "5X_STABLE" %}
       - test_pxf_hdp_ubuntu16
+{% endif %}
       - test_pxf_hdp_multinode_gpdb
       - test_pxf_s3_no_impersonation
       - test_pxf_s3_with_impersonation
@@ -35,7 +37,9 @@ groups:
       - compile_gpdb_centos6
 {% endif %}
       - test_pxf_cdh_centos6
+{% if gpdb_type == "5X_STABLE" %}
       - test_pxf_hdp_ubuntu16
+{% endif %}
       - test_pxf_hdp_multinode_gpdb
 {% if pipeline_type == "release" %}
       - test_pxf_hdp_centos6
@@ -176,11 +180,13 @@ resources:
     tag: centos6-mapr-server
 {% endif %}
 
+{% if gpdb_type == "5X_STABLE" %}
 - name: gpdb-pxf-dev-ubuntu16-hdp-server
   type: docker-image
   source:
     repository: pivotaldata/gpdb-pxf-dev
     tag: ubuntu16-hdp-server
+{% endif %}
 
 - name: gpdb-pxf-dev-centos6-hdp-secure
   type: docker-image
@@ -215,6 +221,7 @@ resources:
     versioned_file: bin_gpdb_centos6/gpdb_branch_((gpdb-branch))/icw_green/bin_gpdb.tar.gz
 {% endif %}
 
+{% if gpdb_type == "5X_STABLE" %}
 - name: bin_gpdb_ubuntu16
 {% if gpdb_branch == '5X_STABLE' %}
   type: s3
@@ -230,6 +237,7 @@ resources:
     bucket: ((gcs-bucket-intermediates))
     json_key: ((concourse-gcs-resources-service-account-key))
     versioned_file: gpdb_master/compiled_bits_ubuntu16/compiled_bits_ubuntu16.tar.gz
+{% endif %}
 {% endif %}
 
 - name: pxf_tarball
@@ -494,6 +502,7 @@ jobs:
 {% endif %}
 {% endif %}
 
+  {% if gpdb_type == "5X_STABLE" %}
 - name: test_pxf_hdp_ubuntu16
   plan:
   - aggregate:
@@ -525,6 +534,7 @@ jobs:
       TARGET_OS_VERSION: 16
 {% if acceptance %}
       ACCEPTANCE: true
+{% endif %}
 {% endif %}
 
 - name: test_pxf_hdp_secure_with_impersonation
@@ -978,7 +988,9 @@ jobs:
   - get: pxf_tarball
     passed:
     - test_pxf_cdh_centos6
+{% if gpdb_type == "5X_STABLE" %}
     - test_pxf_hdp_ubuntu16
+{% endif %}
     - test_pxf_s3_no_impersonation
     - test_pxf_s3_with_impersonation
     - test_pxf_hdp_secure_with_impersonation
@@ -998,7 +1010,9 @@ jobs:
     - test_pxf_hdp_centos6
     - test_pxf_cdh_centos6
     #- test_pxf_mapr_centos6
+{% if gpdb_type == "5X_STABLE" %}
     - test_pxf_hdp_ubuntu16
+{% endif %}
     - test_pxf_adl
     - test_pxf_gs
     - test_pxf_minio
@@ -1014,7 +1028,9 @@ jobs:
     passed:
     - test_pxf_hdp_centos6
     - test_pxf_cdh_centos6
+{% if gpdb_type == "5X_STABLE" %}
     - test_pxf_hdp_ubuntu16
+{% endif %}
     #- test_pxf_mapr_centos6
     - test_pxf_adl
     - test_pxf_gs
