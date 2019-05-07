@@ -66,7 +66,7 @@ public class HiveORCAccessor extends HiveAccessor implements StatsAccessor {
     /**
      * Constructs a HiveORCFileAccessor.
      */
-    HiveORCAccessor() {
+    public HiveORCAccessor() {
         super(new OrcInputFormat());
     }
 
