@@ -134,6 +134,7 @@ function createInstance()
 
     # copy configuration files into instance
     cp ${tomcat_templates}/bin/setenv.sh ${instance_root}/${instance_name}/bin/setenv.sh
+    cp ${tomcat_templates}/bin/kill-pxf.sh ${instance_root}/${instance_name}/bin/kill-pxf.sh
     cp ${tomcat_templates}/conf/logging.properties ${instance_root}/${instance_name}/conf/.
     cp ${tomcat_templates}/conf/server.xml ${instance_root}/${instance_name}/conf/.
     cp ${tomcat_templates}/conf/web.xml ${instance_root}/${instance_name}/conf/.
@@ -210,23 +211,6 @@ function instanceExists()
 
     ${instance_root}/${instance_name}/bin/catalina.sh version > /dev/null 2>&1
     return $?
-}
-
-function commandWebapp()
-{
-    command=$1
-    if [[ ${PXF_DEBUG} == "true" && ${command} == "start" ]]; then
-        command="jpda $command"
-    fi
-    pushd ${instance_root} > /dev/null
-
-    # Run command as a current user
-    ${instance_root}/${instance_name}/bin/catalina.sh ${command}
-
-    if (( $? != 0 )); then
-        return 1
-    fi
-    popd > /dev/null
 }
 
 function createLogsDir()
@@ -362,7 +346,7 @@ function doInit()
 }
 
 #
-# doStart handles start command
+# doStart handles start commands
 # command is executed as the current user
 #
 # after start, uses checkWebapp to verify the PXF webapp was loaded
@@ -370,28 +354,31 @@ function doInit()
 #
 function doStart()
 {
-    instanceExists
-    if (( $? != 0 )); then
-        fail "Can't find PXF instance, maybe call init?"
+    local flags=()
+    if ! instanceExists; then
+        fail 'Cannot find PXF instance, maybe call init?'
     fi
     get_environment
-    commandWebapp start || return 1
+    [[ $PXF_DEBUG == true ]] && flags+=(jpda)
+    flags+=(start)
+    "${instance_root}/${instance_name}/bin/catalina.sh" "${flags[@]}" || return 1
     checkWebapp 300 || return 1
 }
 
 #
-# doStart handles stop command
+# doStop handles stop commands
 # command is executed as the current user
 #
+# the -force flag is passed to catalina.sh to enable force-stopping
+# the JVM
 #
 function doStop()
 {
-    instanceExists
-    if (( $? != 0 )); then
-        fail "Can't find PXF instance, maybe call init?"
+    if ! instanceExists; then
+        fail 'Cannot find PXF instance, maybe call init?'
     fi
     get_environment
-    commandWebapp stop || return 1
+    "${instance_root}/${instance_name}/bin/catalina.sh" stop -force || return 1
 }
 
 function doStatus()

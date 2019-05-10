@@ -30,3 +30,9 @@ PXF_CONF="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 
 # Fragmenter cache, set to false to disable
 # export PXF_FRAGMENTER_CACHE=true
+
+# Kill PXF on OutOfMemoryError, set to false to disable
+# export PXF_OOM_KILL=true
+
+# Dump heap on OutOfMemoryError, set to dump path to enable
+# export PXF_OOM_DUMP_PATH=/tmp/pxf_heap_dump
