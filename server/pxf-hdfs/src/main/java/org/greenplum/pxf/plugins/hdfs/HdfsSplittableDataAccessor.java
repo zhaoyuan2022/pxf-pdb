@@ -47,7 +47,7 @@ public abstract class HdfsSplittableDataAccessor extends BasePlugin implements A
     protected InputFormat<?, ?> inputFormat;
     protected JobConf jobConf;
     protected Object key, data;
-    protected HcfsType hcfsType;
+    HcfsType hcfsType;
 
     private ListIterator<InputSplit> iter;
 
@@ -131,14 +131,10 @@ public abstract class HdfsSplittableDataAccessor extends BasePlugin implements A
         // if there is one more record in the current split
         if (!reader.next(key, data)) {
             // the current split is exhausted. try to move to the next split
-            if (getNextSplit()) {
-                // read the first record of the new split
-                if (!reader.next(key, data)) {
-                    // make sure we return nulls
-                    return null;
-                }
-            } else {
-                // make sure we return nulls
+            boolean hasMoreSplits = getNextSplit();
+
+            // if there are more splits read the first record of the new split
+            if (!hasMoreSplits || !reader.next(key, data)) {
                 return null;
             }
         }

@@ -20,13 +20,16 @@ package org.greenplum.pxf.plugins.hdfs;
  */
 
 
+import org.apache.commons.lang.StringUtils;
 import org.greenplum.pxf.api.OneRow;
 import org.greenplum.pxf.api.model.RequestContext;
-
+import org.greenplum.pxf.api.utilities.Utilities;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.LinkedList;
+import java.util.Queue;
 
 /**
  * A (atomic) PXF Accessor for reading \n delimited files with quoted
@@ -34,19 +37,39 @@ import java.io.InputStreamReader;
  * multi-line records, that are read from a single source (non-parallel).
  */
 public class QuotedLineBreakAccessor extends HdfsAtomicDataAccessor {
-    private BufferedReader reader;
+    private boolean fileAsRow;
+    private boolean firstLine, lastLine;
+
+    BufferedReader reader;
+    Queue<String> lineQueue;
+
+    @Override
+    public void initialize(RequestContext requestContext) {
+        super.initialize(requestContext);
+
+        // true if the files are read as a single row, false otherwise
+        fileAsRow = StringUtils.equalsIgnoreCase("true", context.getOption("FILE_AS_ROW"));
+
+        if (fileAsRow && context.getTupleDescription().size() != 1) {
+            throw new IllegalArgumentException(String.format("the FILE_AS_ROW " +
+                    "property only supports tables with a single column in " +
+                    "the table definition. %d columns were provided",
+                    context.getTupleDescription().size()));
+        }
+    }
 
     @Override
     public boolean openForRead() throws Exception {
         if (!super.openForRead()) {
             return false;
         }
+        firstLine = true;
         reader = new BufferedReader(new InputStreamReader(inp));
         return true;
     }
 
     /**
-     * Fetches one record (maybe partial) from the  file. The record is returned as a Java object.
+     * Fetches one record (maybe partial) from the file. The record is returned as a Java object.
      */
     @Override
     public OneRow readNextObject() throws IOException {
@@ -54,22 +77,61 @@ public class QuotedLineBreakAccessor extends HdfsAtomicDataAccessor {
             return null;
         }
 
-        String next_line = reader.readLine();
+        String next_line = readLine();
         if (next_line == null) /* EOF */ {
             return null;
+        }
+
+        if (fileAsRow) {
+            // Wrap text around quotes, and escape single quotes
+            next_line = Utilities.toCsvText(next_line, firstLine, lastLine);
+
+            firstLine = false;
         }
 
         return new OneRow(null, next_line);
     }
 
     /**
+     * Read one line ahead, to determine when the last line occurs
+     *
+     * @return the next line
+     */
+    String readLine() throws IOException {
+        if (!fileAsRow) {
+            // simply readLine when fileAsRow feature is not enabled
+            return reader.readLine();
+        }
+
+        String line;
+        if (lineQueue == null) {
+            line = reader.readLine();
+
+            if (line == null) {
+                lastLine = true;
+                return null;
+            }
+
+            lineQueue = new LinkedList<>();
+            lineQueue.offer(line);
+        }
+
+        line = reader.readLine();
+        if (line != null) {
+            lineQueue.offer(line);
+        } else {
+            lastLine = true;
+        }
+        return lineQueue.poll();
+    }
+
+    /**
      * Opens the resource for write.
      *
      * @return true if the resource is successfully opened
-     * @throws Exception if opening the resource failed
      */
     @Override
-    public boolean openForWrite() throws Exception {
+    public boolean openForWrite() {
         throw new UnsupportedOperationException();
     }
 
@@ -78,20 +140,17 @@ public class QuotedLineBreakAccessor extends HdfsAtomicDataAccessor {
      *
      * @param onerow the object to be written
      * @return true if the write succeeded
-     * @throws Exception writing to the resource failed
      */
     @Override
-    public boolean writeNextObject(OneRow onerow) throws Exception {
+    public boolean writeNextObject(OneRow onerow) {
         throw new UnsupportedOperationException();
     }
 
     /**
      * Closes the resource for write.
-     *
-     * @throws Exception if closing the resource failed
      */
     @Override
-    public void closeForWrite() throws Exception {
+    public void closeForWrite() {
         throw new UnsupportedOperationException();
     }
 }
