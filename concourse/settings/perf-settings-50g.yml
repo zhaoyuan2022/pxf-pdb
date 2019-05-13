@@ -20,8 +20,8 @@ perf-hadoop-instance-type: n1-standard-2
 perf-hadoop-disk-size: 64
 
 # 2 weeks
-#perf-trigger-interval: 336h
-perf-trigger-interval: 24h
+perf-trigger-interval: 336h
+#perf-trigger-interval: 24h
 perf-trigger-start: 6:30 AM
 perf-trigger-stop: 6:40 AM
 
