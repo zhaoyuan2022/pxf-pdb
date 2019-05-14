@@ -1,5 +1,18 @@
 # Changelog
 
+## 5.4.0 (05/13/2019)
+
+#### Bug Fixes:
+
+- [#161](https://github.com/greenplum-db/pxf/pull/161) Fix Oracle timestamp wrapping
+
+#### Enhancements:
+
+- [#157](https://github.com/greenplum-db/pxf/pull/157) JDBC profile can execute a query to read data from an external DB
+- [#158](https://github.com/greenplum-db/pxf/pull/158) Add support to read multiline files as a single row
+
+---
+
 ## 5.3.2 (05/06/2019)
 
 #### Bug Fixes:
