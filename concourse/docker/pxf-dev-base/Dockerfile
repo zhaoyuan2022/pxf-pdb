@@ -27,10 +27,11 @@ ADD pxf_src /tmp/pxf_src
 RUN cd /tmp/pxf_src && \
     export BUILD_PARAMS='-Dorg.gradle.daemon=false' && \
     GOPATH=/opt/go PATH=/opt/go/bin:/usr/local/go/bin:$PATH make tar && \
-    cd automation && PXF_HOME=/tmp/pxf_src/server/build/stage make dev && \
-    mv /root/.m2 /home/gpadmin && \
-    mv /root/.gradle /home/gpadmin && \
-    ln -s /home/gpadmin/.gradle /root/.gradle && \
-    ln -s /home/gpadmin/.m2 /root/.m2 && \
+    PXF_HOME=/tmp/pxf_src/server/build/stage make -C /tmp/pxf_src/automation dev && \
+    mkdir -p /home/gpadmin/.tomcat && \
+    mv /tmp/pxf_src/server/tomcat/build/apache-tomcat-*.tar.gz /home/gpadmin/.tomcat && \
+    mv /tmp/pxf_src/cli/go/pkg/dep/sources /home/gpadmin/.go-dep-cached-sources && \
+    mv /root/.gradle /root/.m2 /home/gpadmin && \
+    ln -s /home/gpadmin/.tomcat /home/gpadmin/.go-dep-cached-sources /home/gpadmin/.m2 /home/gpadmin/.gradle /root && \
     chown -R gpadmin:gpadmin /home/gpadmin && \
     rm -rf /tmp/pxf_src

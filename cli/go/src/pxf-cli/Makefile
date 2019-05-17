@@ -3,6 +3,7 @@
 
 TARGET := $(shell echo $${PWD\#\#*/})
 PXF_ROOT_DIR := $(shell cd ../../../.. && pwd)
+GO_DEP_CACHE := ${PXF_ROOT_DIR}/cli/go/pkg/dep
 PXF_SERVER_DIR := ${PXF_ROOT_DIR}/server
 PXF_STAGING_DIR := ${PXF_SERVER_DIR}/build/stage/bin
 PXF_SERVICE_SCRIPTS := ${PXF_SERVER_DIR}/pxf-service/src/scripts
@@ -24,6 +25,10 @@ help:
 all: test tar install
 
 depend:
+	@if [[ -d $(HOME)/.go-dep-cached-sources && ! -d ${GO_DEP_CACHE}/sources ]]; then \
+		mkdir -p ${GO_DEP_CACHE}; \
+		ln -s $(HOME)/.go-dep-cached-sources ${GO_DEP_CACHE}/sources; \
+	fi
 	@dep ensure -v
 
 build: depend

@@ -61,6 +61,10 @@ doc:
 tomcat:
 	@if [[ -f "${TOMCAT_DIR}/${TOMCAT_TAR}" ]]; then \
 		echo "${TOMCAT_TAR} already exists, nothing to do"; \
+	elif [[ -f "${HOME}/.tomcat/${TOMCAT_TAR}" ]]; then \
+		echo "Found Tomcat tarball at: ${HOME}/.tomcat/${TOMCAT_TAR}, creating symlink"; \
+		mkdir -p "${TOMCAT_DIR}"; \
+		ln -s "${HOME}/.tomcat/${TOMCAT_TAR}" "$(shell pwd)/${TOMCAT_DIR}"; \
 	else \
 		echo "Downloading Tomcat from ${TOMCAT_URL}..."; \
 		mkdir -p ${TOMCAT_DIR}; \

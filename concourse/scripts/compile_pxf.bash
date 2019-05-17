@@ -9,7 +9,7 @@ _main() {
 	export TERM=xterm
 	export BUILD_NUMBER="${TARGET_OS}"
 	export PXF_HOME="${GPHOME}/pxf"
-	export PATH="$PATH:$(cd ~; pwd)/go/bin"
+	export PATH=$PATH:${HOME}/go/bin
 	make -C pxf_src test install
 	# Create tarball for PXF
 	pushd ${GPHOME}
