@@ -16,10 +16,7 @@ import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.ArrayList;
 
 import static org.junit.Assert.*;
 import static org.powermock.api.mockito.PowerMockito.mock;
