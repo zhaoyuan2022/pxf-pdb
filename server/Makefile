@@ -59,9 +59,9 @@ doc:
 
 .PHONY: tomcat
 tomcat:
-	@if [[ -f "${TOMCAT_DIR}/${TOMCAT_TAR}" ]]; then \
+	@if [ -f "${TOMCAT_DIR}/${TOMCAT_TAR}" ]; then \
 		echo "${TOMCAT_TAR} already exists, nothing to do"; \
-	elif [[ -f "${HOME}/.tomcat/${TOMCAT_TAR}" ]]; then \
+	elif [ -f "${HOME}/.tomcat/${TOMCAT_TAR}" ]; then \
 		echo "Found Tomcat tarball at: ${HOME}/.tomcat/${TOMCAT_TAR}, creating symlink"; \
 		mkdir -p "${TOMCAT_DIR}"; \
 		ln -s "${HOME}/.tomcat/${TOMCAT_TAR}" "$(shell pwd)/${TOMCAT_DIR}"; \
@@ -70,7 +70,7 @@ tomcat:
 		mkdir -p ${TOMCAT_DIR}; \
 		wget -q ${TOMCAT_URL} -P ${TOMCAT_DIR}; \
 	fi
-	@if [[ ! -d "${TOMCAT_DIR}/apache-tomcat" ]]; then \
+	@if [ ! -d "${TOMCAT_DIR}/apache-tomcat" ]; then \
 		mkdir -p ${TOMCAT_DIR}/apache-tomcat; \
 		echo "Extracting Tomcat into ${TOMCAT_DIR}..."; \
 		pushd ${TOMCAT_DIR} > /dev/null; \
@@ -80,7 +80,7 @@ tomcat:
 
 .PHONY: install
 install: tomcat
-	@if [[ "$(PXF_HOME)" == "" ]]; then \
+	@if [ -z "$(PXF_HOME)" ]; then \
 		echo "ERROR: PXF_HOME is not set correctly"; exit 2; \
 	fi
 	./gradlew install ${BUILD_PARAMS}

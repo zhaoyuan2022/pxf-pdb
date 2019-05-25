@@ -121,17 +121,17 @@ sync_jdbc_config:
 sync_cloud_configs:
 ifneq "$(PROTOCOL)" ""
 	@mkdir -p $(PROTOCOL_HOME)
-	@if [[ ! -f "$(PROTOCOL_HOME)/$(PROTOCOL)-site.xml" ]]; then \
+	@if [ ! -f "$(PROTOCOL_HOME)/$(PROTOCOL)-site.xml" ]; then \
 		cp $(PXF_HOME)/templates/user/templates/$(PROTOCOL)-site.xml $(PROTOCOL_HOME)/; \
 		cp $(PXF_HOME)/templates/user/templates/mapred-site.xml $(PROTOCOL_HOME)/; \
-		if [[ $(PROTOCOL) == s3 ]]; then \
-			if [[ "$(MINIO)" == "true" ]]; then \
+		if [ $(PROTOCOL) = s3 ]; then \
+			if [ "$(MINIO)" = "true" ]; then \
 				cp $(PXF_HOME)/templates/user/templates/minio-site.xml $(PROTOCOL_HOME)/$(PROTOCOL)-site.xml; \
 				sed $(SED_OPTS) "s|YOUR_MINIO_URL|http://localhost:9000|" $(PROTOCOL_HOME)/$(PROTOCOL)-site.xml; \
 			fi; \
 			mkdir -p $(PROTOCOL_HOME)-invalid; \
 			cp $(PXF_HOME)/templates/user/templates/$(PROTOCOL)-site.xml $(PROTOCOL_HOME)-invalid/; \
-			if [[ -z "$(ACCESS_KEY_ID)" ]] || [[ -z "$(SECRET_ACCESS_KEY)" ]]; then \
+			if [ -z "$(ACCESS_KEY_ID)" ] || [ -z "$(SECRET_ACCESS_KEY)" ]; then \
 				echo "AWS Keys (ACCESS_KEY_ID, SECRET_ACCESS_KEY) not set"; \
 				rm -rf $(PROTOCOL_HOME); \
 				exit 1; \
@@ -139,8 +139,8 @@ ifneq "$(PROTOCOL)" ""
 			sed $(SED_OPTS) "s|YOUR_AWS_ACCESS_KEY_ID|$(ACCESS_KEY_ID)|" $(PROTOCOL_HOME)/$(PROTOCOL)-site.xml; \
 			sed $(SED_OPTS) "s|YOUR_AWS_SECRET_ACCESS_KEY|$(SECRET_ACCESS_KEY)|" $(PROTOCOL_HOME)/$(PROTOCOL)-site.xml; \
 		fi; \
-		if [[ $(PROTOCOL) == adl ]]; then \
-			if [[ -z "$(ADL_ACCOUNT)" ]] || [[ -z "$(ADL_REFRESH_URL)" ]] || [[ -z "$(ADL_CLIENT_ID)" ]] || [[ -z "$(ADL_CREDENTIAL)" ]]; then \
+		if [ $(PROTOCOL) = adl ]; then \
+			if [ -z "$(ADL_ACCOUNT)" ] || [ -z "$(ADL_REFRESH_URL)" ] || [ -z "$(ADL_CLIENT_ID)" ] || [ -z "$(ADL_CREDENTIAL)" ]; then \
 				echo "ADL Keys (ADL_ACCOUNT, ADL_CLIENT_ID, ADL_CREDENTIAL, ADL_REFRESH_URL) not set"; \
 				rm -rf $(PROTOCOL_HOME); \
 				exit 1; \
@@ -149,8 +149,8 @@ ifneq "$(PROTOCOL)" ""
 			sed $(SED_OPTS) "s|YOUR_ADL_CLIENT_ID|$(ADL_CLIENT_ID)|" $(PROTOCOL_HOME)/$(PROTOCOL)-site.xml; \
 			sed $(SED_OPTS) "s|YOUR_ADL_CREDENTIAL|$(ADL_CREDENTIAL)|" $(PROTOCOL_HOME)/$(PROTOCOL)-site.xml; \
 		fi; \
-		if [[ $(PROTOCOL) == gs ]]; then \
-			if [[ ! -f /tmp/gsc-ci-service-account.key.json ]]; then \
+		if [ $(PROTOCOL) = gs ]; then \
+			if [ ! -f /tmp/gsc-ci-service-account.key.json ]; then \
 				echo "Google Service Account Key JSON file does exist in /tmp/gsc-ci-service-account.key.json"; \
 				rm -rf $(PROTOCOL_HOME); \
 				exit 1; \
@@ -158,8 +158,8 @@ ifneq "$(PROTOCOL)" ""
 			sed $(SED_OPTS) "s|YOUR_GOOGLE_STORAGE_KEYFILE|/tmp/gsc-ci-service-account.key.json|" $(PROTOCOL_HOME)/$(PROTOCOL)-site.xml; \
 		fi; \
 		echo "Created $(PROTOCOL) server configuration"; \
-		if [[ $(PROTOCOL) == wasbs ]]; then \
-			if [[ -z "$(WASB_ACCOUNT_NAME)" ]] || [[ -z "$(WASB_ACCOUNT_KEY)" ]]; then \
+		if [ $(PROTOCOL) = wasbs ]; then \
+			if [ -z "$(WASB_ACCOUNT_NAME)" ] || [ -z "$(WASB_ACCOUNT_KEY)" ]; then \
 				echo "Azure Blob Storage Keys (WASB_ACCOUNT_NAME, WASB_ACCOUNT_KEY) not set"; \
 				rm -rf $(PROTOCOL_HOME); \
 				exit 1; \
