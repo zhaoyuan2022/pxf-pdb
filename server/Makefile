@@ -73,9 +73,7 @@ tomcat:
 	@if [ ! -d "${TOMCAT_DIR}/apache-tomcat" ]; then \
 		mkdir -p ${TOMCAT_DIR}/apache-tomcat; \
 		echo "Extracting Tomcat into ${TOMCAT_DIR}..."; \
-		pushd ${TOMCAT_DIR} > /dev/null; \
-		tar -xzf ${TOMCAT_TAR} -C apache-tomcat --strip-components 1; \
-		popd > /dev/null; \
+		tar -xzf "${TOMCAT_DIR}/${TOMCAT_TAR}" -C "${TOMCAT_DIR}/apache-tomcat" --strip-components 1; \
 	fi
 
 .PHONY: install
