@@ -104,6 +104,8 @@ sync_jdbc_config:
 		sed $(SED_OPTS) "s|YOUR_DATABASE_JDBC_URL|jdbc:postgresql://$(JDBC_HOST):$(JDBC_PORT)/pxfautomation|" $(PXF_CONF_SERVERS)/database/jdbc-site.xml; \
 		sed $(SED_OPTS) "s|YOUR_DATABASE_JDBC_USER||" $(PXF_CONF_SERVERS)/database/jdbc-site.xml; \
 		sed $(SED_OPTS) "s|YOUR_DATABASE_JDBC_PASSWORD||" $(PXF_CONF_SERVERS)/database/jdbc-site.xml; \
+		cp $(PXF_CONF_SERVERS)/database/jdbc-site.xml $(PXF_CONF_SERVERS)/database/testuser-user.xml; \
+		sed $(SED_OPTS) "s|pxfautomation|template1|" $(PXF_CONF_SERVERS)/database/testuser-user.xml; \
 	fi
 	@cp src/test/resources/report.sql $(PXF_CONF_SERVERS)/database
 
