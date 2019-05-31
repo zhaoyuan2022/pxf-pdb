@@ -113,6 +113,8 @@ function setup_pxf_on_cluster() {
         sed -i \"s|YOUR_DATABASE_JDBC_USER|gpadmin|\" ${PXF_CONF_DIR}/servers/database/jdbc-site.xml &&
         sed -i \"s|YOUR_DATABASE_JDBC_PASSWORD||\" ${PXF_CONF_DIR}/servers/database/jdbc-site.xml &&
         cp ~gpadmin/report.sql ${PXF_CONF_DIR}/servers/database/ &&
+        cp ${PXF_CONF_DIR}/servers/database/jdbc-site.xml ${PXF_CONF_DIR}/servers/database/testuser-user.xml &&
+        sed -i \"s|pxfautomation|template1|\" ${PXF_CONF_DIR}/servers/database/testuser-user.xml &&
         mkdir -p ${PXF_CONF_DIR}/servers/db-session-params &&
         cp ${PXF_CONF_DIR}/templates/jdbc-site.xml ${PXF_CONF_DIR}/servers/db-session-params/ &&
         sed -i \"s|YOUR_DATABASE_JDBC_DRIVER_CLASS_NAME|org.postgresql.Driver|\" ${PXF_CONF_DIR}/servers/db-session-params/jdbc-site.xml &&
