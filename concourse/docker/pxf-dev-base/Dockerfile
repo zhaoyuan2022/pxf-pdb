@@ -38,4 +38,13 @@ RUN ["/bin/bash", "-c", "export BUILD_PARAMS=-Dorg.gradle.daemon=false && \
       yum install -y python-paramiko && yum clean all; \
     else \
       pip install psi paramiko --no-cache-dir; \
+    fi && \
+    if grep 'VERSION=.*18.04.*LTS.*Bionic Beaver.*$' /etc/os-release; then \
+      PERL_VERSION=perl-5.22.1 && \
+      wget http://www.cpan.org/src/5.0/${PERL_VERSION}.tar.gz && \
+      tar -xzf ${PERL_VERSION}.tar.gz && \
+      pushd $PERL_VERSION && \
+        ./Configure -des -Dprefix=/usr && \
+        make && make install && \
+      popd && rm -rf ${PERL_VERSION}*; \
     fi"]
