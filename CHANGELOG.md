@@ -1,5 +1,22 @@
 # Changelog
 
+## 5.5.0 (05/31/2019)
+
+#### Bug Fixes:
+
+- [#176](https://github.com/greenplum-db/pxf/pull/176) Upgrade jackson 2 version from 2.9.8 -> 2.9.9
+
+#### Enhancements:
+
+- [#171](https://github.com/greenplum-db/pxf/pull/171) Enable JDBC connection to Hive and JDBC-specific user impersonation per server
+- [#178](https://github.com/greenplum-db/pxf/pull/178) Make pxf threads configurable
+- [#172](https://github.com/greenplum-db/pxf/pull/172) Support user-specific configuration in server
+- [#169](https://github.com/greenplum-db/pxf/pull/169) HdfsFileFragmenter
+- [#162](https://github.com/greenplum-db/pxf/pull/162) Kill JVM/Tomcat on OutOfMemoryError
+- [#160](https://github.com/greenplum-db/pxf/pull/160) JDBC: Optimize resolver for INSERT queries
+
+---
+
 ## 5.4.0 (05/13/2019)
 
 #### Bug Fixes:
