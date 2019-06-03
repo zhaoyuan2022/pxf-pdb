@@ -1,5 +1,13 @@
 # Changelog
 
+## 5.5.1 (06/03/2019)
+
+#### Bug Fixes:
+
+- [#180](https://github.com/greenplum-db/pxf/pull/180) Upgrade the Postgres JDBC Driver version
+
+---
+
 ## 5.5.0 (05/31/2019)
 
 #### Bug Fixes:
