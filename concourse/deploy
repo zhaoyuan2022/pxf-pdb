@@ -85,6 +85,7 @@ def how_to_use_generated_pipeline_message():
         cmd += '    -v icw_green_bucket=' + ARGS.ICW_GREEN_BUCKET + ' \\\n'
         if ARGS.gpdb_branch != '5X_STABLE':
             cmd += '    -v gcs-bucket-intermediates=pivotal-gpdb-concourse-resources-intermediates-prod \\\n'
+            cmd += '    -v gcs-bucket-resources-prod=pivotal-gpdb-concourse-resources-prod\\\n'
     if ARGS.compile_gpdb:
         cmd += '    -v configure_flags=--enable-cassert -v gpaddon-git-branch=master \\\n'
     cmd += '    -v gpdb-branch=' + ARGS.actual_gpdb_branch
