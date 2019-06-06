@@ -329,6 +329,11 @@ public class JdbcAccessor extends JdbcBasePlugin implements Accessor {
         if (StringUtils.isBlank(queryText)) {
             throw new RuntimeException(String.format("Query text file is empty for query %s", queryName));
         }
+
+        // Remove one or more semicolons followed by optional blank space
+        // happening at the end of the query
+        queryText = queryText.replaceFirst("(;+\\s*)+$", "");
+
         return queryText;
     }
 
