@@ -1,5 +1,19 @@
 # Changelog
 
+## 5.6.0 (06/19/2019)
+
+#### Bug Fixes:
+
+- [#182](https://github.com/greenplum-db/pxf/pull/182) Run a named query that ends with semicolon
+
+#### Enhancements:
+
+- [#188](https://github.com/greenplum-db/pxf/pull/188) Support for FDW
+- [#186](https://github.com/greenplum-db/pxf/pull/186) Enable JDBC Connection Pooling
+- [#183](https://github.com/greenplum-db/pxf/pull/183) Upgrade postgres driver to version 42.2.5
+
+---
+
 ## 5.5.1 (06/03/2019)
 
 #### Bug Fixes:
