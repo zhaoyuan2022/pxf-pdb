@@ -5,6 +5,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import org.greenplum.pxf.automation.features.BaseFeature;
+import org.greenplum.pxf.automation.utils.system.ProtocolUtils;
 
 /**
  * Tests for Json plugin to read HDFS files in JSON format.
@@ -21,15 +22,30 @@ public class JsonTest extends BaseFeature {
     private final String FILENAME_PRETTY_PRINT = "tweets-pp";
     private final String FILENAME_PRETTY_PRINT_W_DELETE = "tweets-pp-with-delete";
     private final String FILENAME_BROKEN = "tweets-broken";
+    private final String FILENAME_MISMATCHED_TYPES = "supported_primitive_mismatched_types";
 
-    private String[] tweetsFields = new String[] {
+    private String[] tweetsFields = new String[]{
             "created_at text",
             "id bigint",
             "text text",
             "\"user.screen_name\" text",
             "\"entities.hashtags[0]\" text",
             "\"coordinates.coordinates[0]\" float8",
-            "\"coordinates.coordinates[1]\" float8", };
+            "\"coordinates.coordinates[1]\" float8",
+    };
+
+    private String[] supportedPrimitiveFields = new String[]{
+            "type_int int",
+            "type_bigint bigint",
+            "type_smallint smallint",
+            "type_float real",
+            "type_double float8",
+            "type_string1 text",
+            "type_string2 varchar",
+            "type_string3 bpchar",
+            "type_char char",
+            "type_boolean bool",
+    };
 
     @Override
     public void beforeClass() throws Exception {
@@ -56,6 +72,8 @@ public class JsonTest extends BaseFeature {
                 + SUFFIX_JSON);
         hdfs.copyFromLocal(resourcePath + FILENAME_BROKEN + SUFFIX_JSON,
                 hdfsPath + FILENAME_BROKEN + SUFFIX_JSON);
+        hdfs.copyFromLocal(resourcePath + FILENAME_MISMATCHED_TYPES + SUFFIX_JSON,
+                hdfsPath + FILENAME_MISMATCHED_TYPES + SUFFIX_JSON);
     }
 
     @BeforeMethod(alwaysRun = true)
@@ -73,13 +91,13 @@ public class JsonTest extends BaseFeature {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "features", "gpdb" })
+    @Test(groups = {"features", "gpdb", "hcfs"})
     public void jsonSimple() throws Exception {
 
         exTable.setName("jsontest_simple");
-        exTable.setProfile("Json");
+        exTable.setProfile(ProtocolUtils.getProtocol().value() + ":json");
         exTable.setPath(hdfsPath + FILENAME_SIMPLE + SUFFIX_JSON);
-        exTable.setFields(new String[] { "name text", "age int" });
+        exTable.setFields(new String[]{"name text", "age int"});
 
         gpdb.createTableAndVerify(exTable);
 
@@ -92,25 +110,13 @@ public class JsonTest extends BaseFeature {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "features", "gpdb" })
+    @Test(groups = {"features", "gpdb", "hcfs"})
     public void jsonSupportedPrimitives() throws Exception {
 
         exTable.setName("jsontest_supported_primitive_types");
-        exTable.setProfile("Json");
+        exTable.setProfile(ProtocolUtils.getProtocol().value() + ":json");
         exTable.setPath(hdfsPath + FILENAME_TYPES + SUFFIX_JSON);
-        exTable.setFields(new String[] {
-                "type_int int",
-                "type_bigint bigint",
-                "type_smallint smallint",
-                "type_float real",
-                "type_double float8",
-                "type_string1 text",
-                "type_string2 varchar",
-                "type_string3 bpchar",
-                "type_char char",
-                "type_boolean bool",
-        // "type_bytes bytea",
-        });
+        exTable.setFields(supportedPrimitiveFields);
 
         gpdb.createTableAndVerify(exTable);
 
@@ -125,14 +131,14 @@ public class JsonTest extends BaseFeature {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "features", "gpdb" })
+    @Test(groups = {"features", "gpdb", "hcfs"})
     public void jsonPrettyPrint() throws Exception {
 
         exTable.setName("jsontest_pretty_print");
-        exTable.setProfile("Json");
+        exTable.setProfile(ProtocolUtils.getProtocol().value() + ":json");
         exTable.setPath(hdfsPath + FILENAME_PRETTY_PRINT + SUFFIX_JSON);
         exTable.setFields(tweetsFields);
-        exTable.setUserParameters(new String[] { "IDENTIFIER=created_at" });
+        exTable.setUserParameters(new String[]{"IDENTIFIER=created_at"});
 
         gpdb.createTableAndVerify(exTable);
 
@@ -146,14 +152,14 @@ public class JsonTest extends BaseFeature {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "features", "gpdb" })
+    @Test(groups = {"features", "gpdb", "hcfs"})
     public void missingIdentifier() throws Exception {
 
         exTable.setName("jsontest_missing_identifier");
-        exTable.setProfile("Json");
+        exTable.setProfile(ProtocolUtils.getProtocol().value() + ":json");
         exTable.setPath(hdfsPath + FILENAME_PRETTY_PRINT_W_DELETE + SUFFIX_JSON);
         exTable.setFields(tweetsFields);
-        exTable.setUserParameters(new String[] { "IDENTIFIER=created_at" });
+        exTable.setUserParameters(new String[]{"IDENTIFIER=created_at"});
 
         gpdb.createTableAndVerify(exTable);
 
@@ -167,16 +173,16 @@ public class JsonTest extends BaseFeature {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "features", "gpdb" })
+    @Test(groups = {"features", "gpdb", "hcfs"})
     public void exceedsMaxSize() throws Exception {
 
         exTable.setName("jsontest_max_size");
-        exTable.setProfile("Json");
+        exTable.setProfile(ProtocolUtils.getProtocol().value() + ":json");
         exTable.setPath(hdfsPath + FILENAME_PRETTY_PRINT + SUFFIX_JSON);
         exTable.setFields(tweetsFields);
-        exTable.setUserParameters(new String[] {
+        exTable.setUserParameters(new String[]{
                 "IDENTIFIER=created_at",
-                "MAXLENGTH=566" });
+                "MAXLENGTH=566"});
 
         gpdb.createTableAndVerify(exTable);
 
@@ -191,18 +197,88 @@ public class JsonTest extends BaseFeature {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "features", "gpdb" })
-    public void malFormatedRecord() throws Exception {
+    @Test(groups = {"features", "gpdb", "hcfs"})
+    public void malFormattedRecord() throws Exception {
 
         exTable.setName("jsontest_malformed_record");
-        exTable.setProfile("Json");
+        exTable.setProfile(ProtocolUtils.getProtocol().value() + ":json");
         exTable.setPath(hdfsPath + FILENAME_BROKEN + SUFFIX_JSON);
         exTable.setFields(tweetsFields);
-        exTable.setUserParameters(new String[] { "IDENTIFIER=created_at" });
+        exTable.setUserParameters(new String[]{"IDENTIFIER=created_at"});
 
         gpdb.createTableAndVerify(exTable);
 
         // Verify results
         runTincTest("pxf.features.hdfs.readable.json.malformed_record.runTest");
+    }
+
+    /**
+     * Test JSON file with pretty print format with reject limit configured. One of the records
+     * is malformed. The query is allowed and a table is created.
+     *
+     * @throws Exception if test fails to run
+     */
+    @Test(groups = {"features", "gpdb", "hcfs"})
+    public void malFormattedRecordWithRejectLimit() throws Exception {
+
+        exTable.setName("jsontest_malformed_record_with_reject_limit");
+        exTable.setProfile(ProtocolUtils.getProtocol().value() + ":json");
+        exTable.setPath(hdfsPath + FILENAME_BROKEN + SUFFIX_JSON);
+        exTable.setFields(tweetsFields);
+        exTable.setUserParameters(new String[]{"IDENTIFIER=created_at"});
+        exTable.setSegmentRejectLimit(2);
+        exTable.setErrorTable("true");
+
+        gpdb.createTableAndVerify(exTable);
+
+        // Verify results
+        runTincTest("pxf.features.hdfs.readable.json.malformed_record_with_reject_limit.runTest");
+    }
+
+    /**
+     * Test JSON file with all supported types. Some of the records
+     * have type mismatches (e.g. an integer entered as '(').
+     * In that case, the line will be sent to GPDB as TEXT, and we
+     * expect GPDB to raise a type error.
+     *
+     * @throws Exception if test fails to run
+     */
+    @Test(groups = {"features", "gpdb", "hcfs"})
+    public void mismatchedTypes() throws Exception {
+
+        exTable.setName("jsontest_mismatched_types");
+        exTable.setProfile(ProtocolUtils.getProtocol().value() + ":json");
+        exTable.setPath(hdfsPath + FILENAME_MISMATCHED_TYPES + SUFFIX_JSON);
+        exTable.setFields(supportedPrimitiveFields);
+
+        gpdb.createTableAndVerify(exTable);
+
+        // Verify results
+        runTincTest("pxf.features.hdfs.readable.json.mismatched_types.runTest");
+    }
+
+    /**
+     * Test JSON file with all supported types. Some of the records
+     * have type mismatches (e.g. an integer entered as '(').
+     * In that case, the line will be sent to GPDB as TEXT, and we
+     * expect GPDB to raise a type error. This table has reject limit
+     * set high enough to get some data back.
+     *
+     * @throws Exception if test fails to run
+     */
+    @Test(groups = {"features", "gpdb", "hcfs"})
+    public void mismatchedTypesWithRejectLimit() throws Exception {
+
+        exTable.setName("jsontest_mismatched_types_with_reject_limit");
+        exTable.setProfile(ProtocolUtils.getProtocol().value() + ":json");
+        exTable.setPath(hdfsPath + FILENAME_MISMATCHED_TYPES + SUFFIX_JSON);
+        exTable.setFields(supportedPrimitiveFields);
+        exTable.setSegmentRejectLimit(7);
+        exTable.setErrorTable("true");
+
+        gpdb.createTableAndVerify(exTable);
+
+        // Verify results
+        runTincTest("pxf.features.hdfs.readable.json.mismatched_types_with_reject_limit.runTest");
     }
 }
