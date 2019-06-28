@@ -198,7 +198,7 @@ public class JsonTest extends BaseFeature {
      * @throws Exception if test fails to run
      */
     @Test(groups = {"features", "gpdb", "hcfs"})
-    public void malFormattedRecord() throws Exception {
+    public void malformedRecord() throws Exception {
 
         exTable.setName("jsontest_malformed_record");
         exTable.setProfile(ProtocolUtils.getProtocol().value() + ":json");
@@ -219,7 +219,7 @@ public class JsonTest extends BaseFeature {
      * @throws Exception if test fails to run
      */
     @Test(groups = {"features", "gpdb", "hcfs"})
-    public void malFormattedRecordWithRejectLimit() throws Exception {
+    public void malformedRecordWithRejectLimit() throws Exception {
 
         exTable.setName("jsontest_malformed_record_with_reject_limit");
         exTable.setProfile(ProtocolUtils.getProtocol().value() + ":json");

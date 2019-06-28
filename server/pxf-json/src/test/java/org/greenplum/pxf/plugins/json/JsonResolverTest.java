@@ -43,7 +43,8 @@ public class JsonResolverTest {
     public void testGetFieldsWithUnquotedValues() throws Exception {
 
         //language=JSON
-        String jsonStr = "{\"type_int\":100000001," +
+        String jsonStr = "{" +
+                "\"type_int\":100000001," +
                 "\"type_bigint\":10101010101," +
                 "\"type_smallint\":13," +
                 "\"type_float\":1.1," +
@@ -252,7 +253,7 @@ public class JsonResolverTest {
     }
 
     @Test
-    public void testGetFieldsShouldFailOnMalformattedJson() throws Exception {
+    public void testGetFieldsShouldFailOnMalformedJson() throws Exception {
         thrown.expect(BadRecordException.class);
         thrown.expectMessage("error while parsing json record 'Unexpected character ('}' (code 125))");
 
