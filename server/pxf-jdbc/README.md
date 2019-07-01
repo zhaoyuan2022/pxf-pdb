@@ -62,15 +62,13 @@ PXF JDBC plugin has a few settings, some of which are required.
 
 Settings can be set in two sites:
 
-* `LOCATION` clause of external table DDL. Every setting must have format `&<name>=<value>`. Hereinafter setting set in `LOCATION` clause is referred to as "option".
+* `LOCATION` clause of external table DDL. Every setting must have format `&<name>=<value>`. Hereinafter a setting set in `LOCATION` clause is referred to as an "option".
 
 * Configuration file located at `$PXF_CONF/servers/<server_name>/jdbc-site.xml` (on every PXF segment), where `<server_name>` is an arbitrary name (the file is intended to include options specific for each external database server). Hereinafter setting set in configuration file is referred to as "configuration parameter".
 
 If `SERVER` option is not set in external table DDL, PXF will assume it equal to `default` and load configuration files from `$PXF_CONF/servers/default/`. A warning is added to PXF log file if `SERVER` is set to incorrect value (PXF is unable to read the requested configuration file).
 
 If a setting can be set by both option and configuration parameter, option value overrides configuration parameter value.
-
-Note that if setting is provided, its value is checked for correctness.
 
 
 ### List of plugin settings
@@ -281,10 +279,10 @@ Then a complex aggregation query is created and placed in a file, say `report.sq
 ```
 SELECT dept.name AS name, count(*) AS count, max(emp.salary) AS max
 FROM demodb.dept JOIN demodb.emp
-ON dept.id = emp.dept_id 
+ON dept.id = emp.dept_id
 GROUP BY dept.name;
 ```
-This query returns a name of the department, count of employees, and the maximal salary in each department.  
+This query returns a name of the department, count of employees, and the maximal salary in each department.
 
 The MySQL JDBC driver files (JAR) are copied to `$PXF_CONF/lib` on all hosts with PXF. After this, all PXF segments are restarted.
 
@@ -313,35 +311,80 @@ SELECT name, count FROM dept_report WHERE max > 10000;
 ### Partitioning
 PXF JDBC plugin supports simultaneous access to external database from multiple PXF segments for SELECT queries. This feature is called partitioning.
 
+When partitioning is enabled, a SELECT query is split into a set of multiple queries according to the settings in external table DDL (see description below). Each of them and the range of data targeted is called a fragment or a partition. Every partition is processed independently.
+
+Partitioning does not affect the integral output of a SELECT query.
+
 
 #### Syntax
-Three settings control partitioning feature:
+Three settings control the feature:
 
-* **[Partition By](#partition-by)** enables partitioning and indicates which column to use as a partition column. Only one column can be used as the partition column. This setting must be in format `<column>:<column_type>`, where:
-    * `<column>` is name of the partition column;
-    * `<column_type>` is data type of the partition column (hereinafter referred to as "partition type"). Currently, **supported types** are `INT`, `DATE` and `ENUM`.
+* **[Partition By](#partition-by)** enables partitioning and indicates which column to use as a partition column (the column to which constraints are applied). Only one column can be a partition column. This setting must have format `<column>:<column_type>`, where:
+    * `<column>` is the name of the partition column;
+    * `<column_type>` is the data type of the partition column (hereinafter referred to as "partition type"). **Supported types** are `INT`, `DATE` and `ENUM`.
+        * `INT` and `DATE` partitions are for columns of the same types. These partitions are range-based (see below).
+        * `ENUM` is a partition for text columns. This is a value-based partition (see below).
 
-* **[Partition Range](#partition-range)** indicates the range of data to be queried. It must be in special format, depending on a type of partition:
-    * If the partition type is `ENUM`, format is `<value>:<value>[:<value>[...]]`. Each `<value>` forms its own fragment;
-    * If the partition type is `INT`, format is `<start_value>:<end_value>`. PXF considers values to form a finite left-closed range (`... >= start_value AND ... < end_value`);
-    * If the partition type is `DATE`, format is `<start_date>:<end_date>`, and each date must be in format `yyyy-MM-dd`. PXF considers dates to form a finite left-closed range (`... >= start_date AND ... < end_value`);
+* **[Partition Range](#partition-range)** indicates the range of data to form partitions on. It must be in special format, depending on partition type:
+    * `INT`. Format is `<start_value>:<end_value>`. PXF considers values to form a closed interval (`... >= start_value AND ... <= end_value`);
+    * `DATE`. Format is `<start_value>:<end_value>` and each date must be in format `yyyy-MM-dd`. PXF considers values to form a closed interval (`... >= start_value AND ... <= end_value`);
+    * `ENUM`. Format is `<value>:<value>[:<value>[...]]`. Each `<value>` forms its own partition.
 
-* **[Partition interval](#partition-interval)** is required only for `INT` and `DATE` partitions. It is ignored if `<column_type>` is `ENUM`. This setting must be in format `<value>[:<unit>]`, where:
-    * `<value>` is the size of each fragment (the last fragment may be of smaller size);
-    * `<unit>` is **required** if partition type is `DATE`. `year`, `month` and `day` are supported values.
+* **[Partition Interval](#partition-interval)** indicates the size of each partition, except for the last one (its size may be smaller than the provided, depending on the Partition Range setting). This setting is processed differently for different partition types:
+    * `INT`. Format is `<value>`;
+    * `DATE`. Format is `<value>:<unit>`, where `<unit>` is `year`, `month` or `day`;
+    * `ENUM`. The setting is ignored.
 
+
+##### `INT` and `DATE` partitions
+In `INT` and `DATE` partitions, every fragment queries data from either closed or bounded interval (intervals are formed according to [Partition interval](#partition-interval) and [Partition Range](#partition-range) settings).
+
+For example, a `LOCATION` clause containing `PARTITION_BY=id:int&RANGE=1:5&INTERVAL=2` makes PXF produce five fragments, covering the whole range of data. Their constraints are as follows (column name is omitted for simplicity):
+1. `< 1`
+2. `>= 1 AND < 3`
+3. `>= 3 AND < 5`
+4. `>= 5`
+5. `IS NULL`
+
+When the step size goes over the upper bound, for example `PARTITION_BY=id:int&RANGE=1:5&INTERVAL=3`, PXF will generate the following fragments:
+1. `< 1`
+2. `>= 1 AND < 4`
+3. `>= 4 AND < 5`
+4. `>= 5`
+5. `IS NULL`
+
+##### `ENUM` partitions
+`ENUM` partitions are value-based: every value of its [Range](#partition-range) forms its own partition.
+
+For example, a `LOCATION` clause containing `PARTITION_BY=col:enum&RANGE=a:b:c` makes PXF produce five fragments, covering the whole range of data. Their constraints are as follows:
+1. `col = 'a'`
+2. `col = 'b'`
+3. `col = 'c'`
+4. `col <> 'a' AND col <> 'b' AND col <> 'c'`
+5. `col IS NULL`
+
+
+##### Example
 Example combinations of options to enable partitioning:
 * `&PARTITION_BY=id:int&RANGE=42:142&INTERVAL=2`
 * `&PARTITION_BY=createdate:date&RANGE=2008-01-01:2010-01-01&INTERVAL=1:month`
 * `&PARTITION_BY=grade:enum&RANGE=excellent:good:general:bad`
+* `&PARTITION_BY=known:null`
 
 
 #### Mechanism
-If partitioning is enabled, a SELECT query is split into a set of small queries, each of which is called a *fragment*. All fragments are processed by separate PXF instances simultaneously. If there are more fragments than PXF instances, some instances will process more than one fragment; if only one PXF instance is available, it will process all fragments.
-
 Extra query constraints (`WHERE` expressions) are automatically added to each fragment to guarantee that every tuple of data is retrieved from the external database exactly once.
 
-Fragments are distributed randomly among PXF instances.
+Each PXF instance processes the fragments independently from any other PXF instance.
+
+Round-robin scheduling is used to distribute fragments among *GPDB segments*. The first segment (which acquires the first fragment) is chosen pseudo-randomly (the seed is GPDB query transaction identifier). The distribution of fragments does not change during fragment processing (i.e. if one PXF instance has finished processing of fragments assigned to it, it will not process fragments assigned to other PXF instances).
+
+As fragments are distributed among GPDB segments (not PXF instances), in case the amount of fragments is less or equal to the number of GPDB segments on one host, all fragments may be assigned to a single PXF instance.
+
+In addition to the fragments generated according to the partitioning settings, up to three fragments are generated implicitly:
+* In case of **all partitions**, a fragment with `IS NULL` constraint is generated.
+* In case of **`INT`** and **`DATE`** partitions, up to two fragments are generated, with constraints covering left-bounded interval (` < range_start_value`) and right-bounded interval (` > range_end_value`). The latter is "merged" with normal constraints (becoming ` >= some_value_in_range`) if the range of the last fragment is smaller than the requested interval.
+* In case of **`ENUM`** partitions, a fragment covering all values *except* for the those that are provided in [partition range](#partition-range) setting is generated.
 
 [Query-preceding SQL command](#query-preceding-sql-command-1) is executed once for *every* fragment. However, the command itself is taken from configuration file of the PXF instance that processes given fragment. Commands may differ (or be absent) in different configuration files. Thus, exact number of times query-preceding SQL command is executed depends on two factors:
 * Number of fragments

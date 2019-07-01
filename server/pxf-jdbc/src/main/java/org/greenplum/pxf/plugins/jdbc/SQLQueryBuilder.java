@@ -1,5 +1,7 @@
 package org.greenplum.pxf.plugins.jdbc;
 
+import org.apache.commons.lang.SerializationUtils;
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -24,13 +26,11 @@ import org.greenplum.pxf.api.FilterParser;
 import org.greenplum.pxf.api.io.DataType;
 import org.greenplum.pxf.api.utilities.ColumnDescriptor;
 import org.greenplum.pxf.api.model.RequestContext;
-import org.greenplum.pxf.plugins.jdbc.utils.ByteUtil;
 import org.greenplum.pxf.plugins.jdbc.utils.DbProduct;
+import org.greenplum.pxf.plugins.jdbc.partitioning.JdbcFragmentMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.sql.DatabaseMetaData;
@@ -343,9 +343,6 @@ public class SQLQueryBuilder {
         if (meta == null) {
             return;
         }
-        String[] partitionBy = context.getOption("PARTITION_BY").split(":");
-        String partitionColumn = quoteString + partitionBy[0] + quoteString;
-        PartitionType partitionType = PartitionType.typeOf(partitionBy[1]);
 
         // determine if we need to add WHERE statement if not a single WHERE is in the query
         // or subquery is used and there are no WHERE statements after subquery alias
@@ -360,33 +357,9 @@ public class SQLQueryBuilder {
             query.append(" AND ");
         }
 
-        switch (partitionType) {
-            case DATE: {
-                byte[][] newb = ByteUtil.splitBytes(meta);
-                Date fragStart = new Date(ByteUtil.toLong(newb[0]));
-                Date fragEnd = new Date(ByteUtil.toLong(newb[1]));
+        JdbcFragmentMetadata fragmentMetadata = JdbcFragmentMetadata.class.cast(SerializationUtils.deserialize(meta));
+        String fragmentSql = fragmentMetadata.toSqlConstraint(quoteString, dbProduct);
 
-                SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
-                query.append(partitionColumn).append(" >= ").append(dbProduct.wrapDate(df.format(fragStart)));
-                query.append(" AND ");
-                query.append(partitionColumn).append(" < ").append(dbProduct.wrapDate(df.format(fragEnd)));
-
-                break;
-            }
-            case INT: {
-                byte[][] newb = ByteUtil.splitBytes(meta);
-                long fragStart = ByteUtil.toLong(newb[0]);
-                long fragEnd = ByteUtil.toLong(newb[1]);
-
-                query.append(partitionColumn).append(" >= ").append(fragStart);
-                query.append(" AND ");
-                query.append(partitionColumn).append(" < ").append(fragEnd);
-                break;
-            }
-            case ENUM: {
-                query.append(partitionColumn).append(" = '").append(new String(meta)).append("'");
-                break;
-            }
-        }
+        query.append(fragmentSql);
     }
 }
