@@ -19,7 +19,7 @@ endif
 ifeq "$(PXF_HOME)" ""
 	PXF_HOME=$(GPHOME)/pxf
 endif
-MAVEN_TEST_OPTS+= -DPXF_TMP_LIB=$(PXF_HOME)/tmp
+MAVEN_TEST_OPTS+= -DPXF_TMP_LIB=$(PXF_HOME)/tmp "-Djava.awt.headless=true"
 
 ifneq "$(OFFLINE)" "true"
 	MAVEN_TEST_OPTS+= -U
