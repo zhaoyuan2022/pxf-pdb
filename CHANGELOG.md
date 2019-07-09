@@ -1,5 +1,19 @@
 # Changelog
 
+## 5.7.0 (07/08/2019)
+
+#### Bug Fixes:
+
+- [#193](https://github.com/greenplum-db/pxf/pull/193) Fix uncompressed write parquet (#193)
+- [#170](https://github.com/greenplum-db/pxf/pull/170) JDBC: Query data from ranges outside of partition range (#170)
+- [#192](https://github.com/greenplum-db/pxf/pull/192) JsonResolver: throw BadRecordException on bad JSON
+
+#### Enhancements:
+
+- [#196](https://github.com/greenplum-db/pxf/pull/196) Purge codehaus from codebase, and replace it with fasterXML library (#196)
+
+---
+
 ## 5.6.0 (06/19/2019)
 
 #### Bug Fixes:
