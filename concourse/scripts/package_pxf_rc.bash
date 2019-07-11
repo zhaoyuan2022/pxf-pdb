@@ -19,4 +19,4 @@ set -x
 EOF
 chmod +x install_gpdb_component smoke_test_gpdb_component
 cp pxf_tarball/pxf.tar.gz .
-tar -cvzf pxf_artifacts/pxf-${VERSION}.tar.gz pxf.tar.gz install_gpdb_component smoke_test_gpdb_component
+tar -czf pxf_artifacts/pxf-${VERSION}.tar.gz pxf.tar.gz install_gpdb_component smoke_test_gpdb_component
