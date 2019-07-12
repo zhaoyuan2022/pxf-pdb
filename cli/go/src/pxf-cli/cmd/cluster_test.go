@@ -64,6 +64,11 @@ var _ = Describe("GenerateStatusReport()", func() {
 		_ = cmd.GenerateStatusReport(&pxf.StatusCommand, clusterData)
 		Expect(testStdout).Should(gbytes.Say("Checking status of PXF servers on 2 hosts..."))
 	})
+
+	It("reports the number of hosts that are getting reset", func() {
+		_ = cmd.GenerateStatusReport(&pxf.ResetCommand, clusterData)
+		Expect(testStdout).Should(gbytes.Say("Resetting PXF on master and 2 other hosts..."))
+	})
 })
 
 var _ = Describe("GenerateOutput()", func() {
@@ -99,6 +104,11 @@ var _ = Describe("GenerateOutput()", func() {
 		It("reports all hosts running", func() {
 			_ = cmd.GenerateOutput(&pxf.StatusCommand, clusterData)
 			Expect(testStdout).To(gbytes.Say("PXF is running on 3 out of 3 hosts"))
+		})
+
+		It("reports all hosts reset successfully", func() {
+			_ = cmd.GenerateOutput(&pxf.ResetCommand, clusterData)
+			Expect(testStdout).To(gbytes.Say("PXF has been reset on 3 out of 3 hosts"))
 		})
 	})
 
@@ -138,6 +148,12 @@ var _ = Describe("GenerateOutput()", func() {
 		It("reports the number of hosts that aren't running", func() {
 			_ = cmd.GenerateOutput(&pxf.StatusCommand, clusterData)
 			Expect(testStdout).Should(gbytes.Say("PXF is not running on 1 out of 3 hosts"))
+			Expect(testStderr).Should(gbytes.Say("sdw2 ==> an error happened on sdw2"))
+		})
+
+		It("reports the number of hosts that failed to reset", func() {
+			_ = cmd.GenerateOutput(&pxf.ResetCommand, clusterData)
+			Expect(testStdout).Should(gbytes.Say("Failed to reset PXF on 1 out of 3 hosts"))
 			Expect(testStderr).Should(gbytes.Say("sdw2 ==> an error happened on sdw2"))
 		})
 	})

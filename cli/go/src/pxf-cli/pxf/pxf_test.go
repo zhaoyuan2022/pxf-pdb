@@ -1,6 +1,7 @@
 package pxf_test
 
 import (
+	"bytes"
 	"errors"
 	"os"
 	"pxf-cli/pxf"
@@ -30,26 +31,32 @@ var _ = Describe("CommandFunc", func() {
 			_ = os.Unsetenv("PXF_CONF")
 		})
 
-		It("successfully generates start, stop, and status commands", func() {
+		It("successfully generates start, stop, status, and reset commands", func() {
 			commandFunc, err := pxf.StartCommand.GetFunctionToExecute()
 			Expect(err).To(BeNil())
 			Expect(commandFunc("foo")).To(Equal("/test/gphome/pxf/bin/pxf start"))
+
 			commandFunc, err = pxf.StopCommand.GetFunctionToExecute()
 			Expect(err).To(BeNil())
 			Expect(commandFunc("foo")).To(Equal("/test/gphome/pxf/bin/pxf stop"))
+
 			commandFunc, err = pxf.StatusCommand.GetFunctionToExecute()
 			Expect(err).To(BeNil())
 			Expect(commandFunc("foo")).To(Equal("/test/gphome/pxf/bin/pxf status"))
+
+			commandFunc, err = pxf.ResetCommand.GetFunctionToExecute()
+			Expect(err).To(BeNil())
+			Expect(commandFunc("foo")).To(Equal("/test/gphome/pxf/bin/pxf reset --force"))
 		})
 		It("fails to init or sync", func() {
 			commandFunc, err := pxf.InitCommand.GetFunctionToExecute()
 			Expect(commandFunc).To(BeNil())
 			Expect(err).To(Equal(errors.New("PXF_CONF must be set")))
+
 			commandFunc, err = pxf.SyncCommand.GetFunctionToExecute()
 			Expect(commandFunc).To(BeNil())
 			Expect(err).To(Equal(errors.New("PXF_CONF must be set")))
 		})
-
 	})
 	Context("when only PXF_CONF is set", func() {
 		BeforeEach(func() {
@@ -129,4 +136,32 @@ var _ = Describe("CommandFunc", func() {
 			Expect(err).To(Equal(errors.New("GPHOME cannot be blank")))
 		})
 	})
+
+	Context("When the user tries to run a warn command and doesn't answer y", func() {
+		It("Returns an error", func() {
+			var input bytes.Buffer
+			input.Write([]byte(""))
+			err := pxf.ResetCommand.Warn(&input)
+			Expect(err).To(Equal(errors.New("pxf reset cancelled")))
+		})
+	})
+
+	Context("When the user tries to run a warn command and they answer y", func() {
+		It("Returns an error", func() {
+			var input bytes.Buffer
+			input.Write([]byte("Y"))
+			err := pxf.ResetCommand.Warn(&input)
+			Expect(err).To(BeNil())
+		})
+	})
+
+	Context("When the user tries to run a non-warn command", func() {
+		It("Returns an error", func() {
+			var input bytes.Buffer
+			input.Write([]byte("this input shouldn't matter!"))
+			err := pxf.StatusCommand.Warn(&input)
+			Expect(err).To(BeNil())
+		})
+	})
+
 })

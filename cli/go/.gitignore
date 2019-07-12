@@ -4,6 +4,8 @@
 !*/
 # then allow everything in pxf-cli
 !src/pxf-cli/**
+
 # reignore some stuff
 .idea
 vendor/
+[._]*.sw[a-p]

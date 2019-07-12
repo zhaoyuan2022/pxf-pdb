@@ -20,89 +20,41 @@ type ClusterData struct {
 	connection *dbconn.DBConn
 }
 
+func createCobraCommand(use string, short string, command *pxf.Command) *cobra.Command {
+	if command == nil {
+		return &cobra.Command{Use: use, Short: short}
+	}
+	return &cobra.Command{
+		Use:   use,
+		Short: short,
+		Run: func(cmd *cobra.Command, args []string) {
+			clusterData, err := doSetup(command)
+			if err == nil {
+				err = clusterRun(command, clusterData)
+			}
+			exitWithReturnCode(err)
+		},
+	}
+}
+
 var (
-	clusterCmd = &cobra.Command{
-		Use:   "cluster",
-		Short: "Perform <command> on each segment host in the cluster",
-	}
-
-	initCmd = &cobra.Command{
-		Use:   "init",
-		Short: "Initialize the PXF server instances on master, standby master, and the segment hosts",
-		Run: func(cmd *cobra.Command, args []string) {
-			command := &pxf.InitCommand
-			clusterData, err := doSetup(command)
-			if err == nil {
-				err = clusterRun(command, clusterData)
-			}
-			exitWithReturnCode(err)
-		},
-	}
-
-	startCmd = &cobra.Command{
-		Use:   "start",
-		Short: "Start the PXF server instances on the segment hosts",
-		Run: func(cmd *cobra.Command, args []string) {
-			command := &pxf.StartCommand
-			clusterData, err := doSetup(command)
-			if err == nil {
-				err = clusterRun(command, clusterData)
-			}
-
-			exitWithReturnCode(err)
-		},
-	}
-
-	stopCmd = &cobra.Command{
-		Use:   "stop",
-		Short: "Stop the PXF server instances on the segment hosts",
-		Run: func(cmd *cobra.Command, args []string) {
-			command := &pxf.StopCommand
-			clusterData, err := doSetup(command)
-			if err == nil {
-				err = clusterRun(command, clusterData)
-			}
-
-			exitWithReturnCode(err)
-		},
-	}
-
-	syncCmd = &cobra.Command{
-		Use:   "sync",
-		Short: "Sync PXF configs from master to standby master and the segment hosts",
-		Run: func(cmd *cobra.Command, args []string) {
-			command := &pxf.SyncCommand
-			clusterData, err := doSetup(command)
-			if err == nil {
-				err = clusterRun(command, clusterData)
-			}
-
-			exitWithReturnCode(err)
-		},
-	}
-
-	statusCmd = &cobra.Command{
-		Use:   "status",
-		Short: "Get status of PXF servers on the segment hosts",
-		Run: func(cmd *cobra.Command, args []string) {
-			command := &pxf.StatusCommand
-			clusterData, err := doSetup(command)
-			if err == nil {
-				err = clusterRun(command, clusterData)
-			}
-
-			exitWithReturnCode(err)
-		},
-	}
+	clusterCmd = createCobraCommand("cluster", "Perform <command> on each segment host in the cluster", nil)
+	initCmd    = createCobraCommand("init", "Initialize the PXF server instances on master, standby master, and all segment hosts", &pxf.InitCommand)
+	startCmd   = createCobraCommand("start", "Start the PXF server instances on all segment hosts", &pxf.StartCommand)
+	stopCmd    = createCobraCommand("stop", "Stop the PXF server instances on all segment hosts", &pxf.StopCommand)
+	statusCmd  = createCobraCommand("status", "Get status of PXF servers on all segment hosts", &pxf.StatusCommand)
+	syncCmd    = createCobraCommand("sync", "Sync PXF configs from master to standby master and all segment hosts", &pxf.SyncCommand)
+	resetCmd   = createCobraCommand("reset", "Reset PXF (undo initialization) on all segment hosts", &pxf.ResetCommand)
 )
 
 func init() {
 	rootCmd.AddCommand(clusterCmd)
 	clusterCmd.AddCommand(initCmd)
 	clusterCmd.AddCommand(startCmd)
-	clusterCmd.AddCommand(statusCmd)
 	clusterCmd.AddCommand(stopCmd)
+	clusterCmd.AddCommand(statusCmd)
 	clusterCmd.AddCommand(syncCmd)
+	clusterCmd.AddCommand(resetCmd)
 }
 
 func exitWithReturnCode(err error) {
@@ -194,6 +146,13 @@ func adaptContentIDToHostname(cluster *cluster.Cluster, f func(string) string) f
 
 func clusterRun(command *pxf.Command, clusterData *ClusterData) error {
 	defer clusterData.connection.Close()
+
+	err := command.Warn(os.Stdin)
+	if err != nil {
+		gplog.Info(fmt.Sprintf("%s", err))
+		return err
+	}
+
 	f, err := command.GetFunctionToExecute()
 	if err != nil {
 		gplog.Error(fmt.Sprintf("Error: %s", err))

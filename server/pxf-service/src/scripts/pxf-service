@@ -304,17 +304,54 @@ doHelp() {
 	  start               start the local PXF server instance
 	  stop                stop the local PXF server instance
 	  restart             restart the local PXF server instance (not supported for cluster)
-	  status              show the status of the local PXF server instance (not supported for cluster)
+	  status              show the status of the local PXF server instance
 	  version             show the version of PXF server
-	  cluster <command>   perform <command> on all the hosts in the cluster; try ${bold}pxf cluster help$normal
+	  reset               undo the local PXF initialization
+	  cluster <command>   perform <command> on all the segment hosts in the cluster; try ${bold}pxf cluster help$normal
 
-	  sync <hostname>     sync \$PXF_CONF/{conf,lib,servers} directories onto <hostname>
+	  sync <hostname>     synchronize \$PXF_CONF/{conf,lib,servers} directories onto <hostname>
 
 	${bold}Options${normal}:
 	  -h, --help    show command help
 	  -y            answer yes, use default PXF_CONF=\$HOME/pxf user configuration directory
 	EOF
     exit 0
+}
+
+function promptUser() {
+    echo "$1"
+    read -r answer
+    [[ $answer == y || $answer == Y ]]
+}
+
+# doReset handles the reset command
+function doReset()
+{
+    local force=$2
+    local prompt='Ensure your local PXF instance is stopped before continuing. '
+    prompt+='This is a destructive action. Press y to continue:'
+    if [[ $force != -f && $force != --force ]] && ! promptUser "$prompt"; then
+        echo 'pxf reset cancelled'
+        return 1
+    fi
+
+    if doStatus >/dev/null; then
+        echo "PXF is running. Please stop PXF before running 'pxf reset'"
+        return 1
+    fi
+
+    echo "Cleaning ${PXF_HOME}/conf/pxf-private.classpath..."
+    rm -f "${PXF_HOME}/conf/pxf-private.classpath"
+    echo "Ignoring ${PXF_CONF}..."
+    echo "Cleaning ${instance}..."
+    rm -rf "$instance"
+    echo "Cleaning ${PXF_RUNDIR}..."
+    rm -rf "$PXF_RUNDIR"
+
+    echo "Reverting changes to ${default_env_script}..."
+    sed "${SED_OPTS[@]}" "s|{PXF_CONF:=\"${PXF_CONF}\"}|{PXF_CONF:=NOT_INITIALIZED}|g" "$default_env_script"
+
+    echo "Finished cleaning PXF instance directories"
 }
 
 # doInit handles the init command
@@ -436,6 +473,9 @@ case $pxf_script_command in
         ;;
     'cluster')
         doCluster "$@"
+        ;;
+    'reset')
+        doReset "$@"
         ;;
     *)
         printUsage
