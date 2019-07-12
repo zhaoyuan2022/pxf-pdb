@@ -19,11 +19,12 @@ package org.greenplum.pxf.service;
  * under the License.
  */
 
+import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.ObjectUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.commons.lang.StringUtils;
 import org.greenplum.pxf.api.BadRecordException;
+import org.greenplum.pxf.api.GreenplumDateTime;
 import org.greenplum.pxf.api.OneField;
 import org.greenplum.pxf.api.io.BufferWritable;
 import org.greenplum.pxf.api.io.DataType;
@@ -32,11 +33,17 @@ import org.greenplum.pxf.api.io.Text;
 import org.greenplum.pxf.api.io.Writable;
 import org.greenplum.pxf.api.model.OutputFormat;
 import org.greenplum.pxf.api.model.RequestContext;
+import org.greenplum.pxf.api.utilities.Utilities;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Array;
+import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 import static org.greenplum.pxf.api.io.DataType.TEXT;
 
@@ -49,8 +56,10 @@ import static org.greenplum.pxf.api.io.DataType.TEXT;
  * record.
  */
 public class BridgeOutputBuilder {
+
+    private static final Logger LOG = LoggerFactory.getLogger(BridgeOutputBuilder.class);
+
     private static final byte DELIM = 10; /* (byte)'\n'; */
-    private static final Log LOG = LogFactory.getLog(BridgeOutputBuilder.class);
     private RequestContext context;
     private Writable output = null;
     private LinkedList<Writable> outputList;
@@ -60,6 +69,14 @@ public class BridgeOutputBuilder {
     private String[] colNames;
     private boolean samplingEnabled;
     private boolean isPartialLine = false;
+
+    // Greenplum CSV Defaults
+    // TODO: FDW: We want to read the values for delimiter, newline, value of null,
+    // TODO: FDW: etc from the request and serialize the CSV using those values
+    public static final String DELIMITER = ",";
+    private static final String NEWLINE = "\n";
+    private static final char QUOTE = '"';
+    private static final String VALUE_OF_NULL = "";
 
     /**
      * Constructs a BridgeOutputBuilder.
@@ -97,19 +114,25 @@ public class BridgeOutputBuilder {
     }
 
     /**
-     * Returns the error record. If the output format is not binary, error
-     * records are not supported, and the given exception will be thrown
+     * Returns the error record. If the output format is not binary, a
+     * comma-delimited row will be generated.
      *
      * @param ex exception to be stored in record
      * @return error record
-     * @throws Exception if the output format is not binary
      */
     public Writable getErrorOutput(Exception ex) throws Exception {
         if (context.getOutputFormat() == OutputFormat.GPDBWritable) {
             errorRecord.setString(0, ex.getMessage());
             return errorRecord;
         } else {
-            throw ex;
+            // Serialize error text into CSV
+            // We create a row with an extra column containing the error information
+            LOG.error(ex.getMessage(), ex);
+            return new Text(
+                    StringUtils.repeat(",", context.getTupleDescription().size()) +
+                            Utilities.toCsvText(ex.getMessage(), '"', true, true, true) +
+                            "\n"
+            );
         }
     }
 
@@ -261,29 +284,30 @@ public class BridgeOutputBuilder {
      *                            field
      */
     void fillText(List<OneField> recFields) throws BadRecordException {
-        /*
-         * For the TEXT case there must be only one record in the list
-         */
-        if (recFields.size() != 1) {
+        if (recFields.size() < 1)
             throw new BadRecordException(
                     "BridgeOutputBuilder must receive one field when handling the TEXT format");
-        }
 
-        OneField fld = recFields.get(0);
-        int type = fld.type;
-        Object val = fld.val;
-        if (DataType.get(type) == DataType.BYTEA) {// from LineBreakAccessor
+        OneField field = recFields.get(0);
+        Object val = field.val;
+        DataType dataType = DataType.get(field.type);
+
+        if (recFields.size() == 1 && dataType == DataType.BYTEA) {
             if (samplingEnabled) {
                 convertTextDataToLines((byte[]) val);
+                return;
             } else {
+                // TODO break output into lines
                 output = new BufferWritable((byte[]) val);
-                outputList.add(output); // TODO break output into lines
             }
-        } else { // from QuotedLineBreakAccessor
-            String textRec = (String) val;
-            output = new Text(textRec + "\n");
-            outputList.add(output);
+        } else {
+            String textRec = (recFields.size() == 1 && val instanceof String) ?
+                    val + NEWLINE :
+                    fieldListToCSVString(recFields);
+            output = new Text(textRec);
         }
+
+        outputList.add(output);
     }
 
     /**
@@ -398,5 +422,30 @@ public class BridgeOutputBuilder {
         } catch (GPDBWritable.TypeMismatchException e) {
             throw new BadRecordException(e);
         }
+    }
+
+    /**
+     * Serialize a list of OneFields to a CSV line
+     *
+     * @param fields list of fields
+     * @return a serialized CSV line
+     */
+    private String fieldListToCSVString(List<OneField> fields) {
+        return fields.stream()
+                .map(field -> {
+                    if (field.val == null)
+                        return VALUE_OF_NULL;
+                    else if (field.type == DataType.BYTEA.getOID())
+                        return "\\x" + Hex.encodeHexString((byte[]) field.val);
+                    else if (field.type == DataType.NUMERIC.getOID() || !DataType.isTextForm(field.type))
+                        return Objects.toString(field.val, null);
+                    else if (field.type == DataType.TIMESTAMP.getOID())
+                        return ((Timestamp) field.val).toLocalDateTime().format(GreenplumDateTime.DATETIME_FORMATTER);
+                    else if (field.type == DataType.DATE.getOID())
+                        return field.val.toString();
+                    else
+                        return Utilities.toCsvText((String) field.val, QUOTE, true, true, true);
+                })
+                .collect(Collectors.joining(DELIMITER, "", NEWLINE));
     }
 }
