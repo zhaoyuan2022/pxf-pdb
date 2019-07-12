@@ -142,7 +142,7 @@ public class S3SelectFilterParser implements FilterParser.FilterBuilder {
             case TEXT:
             case VARCHAR:
             case BPCHAR:
-                return Utilities.toCsvText(val.toString(), '\'', true, true);
+                return Utilities.toCsvText(val.toString(), '\'', true, true, false);
             case DATE:
             case TIMESTAMP:
                 return "TO_TIMESTAMP('" + val.toString() + "')";
