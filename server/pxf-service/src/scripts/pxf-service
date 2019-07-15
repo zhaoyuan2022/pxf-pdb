@@ -336,7 +336,7 @@ function doReset()
     fi
 
     if doStatus >/dev/null; then
-        echo "PXF is running. Please stop PXF before running 'pxf reset'"
+        echo "PXF is running. Please stop PXF before running 'pxf [cluster] reset'"
         return 1
     fi
 
@@ -358,7 +358,7 @@ function doReset()
 function doInit()
 {
     if instanceExists; then
-        echo "Instance already exists. Cleanup $instance if you wish to re-initialize"
+        echo "Instance already exists. Use 'pxf [cluster] reset' before attempting to re-initialize PXF"
         return 1
     fi
 
