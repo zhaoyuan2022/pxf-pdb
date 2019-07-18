@@ -184,4 +184,28 @@ public class RequestContextTest {
         Map<String, String> unmodifiableMap = context.getOptions();
         unmodifiableMap.put("foo", "bar");
     }
+
+    @Test
+    public void testConfigOptionIsSetWhenProvided() {
+        context.setConfig("foobar");
+        assertEquals("foobar", context.getConfig());
+    }
+
+    @Test
+    public void testSucceedsWhenConfigOptionIsARelativeDirectoryName() {
+        context.setConfig("../../relative");
+        assertEquals("../../relative", context.getConfig());
+    }
+
+    @Test
+    public void testSucceedsWhenConfigOptionIsAnAbsoluteDirectoryName() {
+        context.setConfig("/etc/hadoop/conf");
+        assertEquals("/etc/hadoop/conf", context.getConfig());
+    }
+
+    @Test
+    public void testSucceedsWhenConfigOptionIsTwoDirectories() {
+        context.setConfig("foo/bar");
+        assertEquals("foo/bar", context.getConfig());
+    }
 }

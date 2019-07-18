@@ -131,6 +131,11 @@ public class HttpRequestParser implements RequestParser<HttpHeaders> {
         context.setSegmentId(params.removeIntProperty("SEGMENT-ID"));
         context.setServerName(params.removeUserProperty("SERVER"));
 
+        // An optional CONFIG value specifies the name of the server
+        // configuration directory, if not provided the config is the server name
+        String config = params.removeUserProperty("CONFIG");
+        context.setConfig(StringUtils.isNotBlank(config) ? config : context.getServerName());
+
         String maxFrags = params.removeUserProperty("STATS-MAX-FRAGMENTS");
         if (!StringUtils.isBlank(maxFrags)) {
             context.setStatsMaxFragments(Integer.parseInt(maxFrags));
