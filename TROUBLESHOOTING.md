@@ -34,6 +34,20 @@ seconds.
 Alternatively you can reduce the maximum number of concurrent requests PXF can handle by setting `PXF_MAX_THREADS` in `${PXF_CONF}/conf/pxf-env.sh`.
 This would result in reduced number of PXF worker threads and if there are more incoming requests than PXF threads the request would error out as opposed to overloading the PXF JVM's memory.
 
+## CLI
+
+### Cluster commands do not work from master
+
+You may see the following error:
+
+`ERROR: pxf cluster commands should only be run from Greenplum master.`
+
+You will either need to change the hostname to match the `gp_segment_configuration` table entry for the master node
+or change the master hostname to match the `gp_segment_configuration` entry. Both locations need to match for
+the cluster command to succeed.
+
+** Note: this error was fixed in PXF Version 5.3.0
+
 ## Dataproc
 
 ### Accessing Dataproc clusters from external network
