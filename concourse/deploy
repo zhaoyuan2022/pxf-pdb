@@ -193,7 +193,9 @@ if __name__ == "__main__":
         ARGS.actual_gpdb_branch = ARGS.gpdb_branch
 
     if ARGS.pipeline_type == 'release' and os.path.basename(ARGS.output_filepath) == default_output_filename:
-        default_output_filename = 'release_pipeline-generated.yml'
+        default_output_filename = '6x-release_pipeline-generated.yml'
+        if ARGS.gpdb_branch == '5X_STABLE':
+            default_output_filename = '5x-release_pipeline-generated.yml'
         ARGS.output_filepath = os.path.join(PIPELINES_DIR, default_output_filename)
 
     if ARGS.deploy_env != 'prod' and os.path.basename(ARGS.output_filepath) == default_output_filename:
