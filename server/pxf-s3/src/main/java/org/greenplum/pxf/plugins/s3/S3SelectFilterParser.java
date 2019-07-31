@@ -5,6 +5,7 @@ import org.greenplum.pxf.api.BasicFilter;
 import org.greenplum.pxf.api.FilterParser;
 import org.greenplum.pxf.api.LogicalFilter;
 import org.greenplum.pxf.api.io.DataType;
+import org.greenplum.pxf.api.model.GreenplumCSV;
 import org.greenplum.pxf.api.utilities.ColumnDescriptor;
 import org.greenplum.pxf.api.utilities.Utilities;
 import org.slf4j.Logger;
@@ -142,7 +143,7 @@ public class S3SelectFilterParser implements FilterParser.FilterBuilder {
             case TEXT:
             case VARCHAR:
             case BPCHAR:
-                return Utilities.toCsvText(val.toString(), '\'', true, true, false);
+                return "'" + StringUtils.replace(val.toString(), "'", "''") + "'";
             case DATE:
             case TIMESTAMP:
                 return "TO_TIMESTAMP('" + val.toString() + "')";

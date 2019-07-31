@@ -37,7 +37,6 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
@@ -167,77 +166,6 @@ public class UtilitiesTest {
         public boolean isThreadSafe() {
             return false;
         }
-    }
-
-    @Test
-    public void testToCsvTextNull() {
-        assertNull(Utilities.toCsvText(null, false, false));
-        assertNull(Utilities.toCsvText(null, false, true));
-        assertNull(Utilities.toCsvText(null, true, false));
-        assertNull(Utilities.toCsvText(null, true, true));
-    }
-
-    @Test
-    public void testToCsvTextEmptyString() {
-        String input = "";
-        assertSame(input, Utilities.toCsvText(input, false, false));
-        assertEquals("\"" + input, Utilities.toCsvText(input, true, false));
-        assertEquals(input + "\"", Utilities.toCsvText(input, false, true));
-        assertEquals("\"" + input + "\"",
-                Utilities.toCsvText(input, true, true));
-    }
-
-    @Test
-    public void testToCsvTextStringWithoutQuoteCharacter() {
-        String input = "aábcdefghijklmnñopqrstuvwxyz";
-
-        assertSame(input, Utilities.toCsvText(input, false, false));
-        assertEquals("\"" + input, Utilities.toCsvText(input, true, false));
-        assertEquals(input + "\"", Utilities.toCsvText(input, false, true));
-        assertEquals("\"" + input + "\"",
-                Utilities.toCsvText(input, true, true));
-
-        input = "aábcdefghijklm\"nñopqrstuvwxyz";
-        assertSame(input, Utilities.toCsvText(input, '|', false, false, false));
-        assertEquals("|" + input, Utilities.toCsvText(input, '|', true, false, false));
-        assertEquals(input + "|", Utilities.toCsvText(input, '|', false, true, false));
-        assertEquals("|" + input + "|",
-                Utilities.toCsvText(input, '|', true, true, false));
-    }
-
-    @Test
-    public void testToCsvDoesNotAddPrefixAndSuffixWhenSkipIfQuotingIsNotNeeded() {
-        String input = "aábcdefghijklmnñopqrstuvwxyz";
-
-        assertSame(input, Utilities.toCsvText(input, '"', false, false, true));
-        assertSame(input, Utilities.toCsvText(input, '"', false, true, true));
-        assertSame(input, Utilities.toCsvText(input, '"', true, false, true));
-        assertSame(input, Utilities.toCsvText(input, '"', true, true, true));
-    }
-
-    @Test
-    public void testToCsvTextEscapesQuotes() {
-        String input = "{\"key\": \"value\", \"foo\": \"bar\"}";
-        String expected = "{\"\"key\"\": \"\"value\"\", \"\"foo\"\": \"\"bar\"\"}";
-
-        assertEquals(expected, Utilities.toCsvText(input, false, false));
-        assertEquals("\"" + expected, Utilities.toCsvText(input, true, false));
-        assertEquals(expected + "\"", Utilities.toCsvText(input, false, true));
-        assertEquals("\"" + expected + "\"",
-                Utilities.toCsvText(input, true, true));
-    }
-
-    @Test
-    public void testToCsvTextEscapesQuoteChar() {
-        char quoteChar = '|';
-        String input = "a|b|c|d\ne|f|g|h";
-        String expected = "a||b||c||d\ne||f||g||h";
-
-        assertEquals(expected, Utilities.toCsvText(input, quoteChar, false, false, false));
-        assertEquals(quoteChar + expected, Utilities.toCsvText(input, quoteChar, true, false, false));
-        assertEquals(expected + quoteChar, Utilities.toCsvText(input, quoteChar, false, true, false));
-        assertEquals(quoteChar + expected + quoteChar,
-                Utilities.toCsvText(input, quoteChar, true, true, false));
     }
 
     @Test

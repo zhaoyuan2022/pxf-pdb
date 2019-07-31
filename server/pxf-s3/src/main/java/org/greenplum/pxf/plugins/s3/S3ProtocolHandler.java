@@ -8,6 +8,9 @@ import org.greenplum.pxf.api.model.RequestContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -20,19 +23,24 @@ public class S3ProtocolHandler implements ProtocolHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(S3ProtocolHandler.class);
     private static final Set<String> SUPPORTED_FORMATS = Sets.newHashSet("TEXT", "CSV", "PARQUET", "JSON");
+    private static final Set<String> SUPPORTED_COMPRESSION_TYPE_FOR_TEXT = Sets.newHashSet("GZIP", "BZIP2");
+    private static final Set<String> SUPPORTED_COMPRESSION_TYPE_FOR_PARQUET = Sets.newHashSet("GZIP", "SNAPPY");
+    private static final Map<String, Set<String>> SUPPORTED_COMPRESSION_TYPES =
+            Collections.unmodifiableMap(new HashMap<String, Set<String>>() {{
+                put("TEXT", SUPPORTED_COMPRESSION_TYPE_FOR_TEXT);
+                put("CSV", SUPPORTED_COMPRESSION_TYPE_FOR_TEXT);
+                put("JSON", SUPPORTED_COMPRESSION_TYPE_FOR_TEXT);
+                put("PARQUET", SUPPORTED_COMPRESSION_TYPE_FOR_PARQUET);
+            }});
+
     private static final Set<SupportMatrixEntry> SUPPORT_MATRIX = Sets.newHashSet(
             new SupportMatrixEntry("PARQUET", OutputFormat.TEXT, S3Mode.ON),
             new SupportMatrixEntry("TEXT", OutputFormat.TEXT, S3Mode.ON),
             new SupportMatrixEntry("CSV", OutputFormat.TEXT, S3Mode.ON),
             new SupportMatrixEntry("JSON", OutputFormat.TEXT, S3Mode.ON),
-            new SupportMatrixEntry("PARQUET", OutputFormat.TEXT, S3Mode.AUTO),
-            new SupportMatrixEntry("TEXT", OutputFormat.TEXT, S3Mode.AUTO),
-            new SupportMatrixEntry("CSV", OutputFormat.TEXT, S3Mode.AUTO),
-            new SupportMatrixEntry("JSON", OutputFormat.TEXT, S3Mode.AUTO),
+            new SupportMatrixEntry("PARQUET", OutputFormat.TEXT, S3Mode.OFF),
             new SupportMatrixEntry("TEXT", OutputFormat.TEXT, S3Mode.OFF),
             new SupportMatrixEntry("CSV", OutputFormat.TEXT, S3Mode.OFF),
-            new SupportMatrixEntry("PARQUET", OutputFormat.GPDBWritable, S3Mode.AUTO),
-            new SupportMatrixEntry("JSON", OutputFormat.GPDBWritable, S3Mode.AUTO),
             new SupportMatrixEntry("PARQUET", OutputFormat.GPDBWritable, S3Mode.OFF),
             new SupportMatrixEntry("JSON", OutputFormat.GPDBWritable, S3Mode.OFF)
     );
@@ -73,33 +81,43 @@ public class S3ProtocolHandler implements ProtocolHandler {
 
     private boolean useS3Select(RequestContext context) {
         String format = StringUtils.upperCase(context.getFormat());
-        String compressionType = context.getOption(S3SelectAccessor.COMPRESSION_TYPE);
+        String compressionType = StringUtils.upperCase(context.getOption(S3SelectAccessor.COMPRESSION_TYPE));
         OutputFormat outputFormat = context.getOutputFormat();
         S3Mode selectMode = S3Mode.fromString(context.getOption(S3_SELECT_OPTION));
         boolean isS3SelectSupportedFormat = SUPPORTED_FORMATS.contains(format);
 
         if (!isS3SelectSupportedFormat) {
             if (selectMode == S3Mode.ON) {
-                throw new IllegalArgumentException(String.format("S3-SELECT optimization is not supported for format '%s'", format));
+                throw new IllegalArgumentException(String.format("S3-SELECT optimization is not supported for format '%s'. Use S3-SELECT=OFF for this format", format));
+            }
+            return false;
+        }
+
+        boolean isS3SelectSupportedCompressionType = StringUtils.isBlank(compressionType) ||
+                SUPPORTED_COMPRESSION_TYPES.get(format).contains(compressionType);
+
+        if (!isS3SelectSupportedCompressionType) {
+            if (selectMode == S3Mode.ON) {
+                throw new IllegalArgumentException(String.format("S3-SELECT optimization is not supported for compression type '%s'. Use S3-SELECT=OFF for this compression codec", compressionType));
             }
             return false;
         }
 
         switch (selectMode) {
             case ON:
-                return formatSupported(outputFormat, format, S3Mode.ON, compressionType, true);
+                return formatSupported(outputFormat, format, S3Mode.ON, true);
             case AUTO:
                 // if supported for ON and beneficial, use it
                 // if supported for ON and not beneficial -> if supported for OFF -> use OFF, else use ON
                 // if not supported for ON -> if supported for OFF -> use OFF, else ERROR out
-                if (formatSupported(outputFormat, format, S3Mode.ON, compressionType, false)) {
+                if (formatSupported(outputFormat, format, S3Mode.ON, false)) {
                     if (willBenefitFromSelect(context) || hasFormatOptions(format, context)) {
                         return true;
                     } else {
-                        return !formatSupported(outputFormat, format, S3Mode.OFF, compressionType, false);
+                        return !formatSupported(outputFormat, format, S3Mode.OFF, false);
                     }
                 } else {
-                    return !formatSupported(outputFormat, format, S3Mode.OFF, compressionType, true);
+                    return !formatSupported(outputFormat, format, S3Mode.OFF, true);
                 }
             default:
                 return false;
@@ -146,14 +164,13 @@ public class S3ProtocolHandler implements ProtocolHandler {
      * Determines if the given data format can be retrieved from S3 using S3-SELECT protocol
      * and sent back to Greenplum using given OutputFormat
      *
-     * @param outputFormat    output format
-     * @param format          data format
-     * @param selectMode      s3-select mode requested by a user
-     * @param compressionType the remote file compression type (i.e GZIP or BZip2)
-     * @param raiseException  true if an exception needs to be raised if the format is not supported, false otherwise
+     * @param outputFormat   output format
+     * @param format         data format
+     * @param selectMode     s3-select mode requested by a user
+     * @param raiseException true if an exception needs to be raised if the format is not supported, false otherwise
      * @return true if the data format is supported to be retrieved with s3select protocol
      */
-    private boolean formatSupported(OutputFormat outputFormat, String format, S3Mode selectMode, String compressionType, boolean raiseException) {
+    private boolean formatSupported(OutputFormat outputFormat, String format, S3Mode selectMode, boolean raiseException) {
         boolean supported = SUPPORT_MATRIX.contains(new SupportMatrixEntry(format, outputFormat, selectMode));
         if (!supported && raiseException) {
             throw new IllegalArgumentException(String.format("S3-SELECT optimization is not supported for format '%s'", format));
