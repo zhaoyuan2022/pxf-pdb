@@ -146,8 +146,7 @@ public class BridgeResource extends BaseResource {
                     // Occurs whenever client (GPDB) decides the end the connection
                     LOG.error("Remote connection closed by GPDB", e);
                 } catch (Exception e) {
-                    LOG.error("Exception thrown when streaming", e);
-                    throw new IOException(e.getMessage());
+                    throw new IOException(e.getMessage(), e);
                 } finally {
                     LOG.debug("Stopped streaming fragment {} of resource {}, {} records.", fragment, dataDir, recordCount);
                     try {
