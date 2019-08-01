@@ -38,8 +38,6 @@ import java.util.TreeMap;
  */
 public class RequestContext {
 
-    public static final String DELIMITER_KEY = "DELIMITER";
-
     // ----- NAMED PROPERTIES -----
     private String accessor;
     private EnumAggregationType aggType;
@@ -836,6 +834,8 @@ public class RequestContext {
         if (!StringUtils.isBlank(profile) && profile.contains(":")) {
             return profile.split(":")[1];
         }
+        // if the format name cannot be inferred from the profile
+        // we return null
         return null;
     }
 }
