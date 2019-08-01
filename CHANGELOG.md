@@ -1,5 +1,27 @@
 # Changelog
 
+## 5.8.0 (08/01/2019)
+
+#### Bug Fixes:
+
+- [#211](https://github.com/greenplum-db/pxf/pull/211) Preserve error when re-throwing IOException (#211)
+
+#### Enhancements:
+
+- [#187](https://github.com/greenplum-db/pxf/pull/187) Implement S3 Select
+- [#189](https://github.com/greenplum-db/pxf/pull/189) Implement cluster reset command
+- [#191](https://github.com/greenplum-db/pxf/pull/191) Support config option to specify the server configuration directory (#191)
+- [#198](https://github.com/greenplum-db/pxf/pull/198) Support serializing a list of OneFields to CSV (#198)
+- [#201](https://github.com/greenplum-db/pxf/pull/201) Add JDK11 to PXF docker base dev image (#201)
+- [#202](https://github.com/greenplum-db/pxf/pull/202) Support NOT and OR operators for S3 Select
+- [#203](https://github.com/greenplum-db/pxf/pull/203) Support reading and writing of timestamp with time zone for Parquet (#203)
+- [#206](https://github.com/greenplum-db/pxf/pull/206) Add S3 Select support for Parquet using S3-SELECT=AUTO (#206)
+- [#207](https://github.com/greenplum-db/pxf/pull/207) Enable support for PXF server to run with Java-11 (#207)
+- [#212](https://github.com/greenplum-db/pxf/pull/212) Use format options for S3 Select (#212)
+- [#213](https://github.com/greenplum-db/pxf/pull/213) Rename S3-SELECT option -> S3_SELECT (#213)
+
+---
+
 ## 5.7.0 (07/08/2019)
 
 #### Bug Fixes:
