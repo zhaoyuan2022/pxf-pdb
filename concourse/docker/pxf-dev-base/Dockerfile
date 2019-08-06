@@ -30,6 +30,7 @@ RUN useradd -s /sbin/nologin -d /opt/minio minio && \
 
 ADD pxf_src /tmp/pxf_src
 
+# Install krb5-workstation for Kerberos tests against dataproc (only needed on CentOS 6)
 RUN ["/bin/bash", "-c", "export BUILD_PARAMS=-Dorg.gradle.daemon=false && \
     GOPATH=/opt/go PATH=/opt/go/bin:/usr/local/go/bin:$PATH make -C /tmp/pxf_src tar && \
     PXF_HOME=/tmp/pxf_src/server/build/stage make -C /tmp/pxf_src/automation dev && \
@@ -41,7 +42,7 @@ RUN ["/bin/bash", "-c", "export BUILD_PARAMS=-Dorg.gradle.daemon=false && \
     chown -R gpadmin:gpadmin ~gpadmin && \
     rm -rf /tmp/pxf_src && \
     if grep 'CentOS release 6' /etc/centos-release; then \
-      yum install -y python-paramiko && yum clean all; \
+      yum install -y krb5-workstation python-paramiko && yum clean all; \
     else \
       pip install psi paramiko --no-cache-dir; \
     fi && \
