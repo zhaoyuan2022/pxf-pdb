@@ -91,7 +91,7 @@ public class JsonTest extends BaseFeature {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"features", "gpdb", "hcfs"})
+    @Test(groups = {"features", "gpdb", "security", "hcfs"})
     public void jsonSimple() throws Exception {
 
         exTable.setName("jsontest_simple");
@@ -110,7 +110,7 @@ public class JsonTest extends BaseFeature {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"features", "gpdb", "hcfs"})
+    @Test(groups = {"features", "gpdb", "security", "hcfs"})
     public void jsonSupportedPrimitives() throws Exception {
 
         exTable.setName("jsontest_supported_primitive_types");
@@ -129,7 +129,7 @@ public class JsonTest extends BaseFeature {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"features", "gpdb", "hcfs"})
+    @Test(groups = {"features", "gpdb", "security", "hcfs"})
     public void jsonSupportedPrimitivesWithCsvWireFormat() throws Exception {
 
         exTable = new ReadableExternalTable("jsontest_supported_primitive_types", supportedPrimitiveFields, hdfsPath + FILENAME_TYPES + SUFFIX_JSON, "CSV");
@@ -150,7 +150,7 @@ public class JsonTest extends BaseFeature {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"features", "gpdb", "hcfs"})
+    @Test(groups = {"features", "gpdb", "security", "hcfs"})
     public void jsonPrettyPrint() throws Exception {
 
         exTable.setName("jsontest_pretty_print");
@@ -171,7 +171,7 @@ public class JsonTest extends BaseFeature {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"features", "gpdb", "hcfs"})
+    @Test(groups = {"features", "gpdb", "security", "hcfs"})
     public void missingIdentifier() throws Exception {
 
         exTable.setName("jsontest_missing_identifier");
@@ -192,7 +192,7 @@ public class JsonTest extends BaseFeature {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"features", "gpdb", "hcfs"})
+    @Test(groups = {"features", "gpdb", "security", "hcfs"})
     public void exceedsMaxSize() throws Exception {
 
         exTable.setName("jsontest_max_size");
@@ -216,7 +216,7 @@ public class JsonTest extends BaseFeature {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"features", "gpdb", "hcfs"})
+    @Test(groups = {"features", "gpdb", "security", "hcfs"})
     public void malformedRecord() throws Exception {
 
         exTable.setName("jsontest_malformed_record");
@@ -238,7 +238,7 @@ public class JsonTest extends BaseFeature {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"features", "gpdb"})
+    @Test(groups = {"features", "gpdb", "security"})
     public void malformedRecordWithCsvWireFormat() throws Exception {
 
         exTable = new ReadableExternalTable("jsontest_malformed_record", tweetsFields, hdfsPath + FILENAME_BROKEN + SUFFIX_JSON, "CSV");
@@ -259,7 +259,7 @@ public class JsonTest extends BaseFeature {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"features", "gpdb", "hcfs"})
+    @Test(groups = {"features", "gpdb", "security", "hcfs"})
     public void malformedRecordWithRejectLimit() throws Exception {
 
         exTable.setName("jsontest_malformed_record_with_reject_limit");
@@ -282,7 +282,7 @@ public class JsonTest extends BaseFeature {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"features", "gpdb", "hcfs"})
+    @Test(groups = {"features", "gpdb", "security", "hcfs"})
     public void malformedRecordWithRejectLimitWithCsvWireFormat() throws Exception {
 
         exTable = new ReadableExternalTable("jsontest_malformed_record_with_reject_limit", tweetsFields, hdfsPath + FILENAME_BROKEN + SUFFIX_JSON, "CSV");
@@ -307,7 +307,7 @@ public class JsonTest extends BaseFeature {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"features", "gpdb", "hcfs"})
+    @Test(groups = {"features", "gpdb", "security", "hcfs"})
     public void mismatchedTypes() throws Exception {
 
         exTable.setName("jsontest_mismatched_types");
@@ -330,7 +330,7 @@ public class JsonTest extends BaseFeature {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"features", "gpdb", "hcfs"})
+    @Test(groups = {"features", "gpdb", "security", "hcfs"})
     public void mismatchedTypesWithRejectLimit() throws Exception {
 
         exTable.setName("jsontest_mismatched_types_with_reject_limit");

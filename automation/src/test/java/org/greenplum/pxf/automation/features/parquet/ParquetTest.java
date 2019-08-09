@@ -54,7 +54,7 @@ public class ParquetTest extends BaseFeature {
         hdfs.copyFromLocal(resourcePath + parquetPrimitiveTypes, hdfsPath + parquetPrimitiveTypes);
     }
 
-    @Test(groups = {"features", "gpdb", "hcfs"})
+    @Test(groups = {"features", "gpdb", "security", "hcfs"})
     public void parquetReadPrimitives() throws Exception {
 
         exTable = new ReadableExternalTable(pxfParquetTable,
@@ -73,7 +73,7 @@ public class ParquetTest extends BaseFeature {
         runTincTest("pxf.features.parquet.primitive_types.runTest");
     }
 
-    @Test(groups = {"features", "gpdb", "hcfs"})
+    @Test(groups = {"features", "gpdb", "security", "hcfs"})
     public void parquetReadSubset() throws Exception {
         exTable = new ReadableExternalTable(pxfParquetSubsetTable,
                 parquet_table_columns_subset, hdfsPath + parquetPrimitiveTypes, "custom");
@@ -87,22 +87,22 @@ public class ParquetTest extends BaseFeature {
         runTincTest("pxf.features.parquet.read_subset.runTest");
     }
 
-    @Test(groups = {"features", "gpdb", "hcfs"})
+    @Test(groups = {"features", "gpdb", "security", "hcfs"})
     public void parquetWritePrimitives() throws Exception {
         runWriteScenario("pxf_parquet_write_primitives", "pxf_parquet_read_primitives", parquetWritePrimitives, null);
     }
 
-    @Test(groups = {"features", "gpdb", "hcfs"})
+    @Test(groups = {"features", "gpdb", "security", "hcfs"})
     public void parquetWritePrimitivesV2() throws Exception {
         runWriteScenario("pxf_parquet_write_primitives_v2", "pxf_parquet_read_primitives_v2", parquetWritePrimitivesV2, new String[]{"PARQUET_VERSION=v2"});
     }
 
-    @Test(groups = {"features", "gpdb", "hcfs"})
+    @Test(groups = {"features", "gpdb", "security", "hcfs"})
     public void parquetWritePrimitivesGZip() throws Exception {
         runWriteScenario("pxf_parquet_write_primitives_gzip", "pxf_parquet_read_primitives_gzip", parquetWritePrimitivesGzip, new String[]{"COMPRESSION_CODEC=gzip"});
     }
 
-    @Test(groups = {"features", "gpdb", "hcfs"})
+    @Test(groups = {"features", "gpdb", "security", "hcfs"})
     public void parquetWritePrimitivesGZipClassName() throws Exception {
         runWriteScenario("pxf_parquet_write_primitives_gzip_classname", "pxf_parquet_read_primitives_gzip_classname", parquetWritePrimitivesGzipClassName, new String[]{"COMPRESSION_CODEC=org.apache.hadoop.io.compress.GzipCodec"});
     }

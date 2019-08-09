@@ -101,7 +101,7 @@ public class JdbcHiveTest extends BaseFeature {
         gpdb.createTableAndVerify(pxfJdbcHiveTypesServerTable);
     }
 
-    @Test(groups = {"features", "gpdb"})
+    @Test(groups = {"features", "gpdb", "security"})
     public void jdbcHiveRead() throws Exception {
         runTincTest("pxf.features.jdbc.hive.runTest");
     }

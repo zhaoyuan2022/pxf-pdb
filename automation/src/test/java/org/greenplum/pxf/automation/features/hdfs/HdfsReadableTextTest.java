@@ -112,7 +112,7 @@ public class HdfsReadableTextTest extends BaseFeature {
      *
      * @throws Exception
      */
-    @Test(groups = {"features", "sanity", "gpdb"})
+    @Test(groups = {"features", "sanity", "gpdb", "security"})
     public void readDelimitedTextUsingTextFormat() throws Exception {
         // set plugins and delimiter
         exTable.setFragmenter("org.greenplum.pxf.plugins.hdfs.HdfsDataFragmenter");
@@ -132,7 +132,7 @@ public class HdfsReadableTextTest extends BaseFeature {
      *
      * @throws Exception
      */
-    @Test(groups = {"features", "gpdb"})
+    @Test(groups = {"features", "gpdb", "security"})
     public void readCsvUsingCsvFormat() throws Exception {
         // set plugins and format
         exTable.setFragmenter("org.greenplum.pxf.plugins.hdfs.HdfsDataFragmenter");
@@ -156,7 +156,7 @@ public class HdfsReadableTextTest extends BaseFeature {
      *
      * @throws Exception
      */
-    @Test(groups = {"features", "gpdb", "hcfs"})
+    @Test(groups = {"features", "gpdb", "hcfs", "security"})
     public void readCsvUsingProfile() throws Exception {
         // set profile and format
         exTable.setProfile(ProtocolUtils.getProtocol().value() + ":text");
@@ -178,7 +178,7 @@ public class HdfsReadableTextTest extends BaseFeature {
      *
      * @throws Exception
      */
-    @Test(groups = {"features", "gpdb"})
+    @Test(groups = {"features", "gpdb", "security"})
     public void readMultiBlockedMultiLinedCsv() throws Exception {
         // prepare local CSV file
         dataTable = new Table("dataTable", null);
@@ -211,7 +211,7 @@ public class HdfsReadableTextTest extends BaseFeature {
      *
      * @throws Exception
      */
-    @Test(groups = {"features", "gpdb", "hcfs"})
+    @Test(groups = {"features", "gpdb", "hcfs", "security"})
     public void readMultiBlockedMultiLinedCsvUsingProfile() throws Exception {
         // prepare local CSV file
         dataTable = new Table("dataTable", null);
@@ -242,7 +242,7 @@ public class HdfsReadableTextTest extends BaseFeature {
      *
      * @throws Exception
      */
-    @Test(groups = {"features", "gpdb", "hcfs"})
+    @Test(groups = {"features", "gpdb", "hcfs", "security"})
     public void wildcardLocation() throws Exception {
         // define HDFS data directory
         String wildcardHdfsPath = hdfs.getWorkingDirectory() + "/wild/";
@@ -271,7 +271,7 @@ public class HdfsReadableTextTest extends BaseFeature {
      *
      * @throws Exception
      */
-    @Test(groups = {"features", "gpdb", "hcfs"})
+    @Test(groups = {"features", "gpdb", "hcfs", "security"})
     public void recursiveHdfsDirectories() throws Exception {
         // define base HDFS directory
         String baseDirectory = hdfs.getWorkingDirectory() + "/base/";
@@ -299,7 +299,7 @@ public class HdfsReadableTextTest extends BaseFeature {
      *
      * @throws Exception
      */
-    @Test(groups = {"features", "gpdb", "hcfs"})
+    @Test(groups = {"features", "gpdb", "hcfs", "security"})
     public void emptyTextFile() throws Exception {
         // define and create external table
         exTable.setProfile(ProtocolUtils.getProtocol().value() + ":text");
@@ -402,7 +402,7 @@ public class HdfsReadableTextTest extends BaseFeature {
      *
      * @throws Exception
      */
-    @Test(groups = {"features", "gpdb", "hcfs"})
+    @Test(groups = {"features", "gpdb", "hcfs", "security"})
     public void errorTable() throws Exception {
 
         String[] fields = new String[]{"num int", "words text"};
@@ -467,7 +467,7 @@ public class HdfsReadableTextTest extends BaseFeature {
      * TODO The test doesn't verify whether Gpdb got all tuples or just the
      * LIMIT. We should test LIMIT cancels the query once it gets LIMIT tuples.
      */
-    @Test(groups = {"features", "gpdb", "hcfs"})
+    @Test(groups = {"features", "gpdb", "hcfs", "security"})
     public void limit() throws Exception {
 
         Table dataTable = new Table("dataTable", null);
@@ -497,7 +497,7 @@ public class HdfsReadableTextTest extends BaseFeature {
      * Verify query fails when conversion to int (for example) fails (without an
      * error table) and a proper error message is printed
      */
-    @Test(groups = {"features", "gpdb", "hcfs"})
+    @Test(groups = {"features", "gpdb", "hcfs", "security"})
     public void negativeBadTextData() throws Exception {
 
         Table dataTable = new Table("dataTable", null);
@@ -530,7 +530,7 @@ public class HdfsReadableTextTest extends BaseFeature {
      * <p>
      * see GPSQL-2272
      */
-    @Test(groups = {"features", "gpdb"})
+    @Test(groups = {"features", "gpdb", "security"})
     public void errorInTheMiddleOfStream() throws Exception {
 
         Table dataTable = new Table("dataTable", null);

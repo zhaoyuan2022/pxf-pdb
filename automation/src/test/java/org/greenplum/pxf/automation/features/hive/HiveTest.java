@@ -161,7 +161,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "sanity", "features", "gpdb" })
+    @Test(groups = { "hive", "sanity", "features", "gpdb", "security" })
     public void sanity() throws Exception {
 
         createExternalTable(PXF_HIVE_SMALL_DATA_TABLE, PXF_HIVE_SMALLDATA_COLS, hiveSmallDataTable);
@@ -175,7 +175,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "features", "gpdb" })
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void hivePrimitiveTypes() throws Exception {
 
         createExternalTable(GPDB_HIVE_TYPES_TABLE,
@@ -190,7 +190,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "features", "gpdb" })
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void hiveBinaryData() throws Exception {
 
         prepareBinaryData();
@@ -205,7 +205,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "features", "gpdb" })
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void storeAsOrc() throws Exception {
 
         prepareOrcData();
@@ -221,7 +221,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "features", "gpdb" })
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void storeAsRc() throws Exception {
 
         prepareRCData();
@@ -237,7 +237,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "features", "gpdb" })
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void storeAsSequenceFile() throws Exception {
 
         prepareSequenceData();
@@ -253,7 +253,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "features", "gpdb" })
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void storeAsParquet() throws Exception {
 
         prepareParquetData();
@@ -269,7 +269,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "features", "gpdb" })
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void storeAsAvro() throws Exception {
 
         prepareAvroData();
@@ -320,7 +320,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "features", "gpdb" })
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void hivePartitionedTable() throws Exception {
 
         preparePartitionedData();
@@ -337,7 +337,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "features", "gpdb" })
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void hivePartitionedPPDTable() throws Exception {
 
         HiveExternalTable hivePartitionedPPDTable = TableFactory.getHiveByRowCommaExternalTable(HIVE_PARTITIONED_PPD_TABLE, HIVE_SMALLDATA_PPD_COLS);
@@ -361,7 +361,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "features", "gpdb" })
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void hivePartitionedPPDTableCustomFilters() throws Exception {
 
         // Hive talbe with partition columns s2, n1.
@@ -421,7 +421,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"hive", "features", "gpdb"})
+    @Test(groups = {"hive", "features", "gpdb", "security"})
     public void hivePartitionedTableUnionAll() throws Exception {
 
         preparePartitionedData();
@@ -457,7 +457,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "hcatalog", "features", "gpdb" })
+    @Test(groups = { "hive", "hcatalog", "features", "gpdb", "security" })
     public void hiveCollectionTypes() throws Exception {
 
         prepareHiveCollection();
@@ -473,7 +473,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "features", "gpdb" })
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void columnDataTypeMisMatch() throws Exception {
 
         /* Here t1 column data type is passed as integer where as expected as
@@ -508,7 +508,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "features", "gpdb" })
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void columnCountMisMatch() throws Exception {
 
         // In pxf table creation a dummy extra column is added so that columns
@@ -524,7 +524,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "hcatalog", "features", "gpdb" })
+    @Test(groups = { "hive", "hcatalog", "features", "gpdb", "security" })
     public void noDataFilePresentForHive() throws Exception {
         /*
          * In this test case , we want a hive table which is not pointed to any data file or not having
@@ -547,7 +547,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "features", "gpdb" })
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void partitionFilterPushDown() throws Exception {
 
         // Create Hive table with partitions
@@ -619,7 +619,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "features", "gpdb" })
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void invalidFilterPushDown() throws Exception {
 
         // Create Hive table with partitions
@@ -652,7 +652,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "hcatalog", "features", "gpdb" })
+    @Test(groups = { "hive", "hcatalog", "features", "gpdb", "security" })
     public void partitionsAllTypes() throws Exception {
 
         prepareManyPartitionedData();
@@ -668,7 +668,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "features", "gpdb" })
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void negativeCollectionTypes() throws Exception {
 
         HiveTable hiveTable = new HiveTable(HIVE_COLLECTIONS_TABLE,
@@ -780,7 +780,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "hcatalog", "features", "gpdb" })
+    @Test(groups = { "hive", "hcatalog", "features", "gpdb", "security" })
     public void hivePartitionedClusteredTable() throws Exception {
 
         preparePartitionedClusteredData();
@@ -796,7 +796,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "hcatalog", "features", "gpdb" })
+    @Test(groups = { "hive", "hcatalog", "features", "gpdb", "security" })
     public void hivePartitionedClusteredSortedTable() throws Exception {
 
         preparePartitionedClusteredSortedData();
@@ -813,7 +813,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "hcatalog", "features", "gpdb" })
+    @Test(groups = { "hive", "hcatalog", "features", "gpdb", "security" })
     public void hivePartitionedSkewedTable() throws Exception {
 
         prepareSkewedData();
@@ -828,7 +828,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "hcatalog", "features", "gpdb" })
+    @Test(groups = { "hive", "hcatalog", "features", "gpdb", "security" })
     public void hivePartitionedSkewedStoredAsDirsTable() throws Exception {
 
         prepareSkewedStoredAsDirsData();
@@ -923,7 +923,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "hcatalog", "features", "gpdb" })
+    @Test(groups = { "hive", "hcatalog", "features", "gpdb", "security" })
     public void hiveHeterogenTableOptimizedProfile() throws Exception {
 
         // Create Hive table with partitions, when each partition has different data
@@ -937,7 +937,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "hcatalog", "features", "gpdb" })
+    @Test(groups = { "hive", "hcatalog", "features", "gpdb", "security" })
     public void aggregateQueries() throws Exception {
 
         // hive table with nulls
@@ -958,7 +958,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "features", "gpdb" })
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void hiveTableWithSkipHeader() throws Exception {
         List<List<String>> tableProperties = new ArrayList<>();
         tableProperties.add(Arrays.asList("skip.header.line.count", "3"));

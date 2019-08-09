@@ -87,7 +87,7 @@ public class MultiUserTest extends BaseFeature {
         gpdb.createTableAndVerify(pxfJdbcReadableOverrideDDL);
     }
 
-    @Test(groups = {"features", "gpdb"})
+    @Test(groups = {"features", "gpdb", "security"})
     public void testUsers() throws Exception {
         runTincTest("pxf.features.multi_user.runTest");
     }

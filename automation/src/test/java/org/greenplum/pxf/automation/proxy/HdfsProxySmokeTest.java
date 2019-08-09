@@ -18,7 +18,7 @@ public class HdfsProxySmokeTest extends BaseSmoke {
 
     @Override
     protected void prepareData() throws Exception {
-        // create small data table and write it to HDFS twice to be owned by gapdmin and test user
+        // create small data table and write it to HDFS twice to be owned by gpadmin and test user
         Table dataTable = getSmallData();
 
         locationProhibited = String.format("%s/proxy/%s/%s", hdfs.getWorkingDirectory(), ADMIN_USER, fileName);
@@ -66,7 +66,7 @@ public class HdfsProxySmokeTest extends BaseSmoke {
         runTincTest("pxf.proxy.small_data.runTest");
     }
 
-    @Test(groups = { "proxy", "hdfs" })
+    @Test(groups = { "proxy", "hdfs", "security" })
     public void test() throws Exception {
         runTest();
     }

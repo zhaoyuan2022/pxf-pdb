@@ -86,10 +86,6 @@ SELECT t1 FROM pxf_hive_orc_types WHERE 7 = dub1;
 --TODO: numeric column in WHERE clause, uncomment when HAWQ-1055 is done
 --SELECT t1 FROM pxf_hive_orc_types WHERE dec1 = 7;
 
---timestamp column in WHERE clause
-SELECT t1 FROM pxf_hive_orc_types WHERE tm = '2013-07-13 21:00:05';
-SELECT t1 FROM pxf_hive_orc_types WHERE '2013-07-13 21:00:05' = tm;
-
 --real column in WHERE clause
 SELECT t1 FROM pxf_hive_orc_types WHERE r = CAST(7.7 AS float4);
 SELECT t1 FROM pxf_hive_orc_types WHERE CAST(7.7 AS float4) = r;

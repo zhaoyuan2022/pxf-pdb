@@ -156,6 +156,7 @@ public class JdbcBasePlugin extends BasePlugin {
 
     /**
      * Creates a new instance with the given ConnectionManager.
+     *
      * @param connectionManager connection manager instance
      */
     JdbcBasePlugin(ConnectionManager connectionManager) {

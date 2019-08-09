@@ -24,7 +24,7 @@ public class FileAsRowTest extends BaseFeature {
         hdfs.removeDirectory(hdfs.getWorkingDirectory() + "/file_as_row/");
     }
 
-    @Test(groups = {"gpdb", "hcfs"})
+    @Test(groups = {"gpdb", "hcfs", "security"})
     public void testEmptyFile() throws Exception {
         String hdfsBasePath = hdfs.getWorkingDirectory() + "/file_as_row/";
         String[] srcPaths = {
@@ -33,7 +33,7 @@ public class FileAsRowTest extends BaseFeature {
                 hdfsBasePath + emptyTextFile, srcPaths);
     }
 
-    @Test(groups = {"gpdb", "hcfs"})
+    @Test(groups = {"gpdb", "hcfs", "security"})
     public void testSingleLineFile() throws Exception {
         String hdfsBasePath = hdfs.getWorkingDirectory() + "/file_as_row/";
         String[] srcPaths = {
@@ -42,7 +42,7 @@ public class FileAsRowTest extends BaseFeature {
                 hdfsBasePath + singleLineTextFile, srcPaths);
     }
 
-    @Test(groups = {"gpdb", "hcfs"})
+    @Test(groups = {"gpdb", "hcfs", "security"})
     public void testTwoLineFile() throws Exception {
         String hdfsBasePath = hdfs.getWorkingDirectory() + "/file_as_row/";
         String[] srcPaths = {
@@ -51,7 +51,7 @@ public class FileAsRowTest extends BaseFeature {
                 hdfsBasePath + twoLineTextFile, srcPaths);
     }
 
-    @Test(groups = {"gpdb", "hcfs"})
+    @Test(groups = {"gpdb", "hcfs", "security"})
     public void testMultilineFile() throws Exception {
         String hdfsBasePath = hdfs.getWorkingDirectory() + "/file_as_row/";
         String[] srcPaths = {
@@ -60,7 +60,7 @@ public class FileAsRowTest extends BaseFeature {
                 hdfsBasePath + multiLineTextFile, srcPaths);
     }
 
-    @Test(groups = {"gpdb", "hcfs"})
+    @Test(groups = {"gpdb", "hcfs", "security"})
     public void testMultilineJsonFile() throws Exception {
         String hdfsBasePath = hdfs.getWorkingDirectory() + "/file_as_row/";
         String[] srcPaths = {
@@ -71,7 +71,7 @@ public class FileAsRowTest extends BaseFeature {
         }, hdfsBasePath + multiLineJsonFile, srcPaths);
     }
 
-    @Test(groups = {"gpdb", "hcfs"})
+    @Test(groups = {"gpdb", "hcfs", "security"})
     public void testMultilineWithDirectory() throws Exception {
         String hdfsBasePath = hdfs.getWorkingDirectory() + "/file_as_row/";
         String[] srcPaths = {

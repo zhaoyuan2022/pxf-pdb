@@ -124,7 +124,7 @@ public class HdfsReadableAvroTest extends BaseFeature {
      *
      * @throws Exception
      */
-    @Test(groups = { "features", "gpdb", "hcfs" })
+    @Test(groups = {"features", "gpdb", "hcfs", "security"})
     public void avroSimple() throws Exception {
 
         exTable.setName("avrotest_simple");
@@ -144,7 +144,7 @@ public class HdfsReadableAvroTest extends BaseFeature {
      *
      * @throws Exception
      */
-    @Test(groups = { "features", "gpdb", "hcfs" })
+    @Test(groups = {"features", "gpdb", "hcfs", "security"})
     public void avroSupportedPrimitives() throws Exception {
 
         exTable.setName("avrotest_supported_primitive_types");
@@ -170,7 +170,7 @@ public class HdfsReadableAvroTest extends BaseFeature {
      *
      * @throws Exception
      */
-    @Test(groups = { "features", "gpdb", "hcfs" })
+    @Test(groups = {"features", "gpdb", "hcfs", "security"})
     public void avroArrays() throws Exception {
 
         exTable.setName("avrotest_arrays");
@@ -203,7 +203,7 @@ public class HdfsReadableAvroTest extends BaseFeature {
      *
      * @throws Exception
      */
-    @Test(groups = { "features", "gpdb", "hcfs" })
+    @Test(groups = {"features", "gpdb", "hcfs", "security"})
     public void avroComplex() throws Exception {
 
         exTable.setName("avrotest_complex");
@@ -230,7 +230,7 @@ public class HdfsReadableAvroTest extends BaseFeature {
      *
      * @throws Exception
      */
-    @Test(groups = { "features", "gpdb", "hcfs" })
+    @Test(groups = {"features", "gpdb", "hcfs", "security"})
     public void avroNull() throws Exception {
 
         exTable.setName("avrotest_null");
@@ -257,7 +257,7 @@ public class HdfsReadableAvroTest extends BaseFeature {
      *
      * @throws Exception
      */
-    @Test(groups = { "features", "gpdb", "hcfs" })
+    @Test(groups = {"features", "gpdb", "hcfs", "security"})
     public void avroComplexNull() throws Exception {
         exTable.setName("avrotest_complex_null");
         exTable.setProfile(ProtocolUtils.getProtocol().value() + ":avro");
@@ -301,7 +301,7 @@ public class HdfsReadableAvroTest extends BaseFeature {
      *
      * @throws Exception
      */
-    @Test(groups = { "features", "gpdb", "hcfs" })
+    @Test(groups = {"features", "gpdb", "hcfs", "security"})
     public void avroInSequenceFileArrays() throws Exception {
 
         exTable.setName("avro_in_seq_arrays");
@@ -337,7 +337,7 @@ public class HdfsReadableAvroTest extends BaseFeature {
      *
      * @throws Exception
      */
-    @Test(groups = { "features", "gpdb", "hcfs" })
+    @Test(groups = {"features", "gpdb", "hcfs", "security"})
     public void avroFileNameWithSpaces() throws Exception {
 
         exTable.setName("avro_in_seq_arrays");
@@ -373,7 +373,7 @@ public class HdfsReadableAvroTest extends BaseFeature {
      *
      * @throws Exception
      */
-    @Test(groups = { "features", "gpdb", "hcfs" })
+    @Test(groups = {"features", "gpdb", "hcfs", "security"})
     public void avroMultiFiles() throws Exception {
         String schemaName = resourcePath + avroInSequenceArraysSchemaFile;
 
@@ -419,7 +419,7 @@ public class HdfsReadableAvroTest extends BaseFeature {
      *
      * @throws Exception
      */
-    @Test(groups = { "features", "gpdb", "hcfs" })
+    @Test(groups = {"features", "gpdb", "hcfs", "security"})
     public void avroCodecs() throws Exception {
         String schemaName = resourcePath + avroInSequenceArraysSchemaFile;
         Table dataTable = new Table("dataTable", null);
@@ -472,7 +472,7 @@ public class HdfsReadableAvroTest extends BaseFeature {
      *
      * @throws Exception
      */
-    @Test(groups = { "features", "gpdb", "hcfs" })
+    @Test(groups = {"features", "gpdb", "hcfs", "security"})
     public void extraField() throws Exception {
         exTable.setName("avro_extra_field");
         exTable.setProfile(ProtocolUtils.getProtocol().value() + ":avro");
@@ -494,7 +494,7 @@ public class HdfsReadableAvroTest extends BaseFeature {
      *
      * @throws Exception
      */
-    @Test(groups = { "features", "gpdb", "hcfs" })
+    @Test(groups = {"features", "gpdb", "hcfs", "security"})
     public void missingField() throws Exception {
         exTable.setName("avro_missing_field");
         exTable.setProfile(ProtocolUtils.getProtocol().value() + ":avro");
@@ -512,7 +512,7 @@ public class HdfsReadableAvroTest extends BaseFeature {
      *
      * @throws Exception
      */
-    @Test(groups = { "features", "gpdb", "hcfs" })
+    @Test(groups = {"features", "gpdb", "hcfs", "security"})
     public void noSchemaFile() throws Exception {
         exTable.setName("avro_in_seq_no_schema");
         exTable.setFields(new String[] {

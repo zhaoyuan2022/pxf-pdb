@@ -35,7 +35,7 @@ public class FailOverTest extends BaseFeature {
      *
      * @throws Exception
      */
-    @Test(groups = {"features", "gpdb"})
+    @Test(groups = {"features", "gpdb", "security"})
     public void killTomcatOnOutOfMemory() throws Exception {
 
         // Create PXF external table for column projection testing

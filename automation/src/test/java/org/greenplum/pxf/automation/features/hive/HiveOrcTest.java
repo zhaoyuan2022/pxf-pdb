@@ -104,7 +104,7 @@ public class HiveOrcTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "hcatalog", "features", "gpdb" })
+    @Test(groups = { "hive", "hcatalog", "features", "gpdb", "security" })
     public void sanity() throws Exception {
 
         createExternalTable(PXF_HIVE_SMALL_DATA_TABLE + "_orc",
@@ -119,7 +119,7 @@ public class HiveOrcTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "features", "gpdb" })
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void hiveLongBinaryType() throws Exception {
 
         prepareBinaryData();
@@ -134,7 +134,7 @@ public class HiveOrcTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "hcatalog", "features", "gpdb" })
+    @Test(groups = { "hive", "hcatalog", "features", "gpdb", "security" })
     public void storeAsOrc() throws Exception {
 
         createExternalTable(PXF_HIVE_SMALL_DATA_TABLE,
@@ -145,12 +145,13 @@ public class HiveOrcTest extends HiveBaseTest {
     }
 
     /**
-     * PXF on Hive ORC format all hive primitive types
+     * PXF on Hive ORC format all hive primitive types (all types
+     * supported on both Hive 1 & 2)
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "hcatalog", "features", "gpdb" })
-    public void storeAsOrcAllTypes() throws Exception {
+    @Test(groups = { "hive", "hcatalog", "features", "gpdb", "security" })
+    public void storeAsOrcAllTypesHive1AndHive2() throws Exception {
 
         runTincTest("pxf.features.hive.orc_primitive_types.runTest");
         // TODO: hcatalog based access still uses the older Hive profile
@@ -158,11 +159,24 @@ public class HiveOrcTest extends HiveBaseTest {
     }
 
     /**
+     * PXF on Hive ORC format all hive primitive types (with timestamps;
+     * only supported on Hive 1)
+     *
+     * @throws Exception if test fails to run
+     */
+    @Test(groups = {"hive", "hcatalog", "features", "gpdb" })
+    public void storeAsOrcAllTypesHive1Only() throws Exception {
+
+        // TODO: fix test in hive 2 and add it to the security group
+        runTincTest("pxf.features.hive.orc_primitive_types_hive1_only.runTest");
+    }
+
+    /**
      * PXF on Hive ORC Queries with ANY, SOME, ALL, and EXISTS
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "features", "gpdb" })
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void queryWithNotPushedDownOperators() throws Exception {
 
         runTincTest("pxf.features.hive.orc_operators_no_ppd.runTest");
@@ -173,7 +187,7 @@ public class HiveOrcTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "hcatalog", "features", "gpdb" })
+    @Test(groups = { "hive", "hcatalog", "features", "gpdb", "security" })
     public void storeAsOrcSnappy() throws Exception {
 
         prepareOrcSnappyData();
@@ -189,7 +203,7 @@ public class HiveOrcTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "hcatalog", "features", "gpdb" })
+    @Test(groups = { "hive", "hcatalog", "features", "gpdb", "security" })
     public void storeAsOrcZlib() throws Exception {
 
         prepareOrcZlibData();
@@ -224,7 +238,7 @@ public class HiveOrcTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "features", "gpdb" })
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void hivePartitionedTable() throws Exception {
 
         preparePartitionedData();
@@ -243,7 +257,7 @@ public class HiveOrcTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "features", "gpdb" })
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void hiveCollectionTypes() throws Exception {
 
         prepareHiveCollection();
@@ -285,7 +299,7 @@ public class HiveOrcTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = { "hive", "features", "gpdb" })
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void hiveTableWithSkipHeader() throws Exception {
 
         HiveTable hiveOrcSkipHeaderTable = new HiveTable("hive_table_with_skipheader_orc", HIVE_RC_COLS);
