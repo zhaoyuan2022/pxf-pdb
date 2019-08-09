@@ -3,6 +3,7 @@
 		<class>org.greenplum.pxf.automation.components.cluster.MultiNodeCluster</class>
 		<host>localhost</host>
 		<phdRoot>/usr/local/greenplum-db-devel</phdRoot>
+		<hiveBaseHdfsDirectory>/hive/warehouse/</hiveBaseHdfsDirectory>
 		<nodes index="0">
 			<class>org.greenplum.pxf.automation.components.cluster.installer.nodes.MasterNode</class>
 			<host>mdw</host>

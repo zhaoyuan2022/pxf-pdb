@@ -12,6 +12,9 @@ inputs:
 - name: cluster_env_files
 - name: terraform
 - name: terraform_dataproc
+  optional: true
+- name: dataproc_env_files
+  optional: true
 
 params:
   AWS_SECRET_ACCESS_KEY:
@@ -21,6 +24,8 @@ params:
   BUCKET_PATH:
   CLOUD_PROVIDER:
   IMPERSONATION: true
+  INSTALL_GPHDFS: true
+  KERBEROS: false
   PLATFORM:
   PXF_JVM_OPTS:
 

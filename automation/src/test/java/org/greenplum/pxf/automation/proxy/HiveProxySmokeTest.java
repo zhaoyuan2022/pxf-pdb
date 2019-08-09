@@ -59,7 +59,7 @@ public class HiveProxySmokeTest extends BaseSmoke {
         hive.loadData(hiveTableProhibited, (hdfs.getWorkingDirectory() + "/" + fileName), false);
 
         // update permissions on HDFS directory for prohibited table to be only readable by gpadmin user
-        hdfs.setMode("/hive/warehouse/hive_table_prohibited/hiveSmallData.txt", "700");
+        hdfs.setMode(cluster.getHiveBaseHdfsDirectory() + "/hive_table_prohibited/hiveSmallData.txt", "700");
     }
 
     @Override

@@ -295,6 +295,7 @@ jobs:
             PLATFORM: centos7
             CLOUD_PROVIDER: google
             IMPERSONATION: {{enable-impersonation-multinode}}
+            INSTALL_GPHDFS: {{perf-benchmark-gphdfs}}
             PXF_JVM_OPTS: {{pxf-jvm-opts}}
           on_failure:
             <<: *ccp_destroy

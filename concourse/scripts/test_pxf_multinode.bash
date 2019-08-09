@@ -5,14 +5,13 @@ set -exo pipefail
 CWDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source "${CWDIR}/pxf_common.bash"
 
-SSH_OPTS="-i cluster_env_files/private_key.pem -o StrictHostKeyChecking=no"
+SSH_OPTS=(-i cluster_env_files/private_key.pem -o 'StrictHostKeyChecking=no')
 GPHD_ROOT="/singlecluster"
 
 function configure_local_hdfs() {
 
-	sed -i -e 's|hdfs://0.0.0.0:8020|hdfs://hadoop:8020|' \
+	sed -i -e "s|hdfs://0.0.0.0:8020|hdfs://${HADOOP_HOSTNAME}:8020|" \
 	${GPHD_ROOT}/hadoop/etc/hadoop/core-site.xml ${GPHD_ROOT}/hbase/conf/hbase-site.xml
-	sed -i -e "s/>tez/>mr/g" ${GPHD_ROOT}/hive/conf/hive-site.xml
 }
 
 function run_multinode_smoke_test() {
@@ -31,9 +30,9 @@ function run_multinode_smoke_test() {
 	${GPHD_ROOT}/bin/hdfs dfs -chown -R gpadmin:gpadmin /tmp/pxf_test"
 
 	echo "Found $(${GPHD_ROOT}/bin/hdfs dfs -ls /tmp/pxf_test | grep pxf_test | wc -l) items in /tmp/pxf_test"
-	expected_output=$((3 * ${NO_OF_FILES}))
+	expected_output=$((3 * NO_OF_FILES))
 
-	time ssh ${SSH_OPTS} gpadmin@mdw "source ${GPHOME}/greenplum_path.sh
+	time ssh "${SSH_OPTS[@]}" gpadmin@mdw "source ${GPHOME}/greenplum_path.sh
 	psql -d template1 -c \"
 	CREATE EXTERNAL TABLE pxf_multifile_test (b TEXT) LOCATION ('pxf://tmp/pxf_test?PROFILE=HdfsTextSimple') FORMAT 'CSV';\"
 	num_rows=\$(psql -d template1 -t -c \"SELECT COUNT(*) FROM pxf_multifile_test;\" | head -1)
@@ -48,65 +47,56 @@ function run_multinode_smoke_test() {
 function open_ssh_tunnels() {
 
 	# https://stackoverflow.com/questions/2241063/bash-script-to-setup-a-temporary-ssh-tunnel
-	ssh-keyscan hadoop >> /root/.ssh/known_hosts
 	ssh -fNT -M -S /tmp/mdw5432 -L 5432:mdw:5432 gpadmin@mdw
-	ssh -fNT -M -S /tmp/hadoop2181 -L 2181:hadoop:2181 root@hadoop
 	ssh -S /tmp/mdw5432 -O check gpadmin@mdw
-	ssh -S /tmp/hadoop2181 -O check root@hadoop
+
+	if [[ ! -d dataproc_env_files ]]; then
+		ssh-keyscan "$HADOOP_HOSTNAME" >> /root/.ssh/known_hosts
+		ssh -fNT -M -S /tmp/hadoop2181 -L 2181:hadoop:2181 root@hadoop
+		ssh -S /tmp/hadoop2181 -O check root@hadoop
+	fi
 }
 
 function close_ssh_tunnels() {
 	ssh -S /tmp/mdw5432 -O exit gpadmin@mdw
-	ssh -S /tmp/hadoop2181 -O exit root@hadoop
+	if [[ ! -d dataproc_env_files ]]; then
+		ssh -S /tmp/hadoop2181 -O exit root@hadoop
+ 	fi
 }
 
 function update_pghba_conf() {
-
     local sdw_ips=("$@")
-    for ip in ${sdw_ips[@]}; do
+    for ip in "${sdw_ips[@]}"; do
         echo "host     all         gpadmin         $ip/32    trust" >> pg_hba.patch
     done
-    scp ${SSH_OPTS} pg_hba.patch gpadmin@mdw:
+    scp "${SSH_OPTS[@]}" pg_hba.patch gpadmin@mdw:
 
-    ssh ${SSH_OPTS} gpadmin@mdw "
+    ssh "${SSH_OPTS[@]}" gpadmin@mdw "
         cat pg_hba.patch >> /data/gpdata/master/gpseg-1/pg_hba.conf &&
         cat /data/gpdata/master/gpseg-1/pg_hba.conf"
 }
 
-function setup_pxf_on_segment {
-    local segment=${1}
-    scp -r ${SSH_OPTS} pxf_tarball centos@${segment}:
-    scp ${SSH_OPTS} cluster_env_files/etc_hostfile centos@${segment}:
-
-    # install PXF as superuser
-    ssh ${SSH_OPTS} centos@${segment} "
-        sudo sed -i -e 's/edw0/hadoop/' /etc/hosts &&
-        sudo yum install -y -d 1 java-1.8.0-openjdk-devel &&
-        echo 'export JAVA_HOME=/usr/lib/jvm/jre' | sudo tee -a ~gpadmin/.bashrc &&
-        echo 'export JAVA_HOME=/usr/lib/jvm/jre' | sudo tee -a ~centos/.bashrc &&
-        sudo tar -xzf pxf_tarball/pxf.tar.gz -C ${GPHOME} &&
-        sudo chown -R gpadmin:gpadmin ${GPHOME}/pxf"
-}
-
 function setup_pxf_on_cluster() {
     # drop named query file for JDBC test to gpadmin's home on mdw
-    scp ${SSH_OPTS} pxf_src/automation/src/test/resources/report.sql gpadmin@mdw:
-    scp ${SSH_OPTS} pxf_src/automation/src/test/resources/hive-report.sql gpadmin@mdw:
-    # untar pxf on all nodes in the cluster
-    for node in ${gpdb_nodes}; do
-        setup_pxf_on_segment ${node} &
-    done
-    wait
+    scp "${SSH_OPTS[@]}" pxf_src/automation/src/test/resources/report.sql gpadmin@mdw:
+    scp "${SSH_OPTS[@]}" pxf_src/automation/src/test/resources/hive-report.sql gpadmin@mdw:
+
+    # PXF is already un-tarred on the segments (concource/scripts/install_pxf.bash)
+
     # init all PXFs using cluster command, configure PXF on master, sync configs and start pxf
-    ssh ${SSH_OPTS} gpadmin@mdw "source ${GPHOME}/greenplum_path.sh &&
-        PXF_CONF=${PXF_CONF_DIR} ${GPHOME}/pxf/bin/pxf cluster init &&
-        cp ${PXF_CONF_DIR}/templates/{hdfs,mapred,yarn,core,hbase,hive}-site.xml ${PXF_CONF_DIR}/servers/default/ &&
+    ssh "${SSH_OPTS[@]}" gpadmin@mdw "source ${GPHOME}/greenplum_path.sh &&
+        if [[ ! -d ${PXF_CONF_DIR} ]]; then
+          PXF_CONF=${PXF_CONF_DIR} ${GPHOME}/pxf/bin/pxf cluster init
+          cp ${PXF_CONF_DIR}/templates/{hdfs,mapred,yarn,core,hbase,hive}-site.xml ${PXF_CONF_DIR}/servers/default/
+          sed -i -e 's/\(0.0.0.0\|localhost\|127.0.0.1\)/${hadoop_ip}/g' ${PXF_CONF_DIR}/servers/default/*-site.xml
+        else
+          cp ${PXF_CONF_DIR}/templates/mapred-site.xml ${PXF_CONF_DIR}/servers/default/mapred1-site.xml
+        fi &&
         mkdir -p ${PXF_CONF_DIR}/servers/s3 && mkdir -p ${PXF_CONF_DIR}/servers/s3-invalid &&
         cp ${PXF_CONF_DIR}/templates/s3-site.xml ${PXF_CONF_DIR}/servers/s3/ &&
         cp ${PXF_CONF_DIR}/templates/s3-site.xml ${PXF_CONF_DIR}/servers/s3-invalid/ &&
         sed -i \"s|YOUR_AWS_ACCESS_KEY_ID|${ACCESS_KEY_ID}|\" ${PXF_CONF_DIR}/servers/s3/s3-site.xml &&
         sed -i \"s|YOUR_AWS_SECRET_ACCESS_KEY|${SECRET_ACCESS_KEY}|\" ${PXF_CONF_DIR}/servers/s3/s3-site.xml &&
-        sed -i -e 's/\(0.0.0.0\|localhost\|127.0.0.1\)/${hadoop_ip}/g' ${PXF_CONF_DIR}/servers/default/*-site.xml &&
         mkdir -p ${PXF_CONF_DIR}/servers/database &&
         cp ${PXF_CONF_DIR}/templates/jdbc-site.xml ${PXF_CONF_DIR}/servers/database/ &&
         sed -i \"s|YOUR_DATABASE_JDBC_DRIVER_CLASS_NAME|org.postgresql.Driver|\" ${PXF_CONF_DIR}/servers/database/jdbc-site.xml &&
@@ -127,21 +117,41 @@ function setup_pxf_on_cluster() {
         mkdir -p ${PXF_CONF_DIR}/servers/db-hive &&
         cp ${PXF_CONF_DIR}/templates/jdbc-site.xml ${PXF_CONF_DIR}/servers/db-hive/ &&
         sed -i \"s|YOUR_DATABASE_JDBC_DRIVER_CLASS_NAME|org.apache.hive.jdbc.HiveDriver|\" ${PXF_CONF_DIR}/servers/db-hive/jdbc-site.xml &&
-        sed -i \"s|YOUR_DATABASE_JDBC_URL|jdbc:hive2://hadoop:10000/default|\" ${PXF_CONF_DIR}/servers/db-hive/jdbc-site.xml &&
+        sed -i \"s|YOUR_DATABASE_JDBC_URL|jdbc:hive2://${HADOOP_HOSTNAME}:10000/default|\" ${PXF_CONF_DIR}/servers/db-hive/jdbc-site.xml &&
         sed -i \"s|YOUR_DATABASE_JDBC_USER||\" ${PXF_CONF_DIR}/servers/db-hive/jdbc-site.xml &&
         sed -i \"s|YOUR_DATABASE_JDBC_PASSWORD||\" ${PXF_CONF_DIR}/servers/db-hive/jdbc-site.xml &&
         cp ~gpadmin/hive-report.sql ${PXF_CONF_DIR}/servers/db-hive/ &&
-        if [ ${IMPERSONATION} == false ]; then
-            echo 'export PXF_USER_IMPERSONATION=false' >> ${PXF_CONF_DIR}/conf/pxf-env.sh
-        fi &&
-        echo 'export PXF_JVM_OPTS=\"${PXF_JVM_OPTS}\"' >> ${PXF_CONF_DIR}/conf/pxf-env.sh &&
-        ${GPHOME}/pxf/bin/pxf cluster sync &&
-        ${GPHOME}/pxf/bin/pxf cluster start"
+        ${GPHOME}/pxf/bin/pxf cluster sync"
 }
 
 function run_pxf_automation() {
 
-	${GPHD_ROOT}/bin/hdfs dfs -chown gpadmin:gpadmin /tmp
+	if [[ $HIVE_VERSION == "2" ]]; then
+		sed -i "s|<hiveBaseHdfsDirectory>/hive/warehouse/</hiveBaseHdfsDirectory>|<hiveBaseHdfsDirectory>/user/hive/warehouse/</hiveBaseHdfsDirectory>|g" pxf_src/automation/src/test/resources/sut/MultiNodesCluster.xml
+	fi
+
+	sed -i "s/GPDB_IP/${gpdb_master}/g" pxf_src/automation/src/test/resources/sut/MultiNodesCluster.xml
+	sed -i "s/>hadoop</>${HADOOP_HOSTNAME}</g" pxf_src/automation/src/test/resources/sut/MultiNodesCluster.xml
+
+	if [[ $KERBEROS == true ]]; then
+	  DATAPROC_DIR=$( find /tmp/build/ -name dataproc_env_files )
+    REALM=$(cat "${DATAPROC_DIR}/REALM")
+    REALM=${REALM^^} # make sure REALM is up-cased, down-case below for hive principal
+    KERBERIZED_HADOOP_URI="hive/${HADOOP_HOSTNAME}.${REALM,,}@${REALM};saslQop=auth-conf"
+	  sed -i -e "s|</hdfs>|<hadoopRoot>$DATAPROC_DIR</hadoopRoot></hdfs>|g" \
+	    -e "s|</cluster>|<testKerberosPrincipal>gpadmin@${REALM}</testKerberosPrincipal></cluster>|g" \
+	    -e "s|</hive>|<kerberosPrincipal>${KERBERIZED_HADOOP_URI}</kerberosPrincipal><userName>gpadmin</userName></hive>|g" \
+      pxf_src/automation/src/test/resources/sut/MultiNodesCluster.xml
+    ssh gpadmin@mdw "
+      sed -i -e 's|\(jdbc:hive2://${HADOOP_HOSTNAME}:10000/default\)|\1;principal=${KERBERIZED_HADOOP_URI}|g' ${PXF_CONF_DIR}/servers/db-hive/jdbc-site.xml
+      ${GPHOME}/pxf/bin/pxf cluster sync
+    "
+	  sudo mkdir -p /etc/security/keytabs
+	  sudo cp "$DATAPROC_DIR"/pxf.service.keytab /etc/security/keytabs/gpadmin.headless.keytab
+	  sudo chown gpadmin:gpadmin /etc/security/keytabs/gpadmin.headless.keytab
+	  sudo cp "$DATAPROC_DIR"/krb5.conf /etc/krb5.conf
+	fi
+
 	sed -i 's/sutFile=default.xml/sutFile=MultiNodesCluster.xml/g' pxf_src/automation/jsystem.properties
 	chown -R gpadmin:gpadmin /home/gpadmin pxf_src/automation
 
@@ -153,7 +163,7 @@ source ${GPHOME}/greenplum_path.sh
 export PATH=\$PATH:${GPHD_ROOT}/bin:${HADOOP_ROOT}/bin:${HBASE_ROOT}/bin:${HIVE_ROOT}/bin:${ZOOKEEPER_ROOT}/bin
 export GPHOME=/usr/local/greenplum-db-devel
 export PXF_HOME=${GPHOME}/pxf
-export PGHOST=localhost
+export PGHOST=mdw
 export PGPORT=5432
 
 cd pxf_src/automation
@@ -177,11 +187,17 @@ EOF
 function _main() {
 
 	cp -R cluster_env_files/.ssh/* /root/.ssh
-	gpdb_nodes=$( < cluster_env_files/etc_hostfile grep -e "sdw\|mdw" | awk '{print $1}')
-	gpdb_segments=$( < cluster_env_files/etc_hostfile grep -e "sdw" | awk '{print $1}')
-	hadoop_ip=$( < cluster_env_files/etc_hostfile grep "edw0" | awk '{print $1}')
+	gpdb_master=$(grep < cluster_env_files/etc_hostfile mdw | awk '{print $1}')
+	gpdb_segments=$(grep < cluster_env_files/etc_hostfile -e sdw | awk '{print $1}')
+	if [[ -d dataproc_env_files ]]; then
+		HADOOP_HOSTNAME=$(cat dataproc_env_files/name)
+		hadoop_ip=$(getent hosts "$HADOOP_HOSTNAME" | awk '{ print $1 }')
+	else
+		HADOOP_HOSTNAME=hadoop
+		hadoop_ip=$(grep < cluster_env_files/etc_hostfile edw0 | awk '{print $1}')
+	fi
 
-	install_gpdb_binary
+	install_gpdb_binary # Installs the GPDB Binary on the container
 	setup_gpadmin_user
 	install_pxf_server
 	init_and_configure_pxf_server

@@ -6,10 +6,16 @@ inputs:
   - name: cluster_env_files
   - name: bin_gpdb
   - name: pxf_tarball
+  - name: dataproc_env_files
+    optional: true
 params:
+  ACCESS_KEY_ID:
   GROUP: feature
+  HIVE_VERSION: 1
   IMPERSONATION: true
+  KERBEROS: false
   PXF_JVM_OPTS:
+  SECRET_ACCESS_KEY:
   TARGET_OS: centos
   TARGET_OS_VERSION: 6
 run:

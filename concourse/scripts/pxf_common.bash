@@ -107,7 +107,7 @@ function remote_access_to_gpdb() {
 	cp cluster_env_files/.ssh/*.pem /home/gpadmin/.ssh/id_rsa
 	cp cluster_env_files/public_key.openssh /home/gpadmin/.ssh/authorized_keys
 	{ ssh-keyscan localhost; ssh-keyscan 0.0.0.0; } >> /home/gpadmin/.ssh/known_hosts
-	ssh ${SSH_OPTS} gpadmin@mdw "source ${GPHOME}/greenplum_path.sh &&
+	ssh "${SSH_OPTS[@]}" gpadmin@mdw "source ${GPHOME}/greenplum_path.sh &&
 	  export MASTER_DATA_DIRECTORY=${MDD_VALUE} &&
 	  echo 'host all all 10.0.0.0/16 trust' >> ${MDD_VALUE}/pg_hba.conf &&
 	  psql -d template1 -c 'CREATE EXTENSION pxf;' &&

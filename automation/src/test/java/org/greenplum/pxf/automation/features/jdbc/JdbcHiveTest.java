@@ -1,6 +1,7 @@
 package org.greenplum.pxf.automation.features.jdbc;
 
 import jsystem.framework.system.SystemManagerImpl;
+import org.apache.commons.lang.StringUtils;
 import org.greenplum.pxf.automation.components.hive.Hive;
 import org.greenplum.pxf.automation.features.BaseFeature;
 import org.greenplum.pxf.automation.structures.tables.hive.HiveTable;
@@ -87,9 +88,18 @@ public class JdbcHiveTest extends BaseFeature {
 
     protected void createTables() throws Exception {
         String jdbcUrl = HIVE_JDBC_URL_PREFIX + hive.getHost() + ":10000/default";
+        String user = null;
+
+        // On kerberized cluster, enabled then we need the hive/hiveserver2_hostname principal in the connection string.
+        // Assuming here that somewhere upstream ugi has a valid login context
+        if (!StringUtils.isEmpty(hive.getKerberosPrincipal())) {
+            jdbcUrl += ";principal=" + hive.getKerberosPrincipal().replace("HOSTNAME", hive.getHost());
+            user = "gpadmin";
+        }
+
         // Create GPDB external table pointing to Hive table using JDBC profile
         pxfJdbcHiveTypesTable = TableFactory.getPxfJdbcReadableTable(
-                GPDB_TYPES_TABLE_NAME, GPDB_TYPES_TABLE_FIELDS, HIVE_TYPES_TABLE_NAME, HIVE_JDBC_DRIVER_CLASS, jdbcUrl, null);
+                GPDB_TYPES_TABLE_NAME, GPDB_TYPES_TABLE_FIELDS, HIVE_TYPES_TABLE_NAME, HIVE_JDBC_DRIVER_CLASS, jdbcUrl, user);
         pxfJdbcHiveTypesTable.setHost(pxfHost);
         pxfJdbcHiveTypesTable.setPort(pxfPort);
         gpdb.createTableAndVerify(pxfJdbcHiveTypesTable);

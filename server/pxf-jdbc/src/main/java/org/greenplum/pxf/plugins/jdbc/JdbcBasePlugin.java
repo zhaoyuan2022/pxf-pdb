@@ -344,7 +344,12 @@ public class JdbcBasePlugin extends BasePlugin {
             if (e instanceof SQLException) {
                 throw (SQLException) e;
             } else {
-                throw new SQLException(e.getMessage(), e);
+                String msg = e.getMessage();
+                if (msg == null) {
+                    Throwable t = e.getCause();
+                    if (t != null) msg = t.getMessage();
+                }
+                throw new SQLException(msg, e);
             }
         }
 
