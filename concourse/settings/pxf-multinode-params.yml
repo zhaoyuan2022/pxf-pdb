@@ -6,4 +6,4 @@ pxf-jvm-opts: "-Xmx512m -Xms512m"
 hadoop-nodes: 3
 kerberos-enabled: true
 dataproc-destroy-timeout: 3600
-dataproc-image-version: "1.4.12"
+dataproc-image-version: "1.4.12-debian9"

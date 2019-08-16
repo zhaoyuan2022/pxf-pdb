@@ -23,8 +23,8 @@ yum install -y -d1 openssh openssh-clients
 mkdir -p ~/.ssh
 ssh-keygen -b 4096 -t rsa -f ~/.ssh/google_compute_engine -N "" -C "$HADOOP_USER"
 
-gcloud auth activate-service-account \
-  --key-file=<(echo "$GOOGLE_CREDENTIALS")
+gcloud config set project "$PROJECT"
+gcloud auth activate-service-account --key-file=<(echo "$GOOGLE_CREDENTIALS")
 
 set -x
 
