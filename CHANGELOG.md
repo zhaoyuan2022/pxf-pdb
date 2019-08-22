@@ -1,5 +1,13 @@
 # Changelog
 
+## 5.8.1 (08/22/2019)
+
+#### Enhancements:
+
+- Enable multinode testing against GCP dataproc. Run automation tests against Hadoop 2.9.2 and Hive 2.3.5
+
+---
+
 ## 5.8.0 (08/01/2019)
 
 #### Bug Fixes:
