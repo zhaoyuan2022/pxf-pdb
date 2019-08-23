@@ -68,9 +68,9 @@ def how_to_use_generated_pipeline_message():
     cmd += '    -c ' + ARGS.output_filepath + ' \\\n'
     cmd += '    -l ~/workspace/gp-continuous-integration/secrets/gpdb_common-ci-secrets.yml \\\n'
     cmd += '    -l ~/workspace/pxf/concourse/settings/pxf-multinode-params.yml \\\n'
+    cmd += '    -l ~/workspace/gp-continuous-integration/secrets/ccp_ci_secrets_ud.yml \\\n'
 
     if ARGS.pipeline_type == 'pxf':
-        cmd += '    -l ~/workspace/gp-continuous-integration/secrets/ccp_ci_secrets_ud.yml \\\n'
         cmd += '    -l ' + ARGS.YML_FILE + ' \\\n'
     elif ARGS.pipeline_type == 'release':
         if ARGS.gpdb_branch == '5X_STABLE':
@@ -237,7 +237,7 @@ if __name__ == "__main__":
         ARGS.TEST_ENV = ''
 
     if ARGS.pipeline_type == 'release' and ARGS.deploy_env == 'prod':
-        ARGS.TARGET = 'gpdb-prod'
+        ARGS.TARGET = 'ud'
         if ARGS.gpdb_branch == '6X_STABLE':
             ARGS.PIPELINE_NAME = 'pxf_release_6x'
         elif ARGS.gpdb_branch == '5X_STABLE':
