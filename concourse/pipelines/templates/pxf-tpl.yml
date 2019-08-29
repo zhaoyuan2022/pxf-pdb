@@ -994,6 +994,8 @@ jobs:
       KERBEROS: {{kerberos-enabled}}
       PLATFORM: centos7
       PXF_JVM_OPTS: {{pxf-jvm-opts}}
+    on_failure:
+      <<: *dataproc_timed_destroy
   - task: test_pxf_multinode
     input_mapping:
       bin_gpdb: gpdb_binary
