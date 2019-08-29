@@ -63,12 +63,6 @@ groups:
 ## RESOURCES
 ## ======================================================================
 resources:
-  - name: pxf_src
-    type: git
-    source:
-      branch: {{pxf-git-branch}}
-      uri: https://github.com/greenplum-db/pxf.git
-
   - name: hdp_tars_tarball
     type: s3
     source:
