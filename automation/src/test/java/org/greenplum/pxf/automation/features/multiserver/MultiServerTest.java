@@ -100,8 +100,7 @@ public class MultiServerTest extends BaseFeature {
         gpdb.createTableAndVerify(s3Table);
     }
 
-    // TODO: restore "security" group
-    @Test(groups = {"features", "gpdb"})
+    @Test(groups = {"features", "gpdb", "security"})
     public void testTwoServers() throws Exception {
         runTincTest("pxf.features.multi_server.runTest");
     }
