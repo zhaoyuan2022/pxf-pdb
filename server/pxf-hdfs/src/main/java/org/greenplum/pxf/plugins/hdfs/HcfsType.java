@@ -3,6 +3,8 @@ package org.greenplum.pxf.plugins.hdfs;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.mapreduce.MRJobConfig;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.greenplum.pxf.api.model.RequestContext;
 import org.slf4j.Logger;
@@ -19,7 +21,9 @@ public enum HcfsType {
         @Override
         public String getDataUri(Configuration configuration, RequestContext context) {
             String profileScheme = StringUtils.isBlank(context.getProfileScheme()) ? "" : context.getProfileScheme() + "://";
-            return getDataUriForPrefix(configuration, context, profileScheme);
+            String uri = getDataUriForPrefix(configuration, context, profileScheme);
+            disableSecureTokenRenewal(uri, configuration);
+            return uri;
         }
     },
     FILE {
@@ -34,7 +38,13 @@ public enum HcfsType {
         }
     },
     GS,
-    HDFS,
+    HDFS {
+        @Override
+        public String getDataUri(Configuration configuration, RequestContext context) {
+            // no token renewal disabling needed for HDFS
+            return getDataUriForPrefix(configuration, context, this.prefix);
+        }
+    },
     LOCALFILE("file") {
         @Override
         public String normalizeDataSource(String dataSource) {
@@ -51,7 +61,7 @@ public enum HcfsType {
     protected Logger LOG = LoggerFactory.getLogger(this.getClass());
 
     private static final String FILE_SCHEME = "file";
-    private String prefix;
+    protected String prefix;
 
     HcfsType() {
         this(null);
@@ -175,7 +185,9 @@ public enum HcfsType {
      * @return an absolute data path
      */
     public String getDataUri(Configuration configuration, RequestContext context) {
-        return getDataUriForPrefix(configuration, context, this.prefix);
+        String uri = getDataUriForPrefix(configuration, context, this.prefix);
+        disableSecureTokenRenewal(uri, configuration);
+        return uri;
     }
 
     /**
@@ -197,6 +209,26 @@ public enum HcfsType {
         } else {
             // if the defaultFS is not file://, use it, instead of enum scheme and append user's path
             return StringUtils.removeEnd(defaultFS.toString(), "/") + "/" + StringUtils.removeStart(context.getDataSource(), "/");
+        }
+    }
+
+    /**
+     * For secured cluster, circumvent token renewal for non-HDFS hcfs access (such as s3 etc)
+     *
+     * @param uri           URI of the resource to access
+     * @param configuration configuration used for HCFS operations
+     */
+    protected void disableSecureTokenRenewal(String uri, Configuration configuration) {
+        if (!UserGroupInformation.isSecurityEnabled()) {
+            return;
+        }
+        // find the "host" that TokenCache will check against the exclusion list, for cloud file systems (like S3)
+        // it might actually be a bucket in the full resource path
+        String host = URI.create(uri).getHost();
+        LOG.debug("Disabling token renewal for host {} for path {}", host, uri);
+        if (host != null) {
+            // disable token renewal for the "host" in the path
+            configuration.set(MRJobConfig.JOB_NAMENODES_TOKEN_RENEWAL_EXCLUDE, host);
         }
     }
 }
