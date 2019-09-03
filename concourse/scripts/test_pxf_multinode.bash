@@ -51,26 +51,6 @@ function run_multinode_smoke_test() {
 		fi
 	"
 }
-function open_ssh_tunnels() {
-
-	# https://stackoverflow.com/questions/2241063/bash-script-to-setup-a-temporary-ssh-tunnel
-	ssh -fNT -M -S /tmp/mdw5432 -L 5432:mdw:5432 gpadmin@mdw
-	ssh -S /tmp/mdw5432 -O check gpadmin@mdw
-
-	if [[ ! -d dataproc_env_files ]]; then
-		ssh-keyscan "$HADOOP_HOSTNAME" >> /root/.ssh/known_hosts
-		ssh -fNT -M -S /tmp/hadoop2181 -L 2181:hadoop:2181 root@hadoop
-		ssh -S /tmp/hadoop2181 -O check root@hadoop
-	fi
-}
-
-function close_ssh_tunnels() {
-	ssh -S /tmp/mdw5432 -O exit gpadmin@mdw
-	if [[ ! -d dataproc_env_files ]]; then
-		ssh -S /tmp/hadoop2181 -O exit root@hadoop
-	fi
-}
-
 
 function update_pghba_conf() {
 	local sdw_ips=("$@")
@@ -188,7 +168,6 @@ function run_pxf_automation() {
 
 	if [[ ${ACCEPTANCE} == true ]]; then
 		echo 'Acceptance test pipeline'
-		close_ssh_tunnels
 		exit 1
 	fi
 
@@ -222,7 +201,6 @@ function _main() {
 	init_and_configure_pxf_server
 	remote_access_to_gpdb
 
-	open_ssh_tunnels
 	configure_local_hdfs
 
 	# widen access to mdw to all nodes in the cluster for JDBC test
@@ -232,7 +210,6 @@ function _main() {
 
 	run_multinode_smoke_test 1000
 	run_pxf_automation
-	close_ssh_tunnels
 }
 
 _main
