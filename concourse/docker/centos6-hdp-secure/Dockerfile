@@ -68,4 +68,4 @@ RUN sed "s/$HOSTNAME/${AMBARI_HOST} $HOSTNAME/g" /etc/hosts > /tmp/hosts && \
 	service krb5kdc stop && \
 	service kadmin stop
 
-# This container must be run in privileged mode in order for the cluster to come up in secure mode
+# This container must be run in privileged mode in order for the cluster to start up in secure mode
