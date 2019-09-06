@@ -610,7 +610,8 @@ jobs:
   - name: singlecluster_noarch_hdp2
     plan:
     - aggregate:
-      - get: hdp2_tars_tarball
+      - get: hdp_tars_tarball
+        resource: hdp2_tars_tarball
         trigger: true
       - get: jdbc
       - get: tomcat
@@ -620,7 +621,7 @@ jobs:
         resource: pxf_singlecluster
         trigger: true
     - task: package_singlecluster
-      file: pxf_src/singlecluster/package_singlecluster_hdp.yml
+      file: pxf_src/singlecluster/package_singlecluster_hdp2.yml
       image: gpdb-dev-centos6-image
     - put: singlecluster-HDP2
       params:
@@ -629,7 +630,8 @@ jobs:
   - name: singlecluster_noarch_hdp3
     plan:
     - aggregate:
-      - get: hdp3_tars_tarball
+      - get: hdp_tars_tarball
+        resource: hdp3_tars_tarball
         trigger: true
       - get: jdbc
       - get: tomcat
@@ -639,7 +641,7 @@ jobs:
         resource: pxf_singlecluster
         trigger: true
     - task: package_singlecluster
-      file: pxf_src/singlecluster/package_singlecluster_hdp.yml
+      file: pxf_src/singlecluster/package_singlecluster_hdp3.yml
       image: gpdb-dev-centos7-image
     - put: singlecluster-HDP3
       params:
