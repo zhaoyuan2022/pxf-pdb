@@ -1,0 +1,6 @@
+sql/_*.sql
+expected/_*.out
+results/
+regression.diffs
+regression.out
+scripts/_*.bash

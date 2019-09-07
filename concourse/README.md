@@ -128,3 +128,21 @@ The master and 5X pipelines are exposed. Here are the commands to expose the pip
 fly -t ud expose-pipeline -p pxf_master
 fly -t ud expose-pipeline -p pxf_5X_STABLE
 ```
+
+# Deploy `pg_regress` pipeline
+
+This pipeline currently runs the smoke test group against the different clouds using `pg_regress` instead of automation.
+It uses both external and foreign tables.
+You can adjust the `folder-prefix`, `gpdb-git-branch`, `gpdb-git-remote`, `pxf-git-branch`, and `pxf-git-remote`.
+For example, you may want to work off of a development branch for PXF or Greenplum.
+
+```
+fly -t ud set-pipeline -p pg_regress \
+	-c ~/workspace/pxf/concourse/pipelines/pg_regress_pipeline.yml \
+	-l ~/workspace/gp-continuous-integration/secrets/gpdb6-integration-testing.dev.yml \
+	-l ~/workspace/gp-continuous-integration/secrets/ccp-integration-pipelne-secrets.yml \
+	-l ~/workspace/gp-continuous-integration/secrets/gpdb_common-ci-secrets.yml \
+	-v folder-prefix=dev/pivotal \
+	-v gpdb-git-branch=pxf-fdw-pass-filter-string -v gpdb-git-remote=https://github.com/pivotal/gp-gpdb-dev \
+	-v pxf-git-branch=master -v pxf-git-remote=https://github.com/greenplum-db/pxf \
+```

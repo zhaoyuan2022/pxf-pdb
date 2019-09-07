@@ -4,6 +4,7 @@ set -exo pipefail
 
 CWDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source "${CWDIR}/pxf_common.bash"
+PG_REGRESS=${PG_REGRESS:-false}
 
 export GPHOME=${GPHOME:-/usr/local/greenplum-db-devel}
 export PXF_HOME=${GPHOME}/pxf
@@ -16,12 +17,49 @@ if [[ ${HADOOP_CLIENT} == MAPR ]]; then
 	export GPHD_ROOT=/opt/mapr
 fi
 
+function run_pg_regress() {
+	# run desired groups (below we replace commas with spaces in $GROUPS)
+	cat > ~gpadmin/run_pxf_automation_test.sh <<-EOF
+		#!/usr/bin/env bash
+		set -euxo pipefail
+
+		source ${GPHOME}/greenplum_path.sh
+
+		export GPHD_ROOT=${GPHD_ROOT}
+		export PXF_HOME=${PXF_HOME} PXF_CONF=${PXF_CONF_DIR}
+		export PGPORT=15432
+		export HCFS_CMD=${GPHD_ROOT}/bin/hdfs
+		export HCFS_PROTOCOL=${PROTOCOL}
+		export HBASE_CMD=${GPHD_ROOT}/bin/hbase
+		export BEELINE_CMD=${GPHD_ROOT}/hive/bin/beeline
+		export HCFS_BUCKET=${HCFS_BUCKET}
+		# hive-specific vars
+		# export HIVE_IS_REMOTE= HIVE_HOST= HIVE_PRINCIPAL=
+
+		time make -C ${PWD}/pxf_src/regression ${GROUP//,/ }
+	EOF
+
+	# this prevents a Hive error about hive.log.dir not existing
+	sed -ie 's/-hiveconf hive.log.dir=$LOGS_ROOT //' "${GPHD_ROOT}/hive/conf/hive-env.sh"
+	# we need to be able to write files under regression
+	# and may also need to create files like ~gpamdin/pxf/servers/s3/s3-site.xml
+	chown -R gpadmin "${PWD}/pxf_src/regression"
+	chmod a+x ~gpadmin/run_pxf_automation_test.sh
+	su gpadmin -c ~gpadmin/run_pxf_automation_test.sh
+}
+
 function run_pxf_automation() {
+	ln -s "${PWD}/pxf_src" ~gpadmin/pxf_src
+
+	if [[ $PG_REGRESS == true ]]; then
+		run_pg_regress
+		return $?
+	fi
+
 	# Let's make sure that automation/singlecluster directories are writeable
 	chmod a+w pxf_src/automation /singlecluster || true
 	find pxf_src/automation/tinc* -type d -exec chmod a+w {} \;
 
-	ln -s "${PWD}/pxf_src" ~gpadmin/pxf_src
 	su gpadmin -c "
 		source '${GPHOME}/greenplum_path.sh' &&
 		psql -p 15432 -d template1 -c 'CREATE EXTENSION PXF'
@@ -90,23 +128,13 @@ function _main() {
 	# concourse build will run forever.
 	trap 'pkill sshd' EXIT
 
-	if [[ ${PROTOCOL} == s3 ]]; then
-		echo Using S3 protocol
-	elif [[ ${PROTOCOL} == minio ]]; then
-		echo Using Minio with S3 protocol
-		setup_minio
-	elif [[ ${PROTOCOL} == gs ]]; then
-		echo Using GS protocol
-		cat <<-EOF > /tmp/gsc-ci-service-account.key.json
-			${GOOGLE_CREDENTIALS}
-		EOF
-	elif [[ ${HADOOP_CLIENT} == MAPR ]]; then
+	# Ping is called by gpinitsystem, which must be run by gpadmin
+	chmod u+s /bin/ping
+
+	if [[ ${HADOOP_CLIENT} == MAPR ]]; then
 		# start mapr services before installing GPDB
 		/root/init-script
 	fi
-
-	# Ping is called by gpinitsystem, which must be run by gpadmin
-	chmod u+s /bin/ping
 
 	# Install GPDB
 	install_gpdb_binary
@@ -116,8 +144,9 @@ function _main() {
 	install_pxf_client
 	install_pxf_server
 
-	if [[ -z ${PROTOCOL} && ! ${HADOOP_CLIENT} == MAPR ]]; then
+	if [[ -z ${PROTOCOL} && ${HADOOP_CLIENT} != MAPR ]]; then
 		# Setup Hadoop before creating GPDB cluster to use system python for yum install
+		# Must be after installing GPDB to transfer hbase jar
 		setup_hadoop "${GPHD_ROOT}"
 	fi
 
@@ -125,12 +154,40 @@ function _main() {
 	add_remote_user_access_for_gpdb testuser
 	init_and_configure_pxf_server
 
-	if [[ ${HADOOP_CLIENT} == MAPR ]]; then
-		configure_mapr_dependencies
-	elif [[ -z ${PROTOCOL} ]]; then
-		configure_pxf_default_server
-		configure_pxf_s3_server
-	fi
+	local HCFS_BUCKET # team-specific bucket names
+	case ${PROTOCOL} in
+		s3)
+			echo 'Using S3 protocol'
+			[[ ${PG_REGRESS} != false ]] && setup_s3_for_pg_regress
+			;;
+		minio)
+			echo 'Using Minio with S3 protocol'
+			setup_minio
+			[[ ${PG_REGRESS} != false ]] && setup_minio_for_pg_regress
+			;;
+		gs)
+			echo 'Using GS protocol'
+			echo "${GOOGLE_CREDENTIALS}" > /tmp/gsc-ci-service-account.key.json
+			[[ ${PG_REGRESS} != false ]] && setup_gs_for_pg_regress
+			;;
+		adl)
+			echo 'Using ADL protocol'
+			[[ ${PG_REGRESS} != false ]] && setup_adl_for_pg_regress
+			;;
+		wasbs)
+			echo 'Using WASBS protocol'
+			[[ ${PG_REGRESS} != false ]] && setup_wasbs_for_pg_regress
+			;;
+		*) # no protocol, presumably
+			if [[ ${HADOOP_CLIENT} == MAPR ]]; then
+				configure_mapr_dependencies
+			else
+				configure_pxf_default_server
+				configure_pxf_s3_server
+			fi
+			;;
+	esac
+
 	start_pxf_server
 
 	# Create fat jar for automation

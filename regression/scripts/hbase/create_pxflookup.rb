@@ -1,0 +1,1 @@
+create 'pxflookup', 'mapping'

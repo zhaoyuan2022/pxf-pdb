@@ -31,6 +31,8 @@ Hadoop testing environment to exercise the pxf automation tests
 ## concourse/
 Resources for PXF's Continuous Integration pipelines
 
+## regression/
+Contains the end-to-end (integration) tests for PXF against the various datasources, utilizing the PostgreSQL testing framework `pg_regress`
 
 PXF Development
 =================

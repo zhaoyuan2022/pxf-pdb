@@ -329,15 +329,152 @@ function init_and_configure_pxf_server() {
 	fi
 }
 
-function configure_pxf_s3_server() {
-	mkdir -p "${PXF_CONF_DIR}/servers/s3"
-	cp "${PXF_CONF_DIR}/templates/s3-site.xml" "${PXF_CONF_DIR}/servers/s3/s3-site.xml"
-	sed -i  -e "s|YOUR_AWS_ACCESS_KEY_ID|${ACCESS_KEY_ID}|" \
-		-e "s|YOUR_AWS_SECRET_ACCESS_KEY|${SECRET_ACCESS_KEY}|" \
-		"${PXF_CONF_DIR}/servers/s3/s3-site.xml"
+function configure_hdfs_client_for_s3() {
+	S3_CORE_SITE_XML=$(mktemp)
+	cat <<-EOF > "${S3_CORE_SITE_XML}"
+		<property>
+		  <name>fs.s3a.access.key</name>
+		  <value>${ACCESS_KEY_ID}</value>
+		</property>
+		<property>
+		  <name>fs.s3a.secret.key</name>
+		  <value>${SECRET_ACCESS_KEY}</value>
+		</property>
+	EOF
+	sed -i -e "/<configuration>/r ${S3_CORE_SITE_XML}" "${GPHD_ROOT}/hadoop/etc/hadoop/core-site.xml"
+}
 
-	mkdir -p "${PXF_CONF_DIR}/servers/s3-invalid"
-	cp "${PXF_CONF_DIR}/templates/s3-site.xml" "${PXF_CONF_DIR}/servers/s3-invalid/s3-site.xml"
+function configure_hdfs_client_for_minio() {
+	MINIO_CORE_SITE_XML=$(mktemp)
+	cat <<-EOF > "${MINIO_CORE_SITE_XML}"
+		<property>
+		  <name>fs.s3a.endpoint</name>
+		  <value>http://localhost:9000</value>
+		</property>
+		<property>
+		  <name>fs.s3a.access.key</name>
+		  <value>${ACCESS_KEY_ID}</value>
+		</property>
+		<property>
+		  <name>fs.s3a.secret.key</name>
+		  <value>${SECRET_ACCESS_KEY}</value>
+		</property>
+	EOF
+	sed -i -e "/<configuration>/r ${MINIO_CORE_SITE_XML}" "${GPHD_ROOT}/hadoop/etc/hadoop/core-site.xml"
+}
+
+function configure_hdfs_client_for_gs() {
+	cp "${PXF_HOME}/lib/shared/"gcs-connector-*-hadoop2-shaded.jar \
+		"${GPHD_ROOT}/hadoop/share/hadoop/hdfs/lib"
+	GS_CORE_SITE_XML=$(mktemp)
+	cat <<-EOF > "${GS_CORE_SITE_XML}"
+		<property>
+		  <name>fs.AbstractFileSystem.gs.impl</name>
+		  <value>com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS</value>
+		  <description>The AbstractFileSystem for gs: uris.</description>
+		</property>
+		<property>
+		  <name>google.cloud.auth.service.account.enable</name>
+		  <value>true</value>
+		  <description>
+		    Whether to use a service account for GCS authorization.
+		    Setting this property to \`false\` will disable use of service accounts for
+		    authentication.
+		  </description>
+		</property>
+		<property>
+		  <name>google.cloud.auth.service.account.json.keyfile</name>
+		  <value>${GOOGLE_KEYFILE}</value>
+		  <description>
+		    The JSON key file of the service account used for GCS
+		    access when google.cloud.auth.service.account.enable is true.
+		  </description>
+		</property>
+	EOF
+	sed -i -e "/<configuration>/r ${GS_CORE_SITE_XML}" "${GPHD_ROOT}/hadoop/etc/hadoop/core-site.xml"
+}
+
+function configure_hdfs_client_for_adl() {
+	cp "${PXF_HOME}/lib/shared/"azure-data-lake-store-sdk-*.jar \
+		"${PXF_HOME}/lib/shared/"hadoop-azure-*.jar \
+		"${PXF_HOME}/lib/shared/"hadoop-azure-datalake-*.jar \
+		"${PXF_HOME}/lib/shared/"hadoop-common-*.jar \
+		"${PXF_HOME}/lib/shared/"htrace-core4-*-incubating.jar \
+		"${PXF_HOME}/lib/shared/"stax2-api-*.jar \
+		"${PXF_HOME}/lib/shared/"woodstox-core-*.jar "${GPHD_ROOT}/hadoop/share/hadoop/common/lib"
+	ADL_CORE_SITE_XML=$(mktemp)
+	cat <<-EOF > "${ADL_CORE_SITE_XML}"
+		<property>
+		    <name>fs.adl.oauth2.access.token.provider.type</name>
+		    <value>ClientCredential</value>
+		</property>
+		<property>
+		    <name>fs.adl.oauth2.refresh.url</name>
+		    <value>${ADL_OAUTH2_REFRESH_URL}</value>
+		</property>
+		<property>
+		    <name>fs.adl.oauth2.client.id</name>
+		    <value>${ADL_OAUTH2_CLIENT_ID}</value>
+		</property>
+		<property>
+		    <name>fs.adl.oauth2.credential</name>
+		    <value>${ADL_OAUTH2_CREDENTIAL}</value>
+		</property>
+	EOF
+	sed -i -e "/<configuration>/r ${ADL_CORE_SITE_XML}" "${GPHD_ROOT}/hadoop/etc/hadoop/core-site.xml"
+}
+
+function configure_hdfs_client_for_wasbs() {
+	WASBS_CORE_SITE_XML=$(mktemp)
+	cat <<-EOF > "${WASBS_CORE_SITE_XML}"
+		<property>
+		  <name>fs.azure.account.key.${WASBS_ACCOUNT_NAME}.blob.core.windows.net</name>
+		  <value>${WASBS_ACCOUNT_KEY}</value>
+		</property>
+	EOF
+	sed -i -e "/<configuration>/r ${WASBS_CORE_SITE_XML}" "${GPHD_ROOT}/hadoop/etc/hadoop/core-site.xml"
+}
+
+function configure_pxf_gs_server() {
+	mkdir -p ${PXF_CONF_DIR}/servers/gs
+	GOOGLE_KEYFILE=$(mktemp)
+	echo "${GOOGLE_CREDENTIALS}" > "${GOOGLE_KEYFILE}"
+	chown gpadmin "${GOOGLE_KEYFILE}"
+	sed -e "s|YOUR_GOOGLE_STORAGE_KEYFILE|${GOOGLE_KEYFILE}|" \
+		${PXF_CONF_DIR}/templates/gs-site.xml >"${PXF_CONF_DIR}/servers/gs/gs-site.xml"
+}
+
+function configure_pxf_s3_server() {
+	mkdir -p ${PXF_CONF_DIR}/servers/s3
+	sed -e "s|YOUR_AWS_ACCESS_KEY_ID|${ACCESS_KEY_ID}|" \
+		-e "s|YOUR_AWS_SECRET_ACCESS_KEY|${SECRET_ACCESS_KEY}|" \
+		${PXF_CONF_DIR}/templates/s3-site.xml >${PXF_CONF_DIR}/servers/s3/s3-site.xml
+
+	mkdir -p ${PXF_CONF_DIR}/servers/s3-invalid
+	cp ${PXF_CONF_DIR}/templates/s3-site.xml ${PXF_CONF_DIR}/servers/s3-invalid/s3-site.xml
+}
+
+function configure_pxf_minio_server() {
+	mkdir -p ${PXF_CONF_DIR}/servers/minio
+	sed -e "s|YOUR_AWS_ACCESS_KEY_ID|${ACCESS_KEY_ID}|" \
+		-e "s|YOUR_AWS_SECRET_ACCESS_KEY|${SECRET_ACCESS_KEY}|" \
+		-e "s|YOUR_MINIO_URL|http://localhost:9000|" \
+		${PXF_CONF_DIR}/templates/minio-site.xml >${PXF_CONF_DIR}/servers/minio/minio-site.xml
+}
+
+function configure_pxf_adl_server() {
+	mkdir -p "${PXF_CONF_DIR}/servers/adl"
+	sed -e "s|YOUR_ADL_REFRESH_URL|${ADL_OAUTH2_REFRESH_URL}|g" \
+		-e "s|YOUR_ADL_CLIENT_ID|${ADL_OAUTH2_CLIENT_ID}|g" \
+		-e "s|YOUR_ADL_CREDENTIAL|${ADL_OAUTH2_CREDENTIAL}|g" \
+		"${PXF_CONF_DIR}/templates/adl-site.xml" >"${PXF_CONF_DIR}/servers/adl/adl-site.xml"
+}
+
+function configure_pxf_wasbs_server() {
+	mkdir -p ${PXF_CONF_DIR}/servers/wasbs
+	sed -e "s|YOUR_AZURE_BLOB_STORAGE_ACCOUNT_NAME|${WASBS_ACCOUNT_NAME}|g" \
+		-e "s|YOUR_AZURE_BLOB_STORAGE_ACCOUNT_KEY|${WASBS_ACCOUNT_KEY}|g" \
+		"${PXF_CONF_DIR}/templates/wasbs-site.xml" >"${PXF_CONF_DIR}/servers/wasbs/wasbs-site.xml"
 }
 
 function configure_pxf_default_server() {
@@ -363,6 +500,37 @@ function start_pxf_server() {
 	ps -aef | grep '[t]omcat'
 }
 
+function setup_s3_for_pg_regress() {
+	configure_pxf_s3_server
+	configure_hdfs_client_for_s3
+	HCFS_BUCKET=gpdb-ud-scratch
+}
+
+function setup_gs_for_pg_regress() {
+	configure_pxf_gs_server
+	configure_hdfs_client_for_gs
+	HCFS_BUCKET=data-gpdb-ud-tpch
+}
+
+function setup_adl_for_pg_regress() {
+	configure_pxf_adl_server
+	configure_hdfs_client_for_adl
+	HCFS_BUCKET=${ADL_ACCOUNT}.azuredatalakestore.net
+}
+
+function setup_wasbs_for_pg_regress() {
+	configure_pxf_wasbs_server
+	configure_hdfs_client_for_wasbs
+	HCFS_BUCKET=pxf-container@${WASBS_ACCOUNT_NAME}.blob.core.windows.net
+}
+
+function setup_minio_for_pg_regress() {
+	configure_pxf_minio_server
+	configure_hdfs_client_for_minio
+	# this is set in setup_minio()
+	HCFS_BUCKET=gpdb-ud-scratch
+}
+
 function setup_minio() {
 	echo 'Adding test bucket gpdb-ud-scratch to Minio ...'
 	mkdir -p /opt/minio/data/gpdb-ud-scratch
@@ -371,7 +539,7 @@ function setup_minio() {
 	echo "Minio credentials: accessKey=${MINIO_ACCESS_KEY} secretKey=${MINIO_SECRET_KEY}"
 
 	echo 'Starting Minio ...'
-	/opt/minio/bin/minio server /opt/minio/data &
+	MINIO_DOMAIN=localhost /opt/minio/bin/minio server /opt/minio/data &
 
 	# export minio credentials as access environment variables
 	export ACCESS_KEY_ID=${MINIO_ACCESS_KEY} SECRET_ACCESS_KEY=${MINIO_SECRET_KEY}

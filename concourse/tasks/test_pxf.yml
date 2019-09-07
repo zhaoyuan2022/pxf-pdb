@@ -18,5 +18,7 @@ params:
   TEST_ENV:
   TEST_OS:
   RUN_JDK_VERSION: 8
+  PROTOCOL:
+  PG_REGRESS:
 run:
   path: pxf_src/concourse/scripts/test_pxf.bash
