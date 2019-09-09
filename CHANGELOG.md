@@ -1,5 +1,15 @@
 # Changelog
 
+## 5.8.2 (09/08/2019)
+
+#### Bug Fixes:
+
+- [#228](https://github.com/greenplum-db/pxf/pull/228) Make JDBC profile not fail when MAPR JAR files override default Hadoop ones
+- [#217](https://github.com/greenplum-db/pxf/pull/217) CLI: reset on standby master and don't allow cluster init without PXF_CONF set #217
+- [#224](https://github.com/greenplum-db/pxf/pull/224) Fix cloud access when Kerberized Hadoop is present
+
+---
+
 ## 5.8.1 (08/22/2019)
 
 #### Enhancements:
