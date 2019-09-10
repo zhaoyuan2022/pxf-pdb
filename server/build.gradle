@@ -241,6 +241,9 @@ project('pxf-hive') {
         /*
          * Transitive dependencies for hive-exec-core until here
          * */
+
+        /* Transitive dependency required by MapR */
+        bundleJars "org.json:json:20090211"
     }
 }
 
