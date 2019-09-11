@@ -110,18 +110,27 @@ ccp_destroy_anchor: &ccp_destroy
 
 dataproc_destroy_anchor: &dataproc_destroy
   do:
-  - task: cleanup_dataproc
-    config:
-      run:
-        path: pxf_src/concourse/scripts/cleanup_dataproc_cluster.bash
-      inputs:
-        - name: pxf_src
-        - name: dataproc_env_files
-      platform: linux
-    image: ccp-7
-    params:
-      GOOGLE_CREDENTIALS: {{google-service-account-key}}
-      GOOGLE_ZONE: {{google-zone}}
+  - aggregate:
+    - task: cleanup_dataproc
+      config:
+        run:
+          path: pxf_src/concourse/scripts/cleanup_dataproc_cluster.bash
+        inputs:
+          - name: pxf_src
+          - name: dataproc_env_files
+        platform: linux
+      image: ccp-7
+      params:
+        GOOGLE_CREDENTIALS: {{google-service-account-key}}
+        GOOGLE_ZONE: {{google-zone}}
+    - put: terraform_gpdb
+      resource: terraform
+      params:
+        action: destroy
+        env_name_file: terraform_gpdb/name
+        terraform_source: ccp_src/google/
+      get_params:
+        action: destroy
 
 dataproc_timed_destroy_anchor: &dataproc_timed_destroy
   do:
@@ -993,7 +1002,6 @@ jobs:
     input_mapping:
       bin_gpdb: gpdb_binary
     on_success:
-      <<: *ccp_destroy
       <<: *dataproc_destroy
     on_failure:
       <<: *dataproc_timed_destroy
