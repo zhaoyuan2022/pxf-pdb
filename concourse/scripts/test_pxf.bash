@@ -82,7 +82,10 @@ function setup_hadoop() {
 	if [[ -n ${GROUP} ]]; then
 		export SLAVES=1
 		setup_impersonation ${hdfsrepo}
-		start_hadoop_services ${hdfsrepo}
+		if grep 'hadoop-3' "${hdfsrepo}/versions.txt"; then
+		    adjust_for_hadoop3 "${hdfsrepo}"
+		fi
+		start_hadoop_services "${hdfsrepo}"
 	fi
 }
 
