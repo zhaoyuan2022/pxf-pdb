@@ -1,5 +1,21 @@
 # Changelog
 
+## 5.9.0 (09/25/2019)
+
+#### Enhancements:
+
+- [#243](https://github.com/greenplum-db/pxf/pull/243) Upgrade jackson libraries to 2.9.10
+- [#235](https://github.com/greenplum-db/pxf/pull/235) Certify support for Hive 3.1
+- [#226](https://github.com/greenplum-db/pxf/pull/226) Add OR and NOT support for JDBC filter pushdown
+- [#236](https://github.com/greenplum-db/pxf/pull/236) Upgrade tomcat to version 7.0.96
+- [#230](https://github.com/greenplum-db/pxf/pull/230) Add support for Hive 2 (Up to Hive 2.3.6)
+
+#### Notes:
+
+- PXF does not support Hive when running Java 11. As a workaround run PXF on Java 8.
+
+---
+
 ## 5.8.2 (09/08/2019)
 
 #### Bug Fixes:
