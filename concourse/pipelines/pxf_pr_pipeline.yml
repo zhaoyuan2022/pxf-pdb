@@ -56,7 +56,7 @@ jobs:
       path: pxf_src
       status: pending
       context: $BUILD_JOB_NAME
-  - aggregate:
+  - in_parallel:
     - get: gpdb_src
     - get: gpdb-pxf-dev-centos6
   - task: compile_pxf
@@ -87,7 +87,7 @@ jobs:
       path: pxf_src
       status: pending
       context: $BUILD_JOB_NAME
-  - aggregate:
+  - in_parallel:
     - get: gpdb_src
       passed:
       - compile_pxf

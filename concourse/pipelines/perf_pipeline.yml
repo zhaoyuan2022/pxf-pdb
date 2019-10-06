@@ -1,6 +1,6 @@
 dataproc_destroy_anchor: &ccp_destroy
   do:
-  - aggregate:
+  - in_parallel:
     - put: terraform_gpdb
       resource: terraform
       params:
@@ -22,7 +22,7 @@ dataproc_destroy_anchor: &ccp_destroy
 
 set_failed_gpdb_anchor: &set_failed
   do:
-  - aggregate:
+  - in_parallel:
     - task: on_failure_set_failed_gpdb
       input_mapping:
         terraform: terraform_gpdb
@@ -168,7 +168,7 @@ jobs:
   plan:
   - get: timed-trigger
     trigger: true
-  - aggregate:
+  - in_parallel:
     - get: gpdb_src
     - get: pxf_src
     - get: gpdb-pxf-dev-centos6
@@ -202,7 +202,7 @@ jobs:
   - get: ccp-7
   - get: gpdb-pxf-dev-centos6-hdp2-server
 
-  - aggregate:
+  - in_parallel:
     - task: clean_up_s3
       config:
         platform: linux
@@ -256,7 +256,7 @@ jobs:
           initialization_script_timeout: {{perf-hadoop-initialization-script-timeout}}
           disk_size: {{perf-hadoop-disk-size}}
 
-  - aggregate:
+  - in_parallel:
       - do:
         - task: gen_gpdb_cluster
           input_mapping:

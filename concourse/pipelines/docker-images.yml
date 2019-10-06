@@ -384,7 +384,7 @@ jobs:
 
   - name: docker-gpdb-pxf-dev-centos6
     plan:
-      - aggregate:
+      - in_parallel:
           - get: dockerfile-gpdb-dev-centos6
             passed: [docker-gpdb-dev-centos6]
             trigger: true
@@ -415,7 +415,7 @@ jobs:
 
   - name: docker-gpdb-pxf-dev-centos7
     plan:
-      - aggregate:
+      - in_parallel:
           - get: dockerfile-gpdb-dev-centos7
             passed: [docker-gpdb-dev-centos7]
             trigger: true
@@ -448,7 +448,7 @@ jobs:
 
   - name: docker-gpdb-pxf-dev-ubuntu16
     plan:
-      - aggregate:
+      - in_parallel:
           - get: dockerfile-gpdb-dev-ubuntu
             passed: [docker-gpdb-dev-ubuntu16]
             trigger: true
@@ -481,7 +481,7 @@ jobs:
 
   - name: docker-gpdb-pxf-dev-ubuntu18
     plan:
-      - aggregate:
+      - in_parallel:
           - get: dockerfile-gpdb-dev-ubuntu
             passed: [docker-gpdb-dev-ubuntu18]
             trigger: true
@@ -503,7 +503,7 @@ jobs:
 
   - name: docker-gpdb-pxf-dev-centos6-mapr-server
     plan:
-    - aggregate:
+    - in_parallel:
       - get: dockerfile-gpdb-dev-centos6
         passed: [docker-gpdb-pxf-dev-centos6]
         trigger: true
@@ -528,7 +528,7 @@ jobs:
 
   - name: docker-gpdb-pxf-dev-centos7-mapr-server
     plan:
-    - aggregate:
+    - in_parallel:
       - get: dockerfile-gpdb-dev-centos7
         passed: [docker-gpdb-pxf-dev-centos7]
         trigger: true
@@ -553,7 +553,7 @@ jobs:
 
   - name: docker-gpdb-dev-centos6-hdp2-secure
     plan:
-    - aggregate:
+    - in_parallel:
       - get: dockerfile-gpdb-dev-centos6
         passed: [docker-gpdb-dev-centos6]
         trigger: true
@@ -574,7 +574,7 @@ jobs:
 
 #  - name: docker-gpdb-dev-centos7-hdp-secure
 #    plan:
-#    - aggregate:
+#    - in_parallel:
 #      - get: pxf_src
 #      - get: dockerfile-gpdb-dev-centos7
 #        passed: [docker-gpdb-dev-centos7]
@@ -590,7 +590,7 @@ jobs:
 
   - name: singlecluster_noarch_cdh
     plan:
-    - aggregate:
+    - in_parallel:
       - get: cdh_tars_tarball
         trigger: true
       - get: jdbc
@@ -609,7 +609,7 @@ jobs:
 
   - name: singlecluster_noarch_hdp2
     plan:
-    - aggregate:
+    - in_parallel:
       - get: hdp_tars_tarball
         resource: hdp2_tars_tarball
         trigger: true
@@ -629,7 +629,7 @@ jobs:
 
   - name: singlecluster_noarch_hdp3
     plan:
-    - aggregate:
+    - in_parallel:
       - get: hdp_tars_tarball
         resource: hdp3_tars_tarball
         trigger: true
@@ -649,7 +649,7 @@ jobs:
 
   - name: docker-gpdb-pxf-dev-centos6-cdh-server
     plan:
-    - aggregate:
+    - in_parallel:
       - get: dockerfile-gpdb-dev-centos6
         passed: [docker-gpdb-pxf-dev-centos6]
         trigger: true
@@ -678,7 +678,7 @@ jobs:
 
   - name: docker-gpdb-pxf-dev-centos7-cdh-server
     plan:
-    - aggregate:
+    - in_parallel:
       - get: dockerfile-gpdb-dev-centos7
         passed: [docker-gpdb-pxf-dev-centos7]
         trigger: true
@@ -707,7 +707,7 @@ jobs:
 
   - name: docker-gpdb-pxf-dev-centos6-hdp2-server
     plan:
-    - aggregate:
+    - in_parallel:
       - get: dockerfile-gpdb-dev-centos6
         passed: [docker-gpdb-pxf-dev-centos6]
         trigger: true
@@ -736,7 +736,7 @@ jobs:
 
   - name: docker-gpdb-pxf-dev-centos7-hdp2-server
     plan:
-    - aggregate:
+    - in_parallel:
       - get: dockerfile-gpdb-dev-centos7
         passed: [docker-gpdb-pxf-dev-centos7]
         trigger: true
@@ -765,7 +765,7 @@ jobs:
 
   - name: docker-gpdb-pxf-dev-centos7-hdp3-server
     plan:
-    - aggregate:
+    - in_parallel:
       - get: dockerfile-gpdb-dev-centos7
         passed: [docker-gpdb-pxf-dev-centos7]
         trigger: true
@@ -794,7 +794,7 @@ jobs:
 
   - name: docker-gpdb-pxf-dev-ubuntu16-cdh-server
     plan:
-    - aggregate:
+    - in_parallel:
       - get: dockerfile-gpdb-dev-ubuntu
         passed: [docker-gpdb-pxf-dev-ubuntu16]
         trigger: true
@@ -823,7 +823,7 @@ jobs:
 
   - name: docker-gpdb-pxf-dev-ubuntu16-hdp2-server
     plan:
-    - aggregate:
+    - in_parallel:
       - get: dockerfile-gpdb-dev-ubuntu
         passed: [docker-gpdb-pxf-dev-ubuntu16]
         trigger: true
@@ -852,7 +852,7 @@ jobs:
 
   - name: docker-gpdb-pxf-dev-ubuntu18-cdh-server
     plan:
-    - aggregate:
+    - in_parallel:
       - get: dockerfile-gpdb-dev-ubuntu
         passed: [docker-gpdb-pxf-dev-ubuntu18]
         trigger: true
@@ -881,7 +881,7 @@ jobs:
 
   - name: docker-gpdb-pxf-dev-ubuntu18-hdp2-server
     plan:
-    - aggregate:
+    - in_parallel:
       - get: dockerfile-gpdb-dev-ubuntu
         passed: [docker-gpdb-pxf-dev-ubuntu18]
         trigger: true

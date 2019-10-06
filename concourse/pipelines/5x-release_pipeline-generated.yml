@@ -93,7 +93,7 @@ ccp_destroy_anchor: &ccp_destroy
 
 dataproc_destroy_anchor: &dataproc_destroy
   do:
-  - aggregate:
+  - in_parallel:
     - task: cleanup_dataproc
       config:
         run:
@@ -301,7 +301,7 @@ jobs:
 
 - name: compile_pxf
   plan:
-  - aggregate:
+  - in_parallel:
     - get: gpdb_src
     - get: pxf_src
       trigger: true
@@ -315,7 +315,7 @@ jobs:
 
 - name: test_pxf_hdp2_centos6
   plan:
-  - aggregate:
+  - in_parallel:
     - get: gpdb_src
       passed:
       - compile_pxf
@@ -344,7 +344,7 @@ jobs:
 
 - name: test_pxf_mapr_centos6
   plan:
-  - aggregate:
+  - in_parallel:
     - get: gpdb_src
       passed:
       - compile_pxf
@@ -372,7 +372,7 @@ jobs:
 
 - name: test_pxf_hdp3_centos7
   plan:
-  - aggregate:
+  - in_parallel:
     - get: gpdb_src
       passed:
       - compile_pxf
@@ -401,7 +401,7 @@ jobs:
 
 - name: test_pxf_hdp2_centos7_java11
   plan:
-  - aggregate:
+  - in_parallel:
     - get: gpdb_src
       passed:
       - compile_pxf
@@ -431,7 +431,7 @@ jobs:
 
 - name: test_pxf_hdp2_ubuntu16
   plan:
-  - aggregate:
+  - in_parallel:
     - get: gpdb_src
       passed:
       - compile_pxf
@@ -461,7 +461,7 @@ jobs:
 
 - name: test_pxf_hdp2_secure_with_impersonation
   plan:
-  - aggregate:
+  - in_parallel:
     - get: gpdb_src
       passed:
       - compile_pxf
@@ -492,7 +492,7 @@ jobs:
 
 - name: test_pxf_hdp2_secure_no_impersonation
   plan:
-  - aggregate:
+  - in_parallel:
     - get: gpdb_src
       passed:
       - compile_pxf
@@ -567,7 +567,7 @@ jobs:
       BUCKET_NAME: {{tf-bucket-name}}
       PLATFORM: centos7
       CLOUD_PROVIDER: google
-  - aggregate:
+  - in_parallel:
     - task: intialize_greenplum
       file: ccp_src/ci/tasks/gpinitsystem.yml
     - task: install_hadoop
@@ -612,7 +612,7 @@ jobs:
 - name: test_pxf_secure_multinode_gpdb
   max_in_flight: 2
   plan:
-  - aggregate:
+  - in_parallel:
     - get: ccp_src
     - get: gpdb_src
       passed:
@@ -629,7 +629,7 @@ jobs:
       trigger: true
     - get: ccp-7
     - get: gpdb-pxf-dev-centos6-hdp2-server
-  - aggregate:
+  - in_parallel:
     - do:
       - put: terraform_gpdb
         resource: terraform
@@ -709,7 +709,7 @@ jobs:
 
 - name: test_pxf_cdh_centos6
   plan:
-  - aggregate:
+  - in_parallel:
     - get: gpdb_src
       passed:
       - compile_pxf
@@ -738,7 +738,7 @@ jobs:
 
 - name: test_pxf_s3_no_impersonation
   plan:
-  - aggregate:
+  - in_parallel:
     - get: gpdb_src
       passed:
       - compile_pxf
@@ -768,7 +768,7 @@ jobs:
 
 - name: test_pxf_s3_with_impersonation
   plan:
-  - aggregate:
+  - in_parallel:
     - get: gpdb_src
       passed:
       - compile_pxf
@@ -798,7 +798,7 @@ jobs:
 
 - name: test_pxf_minio
   plan:
-  - aggregate:
+  - in_parallel:
     - get: gpdb_src
       passed:
       - compile_pxf
@@ -826,7 +826,7 @@ jobs:
 
 - name: test_pxf_adl
   plan:
-  - aggregate:
+  - in_parallel:
     - get: gpdb_src
       passed:
       - compile_pxf
@@ -858,7 +858,7 @@ jobs:
 
 - name: test_pxf_gs
   plan:
-  - aggregate:
+  - in_parallel:
     - get: gpdb_src
       passed:
       - compile_pxf
@@ -887,7 +887,7 @@ jobs:
 
 - name: test_pxf_no_impersonation
   plan:
-  - aggregate:
+  - in_parallel:
     - get: gpdb_src
       passed:
       - compile_pxf
