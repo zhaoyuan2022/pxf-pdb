@@ -22,6 +22,9 @@ package org.greenplum.pxf.api.utilities;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.security.SecurityUtil;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.greenplum.pxf.api.StatsAccessor;
 import org.greenplum.pxf.api.model.RequestContext;
 import org.slf4j.Logger;
@@ -42,7 +45,6 @@ import java.lang.reflect.InvocationTargetException;
 public class Utilities {
 
     private static final Logger LOG = LoggerFactory.getLogger(Utilities.class);
-    private static final String PROPERTY_KEY_USER_IMPERSONATION = "pxf.service.user.impersonation.enabled";
     private static final String PROPERTY_KEY_FRAGMENTER_CACHE = "pxf.service.fragmenter.cache.enabled";
     private static final char[] PROHIBITED_CHARS = new char[]{'/', '\\', '.', ' ', ',', ';'};
     private static final String[] HOSTS = new String[]{"localhost"};
@@ -298,15 +300,6 @@ public class Utilities {
     }
 
     /**
-     * Returns whether user impersonation has been configured as enabled.
-     *
-     * @return true if user impersonation is enabled, false otherwise
-     */
-    public static boolean isUserImpersonationEnabled() {
-        return StringUtils.equalsIgnoreCase(System.getProperty(PROPERTY_KEY_USER_IMPERSONATION, ""), "true");
-    }
-
-    /**
      * Returns whether fragmenter cache has been configured as enabled.
      * Defaults to true.
      *
@@ -326,5 +319,17 @@ public class Utilities {
      */
     public static String absoluteDataPath(String dataSource) {
         return (dataSource.charAt(0) == '/') ? dataSource : "/" + dataSource;
+    }
+
+    /**
+     * Determine whether the configuration is using Kerberos to
+     * establish user identities or is relying on simple authentication
+     *
+     * @param configuration the configuration for a given server
+     * @return true if the given configuration is for a secure environment
+     */
+    public static boolean isSecurityEnabled(Configuration configuration) {
+        return SecurityUtil.getAuthenticationMethod(configuration) !=
+                UserGroupInformation.AuthenticationMethod.SIMPLE;
     }
 }

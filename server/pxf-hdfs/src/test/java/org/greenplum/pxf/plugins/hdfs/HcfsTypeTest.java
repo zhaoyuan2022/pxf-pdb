@@ -2,22 +2,15 @@ package org.greenplum.pxf.plugins.hdfs;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.MRJobConfig;
-import org.apache.hadoop.security.UserGroupInformation;
 import org.greenplum.pxf.api.model.RequestContext;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-import org.junit.runner.RunWith;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
-@RunWith(PowerMockRunner.class)
-@PrepareForTest({UserGroupInformation.class})
 public class HcfsTypeTest {
 
     private final static String S3_PROTOCOL = "s3";
@@ -33,7 +26,6 @@ public class HcfsTypeTest {
         context = new RequestContext();
         context.setDataSource("/foo/bar.txt");
         configuration = new Configuration();
-        PowerMockito.mockStatic(UserGroupInformation.class);
     }
 
     @Test
@@ -275,24 +267,23 @@ public class HcfsTypeTest {
         HcfsType type = HcfsType.getHcfsType(configuration, context);
         String dataUri = type.getDataUri(configuration, context);
         assertEquals("xyz://abc/foo/bar.txt", dataUri);
-        assertNull(configuration.get(MRJobConfig.JOB_NAMENODES_TOKEN_RENEWAL_EXCLUDE));
+        assertEquals("abc", configuration.get(MRJobConfig.JOB_NAMENODES_TOKEN_RENEWAL_EXCLUDE));
     }
 
     @Test
     public void testNonSecureNoConfigChangeOnHdfs() {
-        PowerMockito.when(UserGroupInformation.isSecurityEnabled()).thenReturn(false);
         configuration.set("fs.defaultFS", "hdfs://abc:8020/");
         context.setDataSource("foo/bar.txt");
 
         HcfsType type = HcfsType.getHcfsType(configuration, context);
         String dataUri = type.getDataUri(configuration, context);
         assertEquals("hdfs://abc:8020/foo/bar.txt", dataUri);
-        assertNull(configuration.get(MRJobConfig.JOB_NAMENODES_TOKEN_RENEWAL_EXCLUDE));
+        assertEquals("abc", configuration.get(MRJobConfig.JOB_NAMENODES_TOKEN_RENEWAL_EXCLUDE));
     }
 
     @Test
     public void testSecureNoConfigChangeOnHdfs() {
-        PowerMockito.when(UserGroupInformation.isSecurityEnabled()).thenReturn(true);
+        configuration.set("hadoop.security.authentication", "kerberos");
         configuration.set("fs.defaultFS", "hdfs://abc:8020/");
         context.setDataSource("foo/bar.txt");
 
@@ -304,7 +295,7 @@ public class HcfsTypeTest {
 
     @Test
     public void testSecureNoConfigChangeOnHdfsForWrite() {
-        PowerMockito.when(UserGroupInformation.isSecurityEnabled()).thenReturn(true);
+        configuration.set("hadoop.security.authentication", "kerberos");
         configuration.set("fs.defaultFS", "hdfs://abc:8020");
         context.setDataSource("foo/bar");
         context.setTransactionId("XID-XYZ-123456");
@@ -318,7 +309,6 @@ public class HcfsTypeTest {
 
     @Test
     public void testSecureConfigChangeOnNonHdfs() {
-        PowerMockito.when(UserGroupInformation.isSecurityEnabled()).thenReturn(true);
         configuration.set("fs.defaultFS", "s3a://abc/");
         context.setDataSource("foo/bar.txt");
 
@@ -330,7 +320,6 @@ public class HcfsTypeTest {
 
     @Test
     public void testSecureConfigChangeOnNonHdfsForWrite() {
-        PowerMockito.when(UserGroupInformation.isSecurityEnabled()).thenReturn(true);
         configuration.set("fs.defaultFS", "s3a://abc/");
         context.setDataSource("foo/bar");
         context.setTransactionId("XID-XYZ-123456");
@@ -353,7 +342,6 @@ public class HcfsTypeTest {
 
     @Test
     public void testSecureConfigChangeOnInvalidFilesystem() {
-        PowerMockito.when(UserGroupInformation.isSecurityEnabled()).thenReturn(true);
         configuration.set("fs.defaultFS", "xyz://abc/");
         context.setDataSource("foo/bar.txt");
 

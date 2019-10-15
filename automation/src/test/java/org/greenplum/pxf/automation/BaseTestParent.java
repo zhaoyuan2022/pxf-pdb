@@ -4,7 +4,9 @@ import java.io.File;
 import java.lang.reflect.Method;
 
 import jsystem.framework.report.ListenerstManager;
+import jsystem.framework.sut.SutFactory;
 import jsystem.framework.system.SystemManagerImpl;
+import jsystem.framework.system.SystemObject;
 import jsystem.utils.FileUtils;
 import listeners.CustomAutomationLogger;
 
@@ -39,6 +41,9 @@ public abstract class BaseTestParent {
     protected Tinc tinc;
     protected Gpdb gpdb;
     protected Hdfs hdfs;
+    // When running against multiple hadoop environments, we need to test against
+    // a non-kerberized (secured) hadoop.
+    protected Hdfs hdfsNonSecure;
     protected ReadableExternalTable exTable;
     // data resources folder
     protected String localDataResourcesFolder = "src/test/resources/data";
@@ -48,10 +53,13 @@ public abstract class BaseTestParent {
     protected String pxfPort;
     protected String testUserkeyTabPathFormat = "/etc/security/keytabs/%s.headless.keytab";
 
+    protected SystemManagerImpl systemManager;
+
     // c'tor
     public BaseTestParent() {
         // alert not allowed annotations in test class children
         alertNotAllowedAnnotations();
+        systemManager = SystemManagerImpl.getInstance();
     }
 
     @BeforeClass(alwaysRun = true)
@@ -64,30 +72,35 @@ public abstract class BaseTestParent {
 
         try {
 
-            cluster = (PhdCluster) SystemManagerImpl.getInstance().getSystemObject("cluster");
+            cluster = (PhdCluster) systemManager.getSystemObject("cluster");
 
             // Initialize HDFS system object
-            hdfs = (Hdfs) SystemManagerImpl.getInstance().getSystemObject(ProtocolUtils.getProtocol().value());
+            hdfs = (Hdfs) systemManager.getSystemObject(ProtocolUtils.getProtocol().value());
 
-            trySecureLogin();
+            String testPrincipal = cluster.getTestKerberosPrincipal();
+            trySecureLogin(hdfs, testPrincipal);
+
+            // Initialize non-secure HDFS system object (optional system object)
+            hdfsNonSecure = (Hdfs) systemManager.
+                    getSystemObject("/sut", "hdfsNonSecure", -1, (SystemObject) null, false, (String) null, SutFactory.getInstance().getSutInstance());
 
             // Create local Data folder
             File localDataTempFolder = new File(dataTempFolder);
             localDataTempFolder.mkdirs();
             // Initialize Tinc System Object
-            tinc = (Tinc) SystemManagerImpl.getInstance().getSystemObject("tinc");
+            tinc = (Tinc) systemManager.getSystemObject("tinc");
             // Initialize GPDB System Object
-            gpdb = (Gpdb) SystemManagerImpl.getInstance().getSystemObject("gpdb");
+            gpdb = (Gpdb) systemManager.getSystemObject("gpdb");
             // Check if userName data base exists if not create it (TINC requirement)
             String userName = System.getProperty("user.name");
             if (!gpdb.checkDataBaseExists(userName)) {
                 gpdb.createDataBase(userName, false);
             }
 
-            hdfs.removeDirectory(hdfs.getWorkingDirectory());
-            hdfs.createDirectory(hdfs.getWorkingDirectory());
-            if (gpdb.getUserName() != null) {
-                hdfs.setOwner("/" + hdfs.getWorkingDirectory(), gpdb.getUserName(), gpdb.getUserName());
+            initializeWorkingDirectory(gpdb, hdfs);
+
+            if (hdfsNonSecure != null) {
+                initializeWorkingDirectory(gpdb, hdfsNonSecure);
             }
 
             // get pxfHost
@@ -145,14 +158,9 @@ public abstract class BaseTestParent {
             // anyways revert System.out to original stream
             CustomAutomationLogger.revertStdoutStream();
         }
-        // Remove hdfs workingDirectory
-        try {
-            if (hdfs != null) {
-                hdfs.removeDirectory(hdfs.getWorkingDirectory());
-            }
-        } catch (Exception e) {
-            e.printStackTrace(System.err);
-        }
+        // Remove workingDirectories
+        removeWorkingDirectory(hdfs);
+        removeWorkingDirectory(hdfsNonSecure);
     }
 
     /**
@@ -296,28 +304,44 @@ public abstract class BaseTestParent {
         return false;
     }
 
-    private void trySecureLogin() throws Exception {
-        String testPrincipal = cluster.getTestKerberosPrincipal();
-        if (!StringUtils.isEmpty(testPrincipal)) {
-            String testUser = testPrincipal.split("@")[0];
-            String testUserkeyTabPath = String.format(testUserkeyTabPathFormat, testUser);
-            if (!new File(testUserkeyTabPath).exists()) {
-                throw new Exception(String.format("Keytab file %s not found", testUserkeyTabPath));
-            }
-            if (StringUtils.isEmpty(hdfs.getHadoopRoot())) {
-                throw new Exception("SUT parameter hadoopRoot in hdfs component is not defined");
-            }
-            // setup the security context for kerberos
-            Configuration config = new Configuration();
-            config.addResource(new Path(hdfs.getHadoopRoot() + "/conf/hdfs-site.xml"));
-            config.addResource(new Path(hdfs.getHadoopRoot() + "/conf/core-site.xml"));
-            config.reloadConfiguration();
-            config.set("hadoop.security.authentication", "Kerberos");
-            UserGroupInformation.setConfiguration(config);
-            UserGroupInformation.loginUserFromKeytab(testPrincipal, testUserkeyTabPath);
+    protected void trySecureLogin(Hdfs hdfs, String kerberosPrincipal) throws Exception {
+        if (StringUtils.isEmpty(kerberosPrincipal)) return;
 
-            // Initialize HDFS system object again, after login
-            hdfs.init();
+        String testUser = kerberosPrincipal.split("@")[0];
+        String testUserKeytabPath = String.format(testUserkeyTabPathFormat, testUser);
+        if (!new File(testUserKeytabPath).exists()) {
+            throw new Exception(String.format("Keytab file %s not found", testUserKeytabPath));
+        }
+        if (StringUtils.isEmpty(hdfs.getHadoopRoot())) {
+            throw new Exception("SUT parameter hadoopRoot in hdfs component is not defined");
+        }
+        // setup the security context for kerberos
+        Configuration config = new Configuration();
+        config.addResource(new Path(hdfs.getHadoopRoot() + "/conf/hdfs-site.xml"));
+        config.addResource(new Path(hdfs.getHadoopRoot() + "/conf/core-site.xml"));
+        config.reloadConfiguration();
+        config.set("hadoop.security.authentication", "Kerberos");
+        UserGroupInformation.setConfiguration(config);
+        UserGroupInformation.loginUserFromKeytab(kerberosPrincipal, testUserKeytabPath);
+
+        // Initialize HDFS system object again, after login
+        hdfs.init();
+    }
+
+    protected void initializeWorkingDirectory(Gpdb gpdb, Hdfs hdfs) throws Exception {
+        hdfs.removeDirectory(hdfs.getWorkingDirectory());
+        hdfs.createDirectory(hdfs.getWorkingDirectory());
+        if (gpdb.getUserName() != null) {
+            hdfs.setOwner("/" + hdfs.getWorkingDirectory(), gpdb.getUserName(), gpdb.getUserName());
+        }
+    }
+
+    protected void removeWorkingDirectory(Hdfs hdfs) {
+        if (hdfs == null) return;
+        try {
+            hdfs.removeDirectory(hdfs.getWorkingDirectory());
+        } catch (Exception e) {
+            e.printStackTrace(System.err);
         }
     }
 }
