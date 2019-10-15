@@ -1,5 +1,13 @@
 # Changelog
 
+## 5.9.1 (10/15/2019)
+
+#### Bug Fixes:
+
+- [#251](https://github.com/greenplum-db/pxf/pull/251)  Fix regression in *:text:multi profiles when using wildcards
+
+---
+
 ## 5.9.0 (09/25/2019)
 
 #### Enhancements:
