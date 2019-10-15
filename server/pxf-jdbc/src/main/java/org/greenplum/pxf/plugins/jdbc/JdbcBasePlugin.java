@@ -21,10 +21,11 @@ package org.greenplum.pxf.plugins.jdbc;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.security.UserGroupInformation;
 import org.greenplum.pxf.api.model.BasePlugin;
 import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.api.utilities.ColumnDescriptor;
+import org.greenplum.pxf.api.security.SecureLogin;
+import org.greenplum.pxf.api.utilities.Utilities;
 import org.greenplum.pxf.plugins.jdbc.utils.ConnectionManager;
 import org.greenplum.pxf.plugins.jdbc.utils.DbProduct;
 import org.greenplum.pxf.plugins.jdbc.utils.HiveJdbcUtils;
@@ -273,7 +274,7 @@ public class JdbcBasePlugin extends BasePlugin {
         boolean impersonationEnabledForServer = configuration.getBoolean(PXF_IMPERSONATION_JDBC_PROPERTY_NAME, false);
         LOG.debug("JDBC impersonation is {}enabled for server {}", impersonationEnabledForServer ? "" : "not ", context.getServerName());
         if (impersonationEnabledForServer) {
-            if (UserGroupInformation.isSecurityEnabled() && StringUtils.startsWith(jdbcUrl, HIVE_URL_PREFIX)) {
+            if (Utilities.isSecurityEnabled(configuration) && StringUtils.startsWith(jdbcUrl, HIVE_URL_PREFIX)) {
                 // secure impersonation for Hive JDBC driver requires setting URL fragment that cannot be overwritten by properties
                 String updatedJdbcUrl = HiveJdbcUtils.updateImpersonationPropertyInHiveJdbcUrl(jdbcUrl, context.getUser());
                 LOG.debug("Replaced JDBC URL {} with {}", jdbcUrl, updatedJdbcUrl);
@@ -428,8 +429,8 @@ public class JdbcBasePlugin extends BasePlugin {
      * @throws Exception
      */
     private Connection getConnectionInternal() throws Exception {
-        if (UserGroupInformation.isSecurityEnabled() && StringUtils.startsWith(jdbcUrl, HIVE_URL_PREFIX)) {
-            return UserGroupInformation.getLoginUser().
+        if (Utilities.isSecurityEnabled(configuration) && StringUtils.startsWith(jdbcUrl, HIVE_URL_PREFIX)) {
+            return SecureLogin.getInstance().getLoginUser(context, configuration).
                     doAs((PrivilegedExceptionAction<Connection>) () ->
                             connectionManager.getConnection(context.getServerName(), jdbcUrl, connectionConfiguration, isConnectionPoolUsed, poolConfiguration));
 
@@ -535,7 +536,7 @@ public class JdbcBasePlugin extends BasePlugin {
      * work with JDBC profile.
      *
      * @param configuration configuration map
-     * @param confPrefix configuration prefix
+     * @param confPrefix    configuration prefix
      * @return mapping of configuration properties with prefix stripped
      */
     private Map<String, String> getPropsWithPrefix(Configuration configuration, String confPrefix) {
@@ -543,12 +544,12 @@ public class JdbcBasePlugin extends BasePlugin {
         Iterator<Map.Entry<String, String>> it = configuration.iterator();
         while (it.hasNext()) {
             String propertyName = it.next().getKey();
-                if (propertyName.startsWith(confPrefix)) {
-                    // do not use value from the iterator as it might not come with variable substitution
-                    String value = configuration.get(propertyName);
-                    String keyName = propertyName.substring(confPrefix.length());
-                    configMap.put(keyName, value);
-                }
+            if (propertyName.startsWith(confPrefix)) {
+                // do not use value from the iterator as it might not come with variable substitution
+                String value = configuration.get(propertyName);
+                String keyName = propertyName.substring(confPrefix.length());
+                configMap.put(keyName, value);
+            }
         }
         return configMap;
     }

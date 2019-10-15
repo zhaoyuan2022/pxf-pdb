@@ -21,7 +21,6 @@ package org.greenplum.pxf.service.servlet;
 
 
 import org.greenplum.pxf.service.utilities.Log4jConfigure;
-import org.greenplum.pxf.service.utilities.SecureLogin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,7 +38,6 @@ public class ServletLifecycleListener implements ServletContextListener {
 	 * Called after the webapp has been initialized.
 	 *
 	 * 1. Initializes log4j.
-	 * 2. Initiates a Kerberos login when Hadoop security is on.
 	 */
 	@Override
 	public void contextInitialized(ServletContextEvent event) {
@@ -47,9 +45,6 @@ public class ServletLifecycleListener implements ServletContextListener {
 		Log4jConfigure.configure(event);
 
 		LOG.info("PXF server webapp initialized");
-
-		// 2. Initiate secure login
-		new SecureLogin().login();
 	}
 
 	/**

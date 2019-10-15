@@ -3,16 +3,18 @@
 set -euo pipefail
 
 # defaults
-ENV_FILES_DIR=${ENV_FILES_DIR:-dataproc_env_files}
 HADOOP_USER=${HADOOP_USER:-gpadmin}
 IMAGE_VERSION=${IMAGE_VERSION:-1.3}
 INITIALIZATION_SCRIPT=${INITIALIZATION_SCRIPT:-gs://pxf-perf/scripts/initialization-for-kerberos.sh}
+INSTANCE_TAGS=${INSTANCE_TAGS:-bosh-network,outbound-through-nat,tag-concourse-dynamic}
 KERBEROS=${KERBEROS:-false}
 KEYRING=${KEYRING:-dataproc-kerberos}
 KEY=${KEY:-dataproc-kerberos-test}
 MACHINE_TYPE=${MACHINE_TYPE:-n1-standard-2}
+NO_ADDRESS=${NO_ADDRESS:-true}
 NUM_WORKERS=${NUM_WORKERS:-2}
 PROJECT=${GOOGLE_PROJECT_ID:-}
+PROXY_USER=${PROXY_USER:-gpadmin}
 REGION=${GOOGLE_ZONE%-*} # lop off '-a', '-b', etc. from $GOOGLE_ZONE
 REGION=${REGION:-us-central1}
 SECRETS_BUCKET=${SECRETS_BUCKET:-data-gpdb-ud-pxf-secrets}
@@ -37,15 +39,18 @@ PETNAME=ccp-$(petname)
 GCLOUD_COMMAND=(gcloud beta dataproc clusters
   "--region=$REGION" create "$PETNAME"
   --initialization-actions "$INITIALIZATION_SCRIPT"
-  --no-address
   --subnet "projects/${PROJECT}/regions/${REGION}/subnetworks/$SUBNETWORK"
   "--master-machine-type=$MACHINE_TYPE"
   "--worker-machine-type=$MACHINE_TYPE"
   "--zone=$ZONE"
-  "--tags=bosh-network,outbound-through-nat,tag-concourse-dynamic"
+  "--tags=$INSTANCE_TAGS"
   "--num-workers=$NUM_WORKERS"
   --image-version "$IMAGE_VERSION"
-  --properties 'core:hadoop.proxyuser.gpadmin.hosts=*,core:hadoop.proxyuser.gpadmin.groups=*')
+  --properties "core:hadoop.proxyuser.${PROXY_USER}.hosts=*,core:hadoop.proxyuser.${PROXY_USER}.groups=*")
+
+if [[ $NO_ADDRESS == true ]]; then
+    GCLOUD_COMMAND+=(--no-address)
+fi
 
 if [[ $KERBEROS == true ]]; then
     # Generate a random password
@@ -83,39 +88,52 @@ do
   gcloud compute instances add-metadata "${PETNAME}-w-${i}" \
     --metadata "ssh-keys=$HADOOP_USER:$(< ~/.ssh/google_compute_engine.pub)" \
     --zone "$ZONE"
+
+  HADOOP_IP_ADDRESS=$(gcloud compute instances describe "${PETNAME}-w-${i}" \
+    --format='get(networkInterfaces[0].networkIP)' \
+    --zone "$ZONE")
+
+  echo "${HADOOP_IP_ADDRESS} ${PETNAME}-w-${i} ${PETNAME}-w-${i}.c.${PROJECT}.internal" >> dataproc_env_files/etc_hostfile
 done
 
-echo "$HADOOP_HOSTNAME" > "${ENV_FILES_DIR}/name"
+echo "$HADOOP_HOSTNAME" > "dataproc_env_files/name"
 
-mkdir -p "${ENV_FILES_DIR}/conf"
+mkdir -p "dataproc_env_files/conf"
 
 SSH_OPTS=(-o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no' -i ~/.ssh/google_compute_engine)
 
-scp "${SSH_OPTS[@]}" \
-  "${HADOOP_USER}@${HADOOP_HOSTNAME}:/etc/hadoop/conf/*-site.xml" \
-  "${ENV_FILES_DIR}/conf"
+HADOOP_IP_ADDRESS=$(gcloud compute instances describe "${HADOOP_HOSTNAME}" \
+  --format='get(networkInterfaces[0].networkIP)' \
+  --zone "$ZONE")
+
+echo "${HADOOP_IP_ADDRESS} ${HADOOP_HOSTNAME} ${HADOOP_HOSTNAME}.c.${PROJECT}.internal" >> dataproc_env_files/etc_hostfile
 
 scp "${SSH_OPTS[@]}" \
-  "${HADOOP_USER}@${HADOOP_HOSTNAME}:/etc/hive/conf/*-site.xml" \
-  "${ENV_FILES_DIR}/conf"
+  "${HADOOP_USER}@${HADOOP_IP_ADDRESS}:/etc/hadoop/conf/*-site.xml" \
+  "dataproc_env_files/conf"
+
+scp "${SSH_OPTS[@]}" \
+  "${HADOOP_USER}@${HADOOP_IP_ADDRESS}:/etc/hive/conf/*-site.xml" \
+  "dataproc_env_files/conf"
 
 ssh "${SSH_OPTS[@]}" -t \
-  "${HADOOP_USER}@${HADOOP_HOSTNAME}" \
+  "${HADOOP_USER}@${HADOOP_IP_ADDRESS}" \
   "sudo systemctl restart hadoop-hdfs-namenode" || exit 1
 
-cp ~/.ssh/google_compute_engine* "$ENV_FILES_DIR"
+cp ~/.ssh/google_compute_engine* "dataproc_env_files"
 
 if [[ $KERBEROS == true ]]; then
-  ssh "${SSH_OPTS[@]}" -t "${HADOOP_USER}@${HADOOP_HOSTNAME}" \
-    'set -euo pipefail
-    grep default_realm /etc/krb5.conf | awk '"'"'{print $3}'"'"' > ~/REALM
-    sudo kadmin.local -q "addprinc -pw pxf gpadmin"
-    sudo kadmin.local -q "xst -k ${HOME}/pxf.service.keytab gpadmin"
-    sudo klist -e -k -t "${HOME}/pxf.service.keytab"
-    sudo chown gpadmin "${HOME}/pxf.service.keytab"
-    sudo addgroup gpadmin hdfs
-    sudo addgroup gpadmin hadoop
-    '
+  ssh "${SSH_OPTS[@]}" -t "${HADOOP_USER}@${HADOOP_IP_ADDRESS}" \
+    "set -euo pipefail
+    grep default_realm /etc/krb5.conf | awk '{print \$3}' > ~/REALM
+    sudo kadmin.local -q 'addprinc -pw pxf ${HADOOP_USER}'
+    sudo kadmin.local -q \"xst -k \${HOME}/pxf.service.keytab ${HADOOP_USER}\"
+    sudo klist -e -k -t \"\${HOME}/pxf.service.keytab\"
+    sudo chown ${HADOOP_USER} \"\${HOME}/pxf.service.keytab\"
+    sudo addgroup ${HADOOP_USER} hdfs
+    sudo addgroup ${HADOOP_USER} hadoop
+    "
 
-  scp "${SSH_OPTS[@]}" "${HADOOP_USER}@${HADOOP_HOSTNAME}":{~/{REALM,pxf.service.keytab},/etc/krb5.conf} "$ENV_FILES_DIR"
+  scp "${SSH_OPTS[@]}" "${HADOOP_USER}@${HADOOP_IP_ADDRESS}":{~/{REALM,pxf.service*.keytab},/etc/krb5.conf} \
+    "dataproc_env_files"
 fi
