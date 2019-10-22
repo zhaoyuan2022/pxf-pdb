@@ -296,6 +296,7 @@ jobs:
             CLOUD_PROVIDER: google
             IMPERSONATION: {{enable-impersonation-multinode}}
             INSTALL_GPHDFS: {{perf-benchmark-gphdfs}}
+            PROXY_USER: gpadmin
             PXF_JVM_OPTS: {{pxf-jvm-opts}}
           on_failure:
             <<: *ccp_destroy
