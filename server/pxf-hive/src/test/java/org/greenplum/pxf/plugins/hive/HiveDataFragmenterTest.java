@@ -37,6 +37,7 @@ public class HiveDataFragmenterTest {
 
     private RequestContext context;
     private Configuration configuration;
+    private HiveDataFragmenter fragmenter;
     private HiveFilterBuilder filterBuilder;
     private ConfigurationFactory configurationFactory;
     private HiveClientWrapper hiveClientWrapper;
@@ -63,13 +64,13 @@ public class HiveDataFragmenterTest {
     }
 
     @Test
-    public void constructorCantAccessMetaStore() {
+    public void constructorCantAccessMetaStore() throws Exception {
         expectedException.expect(RuntimeException.class);
         expectedException.expectMessage("Failed connecting to Hive MetaStore service: which way to albuquerque");
 
-        when(hiveClientWrapper.initHiveClient(context, configuration)).thenThrow(new RuntimeException("Failed connecting to Hive MetaStore service: which way to albuquerque"));
+        when(hiveClientWrapper.initHiveClient(configuration)).thenThrow(new RuntimeException("Failed connecting to Hive MetaStore service: which way to albuquerque"));
 
-        HiveDataFragmenter fragmenter = new HiveDataFragmenter(configurationFactory, filterBuilder, hiveClientWrapper);
+        fragmenter = new HiveDataFragmenter(configurationFactory, filterBuilder, hiveClientWrapper);
         fragmenter.initialize(context);
     }
 }

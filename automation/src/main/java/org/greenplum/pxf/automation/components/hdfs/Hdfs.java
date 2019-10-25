@@ -63,7 +63,6 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
     private final int ROW_BUFFER = 10000;
     private String workingDirectory;
     private String haNameservice;
-    private String testKerberosPrincipal;
 
     private String scheme;
 
@@ -135,8 +134,6 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
             }
         }
 
-        config.set("ipc.client.fallback-to-simple-auth-allowed", "true");
-
         fs = FileSystem.get(config);
         setDefaultReplicationSize();
         setDefaultBlockSize();
@@ -158,20 +155,19 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
     }
 
     private void setDefaultBufferSize() {
-        bufferSize = Integer.parseInt(config.get("io.file.buffer.size"));
+        bufferSize = Integer.valueOf(config.get("io.file.buffer.size"));
     }
 
     private Path getDatapath(String path) {
-        String pathString = path;
-        if (!path.matches("^[a-zA-Z].*://.*$")) {
-            if (ProtocolUtils.getProtocol() != ProtocolEnum.HDFS) {
-                pathString = getScheme() + "://" + path;
+        if (path.matches("^[a-zA-Z].*://.*$"))
+            return new Path(path);
+        else {
+            if(ProtocolUtils.getProtocol() != ProtocolEnum.HDFS) {
+                return new Path(getScheme() + "://" + path);
             } else {
-                pathString = "/" + path;
+                return new Path("/" + path);
             }
         }
-
-        return new Path(pathString);
     }
 
     @Override
@@ -261,11 +257,11 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
                         + pathToFile);
         IntWritable key = new IntWritable();
         Path path = getDatapath(pathToFile);
-
-        // Even though this method is deprecated we need to pass the correct
-        // fs for multi hadoop tests
-        SequenceFile.Writer writer = SequenceFile.createWriter(fs, config,
-                path, key.getClass(), writableData[0].getClass());
+        Writer.Option optPath = SequenceFile.Writer.file(path);
+        Writer.Option optKey = SequenceFile.Writer.keyClass(key.getClass());
+        Writer.Option optVal = SequenceFile.Writer.valueClass(writableData[0].getClass());
+        SequenceFile.Writer writer = SequenceFile.createWriter(config, optPath,
+                optKey, optVal);
         for (int i = 1; i < writableData.length; i++) {
             writer.append(key, writableData[i]);
         }
@@ -280,14 +276,16 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
         BytesWritable val = new BytesWritable();
         Path path = getDatapath(pathToFile);
 
-        // Even though this method is deprecated we need to pass the correct
-        // fs for multi hadoop tests
-        SequenceFile.Writer writer = SequenceFile.createWriter(fs, config, path,
-                key.getClass(), val.getClass());
+        Writer.Option optPath = SequenceFile.Writer.file(path);
+        Writer.Option optKey = SequenceFile.Writer.keyClass(key.getClass());
+        Writer.Option optVal = SequenceFile.Writer.valueClass(val.getClass());
 
-        for (IAvroSchema datum : data) {
+        SequenceFile.Writer writer = SequenceFile.createWriter(config, optPath,
+                optKey, optVal);
+
+        for (int i = 0; i < data.length; i++) {
             ByteArrayOutputStream stream = new ByteArrayOutputStream();
-            datum.serialize(stream);
+            data[i].serialize(stream);
             val = new BytesWritable(stream.toByteArray());
             writer.append(key, val);
         }
@@ -303,9 +301,9 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
                 replicationSize, blockSize);
         Schema schema = new Schema.Parser().parse(new FileInputStream(
                 schemaName));
-        DatumWriter<GenericRecord> writer = new GenericDatumWriter<>(
+        DatumWriter<GenericRecord> writer = new GenericDatumWriter<GenericRecord>(
                 schema);
-        DataFileWriter<GenericRecord> dataFileWriter = new DataFileWriter<>(
+        DataFileWriter<GenericRecord> dataFileWriter = new DataFileWriter<GenericRecord>(
                 writer);
         if (!StringUtils.isEmpty(codecName)) {
             dataFileWriter.setCodec(CodecFactory.fromString(codecName));
@@ -313,8 +311,8 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
 
         dataFileWriter.create(schema, outStream);
 
-        for (IAvroSchema iAvroSchema : data) {
-            GenericRecord datum = iAvroSchema.serialize();
+        for (int i = 0; i < data.length; i++) {
+            GenericRecord datum = data[i].serialize();
             dataFileWriter.append(datum);
         }
         dataFileWriter.close();
@@ -407,7 +405,7 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
         appendTableToFile(pathToFile, dataTable, delimiter, StandardCharsets.UTF_8);
     }
 
-    private void appendTableToFile(String pathToFile, Table dataTable, String delimiter, Charset encoding) throws Exception {
+    public void appendTableToFile(String pathToFile, Table dataTable, String delimiter, Charset encoding) throws Exception {
         ReportUtils.startLevel(report, getClass(),
                 "Append Text File (Delimiter = '" + delimiter + "') to "
                         + pathToFile
@@ -494,14 +492,6 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
 
     public void setHadoopRoot(String hadoopRoot) {
         this.hadoopRoot = hadoopRoot;
-    }
-
-    public String getTestKerberosPrincipal() {
-        return testKerberosPrincipal;
-    }
-
-    public void setTestKerberosPrincipal(String testKerberosPrincipal) {
-        this.testKerberosPrincipal = testKerberosPrincipal;
     }
 
     public String getHaNameservice() {

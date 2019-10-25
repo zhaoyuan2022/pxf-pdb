@@ -19,9 +19,6 @@ package org.greenplum.pxf.service;
  * under the License.
  */
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.security.UserGroupInformation;
-
 /**
  * For the purposes of pxf-server, a session is the set of requests processed on a specific segment
  * on behalf of a particular user and transaction. Grouping requests together into a session allows
@@ -35,8 +32,6 @@ public class SessionId {
     private final String user;
     private final Integer segmentId;
     private final String sessionId;
-    private final Configuration configuration;
-    private final UserGroupInformation loginUser;
 
     /**
      * Create a sessionId
@@ -44,28 +39,11 @@ public class SessionId {
      * @param segmentId     the calling segment
      * @param transactionId the identifier for the transaction
      * @param gpdbUser      the GPDB username
-     * @param serverName    the name of the configuration server
      */
-    public SessionId(Integer segmentId, String transactionId, String gpdbUser, String serverName) {
-        this(segmentId, transactionId, gpdbUser, serverName, null, null);
-    }
-
-    /**
-     * Create a sessionId
-     *
-     * @param segmentId     the calling segment
-     * @param transactionId the identifier for the transaction
-     * @param gpdbUser      the GPDB username
-     * @param serverName    the name of the configuration server
-     * @param configuration the configuration for the request
-     * @param loginUser     the UGI of the login user (user that runs the service or Kerberos principal)
-     */
-    public SessionId(Integer segmentId, String transactionId, String gpdbUser, String serverName, Configuration configuration, UserGroupInformation loginUser) {
+    public SessionId(Integer segmentId, String transactionId, String gpdbUser) {
         this.segmentId = segmentId;
         this.user = gpdbUser;
-        this.sessionId = gpdbUser + ":" + transactionId + ":" + segmentId + ":" + serverName;
-        this.configuration = configuration;
-        this.loginUser = loginUser;
+        this.sessionId = gpdbUser + ":" + transactionId + ":" + segmentId;
     }
 
     /**
@@ -80,20 +58,6 @@ public class SessionId {
      */
     public String getUser() {
         return user;
-    }
-
-    /**
-     * @return the configuration for the session
-     */
-    public Configuration getConfiguration() {
-        return configuration;
-    }
-
-    /**
-     * @return the UGI of the login user (or Kerberos principal)
-     */
-    public UserGroupInformation getLoginUser() {
-        return loginUser;
     }
 
     /**

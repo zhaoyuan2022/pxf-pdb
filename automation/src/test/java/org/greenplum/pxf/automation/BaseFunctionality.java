@@ -4,12 +4,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.lang.StringUtils;
 import org.greenplum.pxf.automation.structures.tables.basic.Table;
 
-/**
- * Functionality Tests Base Class
- */
+/** Functionality Tests Base Class */
 public abstract class BaseFunctionality extends BaseTestParent {
     // file name for storing data on HDFS
     protected String fileName = "data.txt";
@@ -22,12 +19,12 @@ public abstract class BaseFunctionality extends BaseTestParent {
      * @return Table
      * @throws IOException
      */
-    protected Table getSmallData(String uniqueName, int numRows) throws IOException {
-        List<List<String>> data = new ArrayList<>();
+    protected Table getSmallData(int numRows) throws IOException {
+        List<List<String>> data = new ArrayList<List<String>>();
 
         for (int i = 1; i <= numRows; i++) {
-            List<String> row = new ArrayList<>();
-            row.add(String.format("%s%srow_%d", uniqueName, StringUtils.isBlank(uniqueName) ? "" : "_", i));
+            List<String> row = new ArrayList<String>();
+            row.add("row_" + i);
             row.add(String.valueOf(i));
             row.add(String.valueOf(Double.toString(i)));
             row.add(String.valueOf(Long.toString(100000000000L * i)));
@@ -42,19 +39,17 @@ public abstract class BaseFunctionality extends BaseTestParent {
     }
 
     protected Table getSmallData() throws IOException {
-        return getSmallData("");
-    }
-
-    protected Table getSmallData(String uniqueName) throws IOException {
-        return getSmallData(uniqueName, 100);
+        return getSmallData(100);
     }
 
     @Override
     protected void runTincTest(String tincTest) throws Exception {
         try {
-            if (!tincTest.contains("hcatalog")) {
+            if (tincTest.contains("hcatalog")) {
+                // These features/test cases are not supported. Do Nothing.
+            } else {
                 super.runTincTest(tincTest);
-            }  // else These features/test cases are not supported. Do Nothing.
+            }
         } catch (Exception e) {
             throw new Exception("Tinc Failure (" + e.getMessage() + ")");
         }

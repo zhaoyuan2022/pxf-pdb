@@ -1,11 +1,6 @@
 package org.greenplum.pxf.automation.features.hive;
 
-import jsystem.framework.sut.SutFactory;
-import jsystem.framework.system.SystemManagerImpl;
-import jsystem.framework.system.SystemObject;
 import org.greenplum.pxf.automation.components.common.ShellSystemObject;
-import org.greenplum.pxf.automation.components.hdfs.Hdfs;
-import org.greenplum.pxf.automation.components.hive.Hive;
 import org.greenplum.pxf.automation.enums.EnumPxfDefaultProfiles;
 import org.greenplum.pxf.automation.structures.tables.hive.HiveExternalTable;
 import org.greenplum.pxf.automation.structures.tables.hive.HiveTable;
@@ -39,12 +34,6 @@ public class HiveTest extends HiveBaseTest {
     private static final String PXF_HIVE_PARTITIONED_SKEWED_TABLE = "pxf_hive_partitioned_skewed_table";
     private static final String PXF_HIVE_PARTITIONED_SKEWED_STORED_TABLE = "pxf_hive_partitioned_skewed_stored_table";
 
-    private static final String HIVE_DATA_FILE_NAME_2 = "hive_small_data_second.txt";
-    private static final String HIVE_DATA_FILE_NAME_3 = "hive_small_data_third.txt";
-
-    private static final String PXF_HIVE_SMALL_DATA_TABLE_SECURE = "pxf_hive_small_data_hive_secure";
-    private static final String PXF_HIVE_SMALL_DATA_TABLE_NON_SECURE = "pxf_hive_small_data_hive_non_secure";
-
     private HiveExternalTable hivePartitionedTable;
     private HiveTable hiveManyPartitionsTable;
     private HiveTable hivePartitionedClusteredTable;
@@ -52,25 +41,11 @@ public class HiveTest extends HiveBaseTest {
     private HiveTable hivePartitionedSkewedTable;
     private HiveTable hivePartitionedSkewedStoredAsDirsTable;
 
-    private Hive hive2;
-    private Hive hiveNonSecure;
-
-    private void createExternalTable(String tableName, String[] fields,
-                                     HiveTable hiveTable, boolean useProfile, String serverName)
-            throws Exception {
-
-        exTable = TableFactory.getPxfHiveReadableTable(tableName, fields, hiveTable, useProfile);
-        if (serverName != null) {
-            exTable.setServer(serverName);
-        }
-        createTable(exTable);
-
-    }
-
     private void createExternalTable(String tableName, String[] fields,
                                      HiveTable hiveTable, boolean useProfile) throws Exception {
 
-        createExternalTable(tableName, fields, hiveTable, useProfile, null);
+        exTable = TableFactory.getPxfHiveReadableTable(tableName, fields, hiveTable, useProfile);
+        createTable(exTable);
     }
 
     private void createExternalTable(String tableName, String[] fields,
@@ -86,8 +61,8 @@ public class HiveTest extends HiveBaseTest {
         hivePartitionedClusteredSortedTable = TableFactory.getHiveByRowCommaExternalTable(
                 HIVE_PARTITIONED_CLUSTERED_SORTED_TABLE, HIVE_RC_COLS);
         hivePartitionedClusteredSortedTable.setPartitionedBy(HIVE_PARTITION_COLUMN);
-        hivePartitionedClusteredSortedTable.setSortedBy(new String[]{"num1"});
-        hivePartitionedClusteredSortedTable.setClusteredBy(new String[]{"t1"});
+        hivePartitionedClusteredSortedTable.setSortedBy(new String[] { "num1" });
+        hivePartitionedClusteredSortedTable.setClusteredBy(new String[] { "t1" });
         hivePartitionedClusteredSortedTable.setClusterBucketCount(10);
         hive.createTableAndVerify(hivePartitionedClusteredSortedTable);
         hiveAlterPartitionedFileFormats(hivePartitionedClusteredSortedTable);
@@ -100,8 +75,8 @@ public class HiveTest extends HiveBaseTest {
         hivePartitionedSkewedTable = TableFactory.getHiveByRowCommaExternalTable(
                 HIVE_PARTITIONED_SKEWED_TABLE, HIVE_RC_COLS);
         hivePartitionedSkewedTable.setPartitionedBy(HIVE_PARTITION_COLUMN);
-        hivePartitionedSkewedTable.setSkewedBy(new String[]{"num1"});
-        hivePartitionedSkewedTable.setSkewedOn(new String[]{"10"});
+        hivePartitionedSkewedTable.setSkewedBy(new String[] { "num1" });
+        hivePartitionedSkewedTable.setSkewedOn(new String[] { "10" });
         hive.createTableAndVerify(hivePartitionedSkewedTable);
         hiveAlterPartitionedFileFormats(hivePartitionedSkewedTable);
     }
@@ -113,8 +88,8 @@ public class HiveTest extends HiveBaseTest {
         hivePartitionedSkewedStoredAsDirsTable = TableFactory.getHiveByRowCommaExternalTable(
                 HIVE_PARTITIONED_SKEWED_STORED_TABLE, HIVE_RC_COLS);
         hivePartitionedSkewedStoredAsDirsTable.setPartitionedBy(HIVE_PARTITION_COLUMN);
-        hivePartitionedSkewedStoredAsDirsTable.setSkewedBy(new String[]{"num1"});
-        hivePartitionedSkewedStoredAsDirsTable.setSkewedOn(new String[]{"10"});
+        hivePartitionedSkewedStoredAsDirsTable.setSkewedBy(new String[] { "num1" });
+        hivePartitionedSkewedStoredAsDirsTable.setSkewedOn(new String[] { "10" });
         hive.createTableAndVerify(hivePartitionedSkewedStoredAsDirsTable);
         hiveAlterPartitionedFileFormats(hivePartitionedSkewedStoredAsDirsTable);
     }
@@ -133,7 +108,7 @@ public class HiveTest extends HiveBaseTest {
 
         if (hiveManyPartitionsTable != null)
             return;
-        hiveManyPartitionsTable = new HiveTable(HIVE_MANY_PARTITIONED_TABLE, new String[]{"s1 STRING"});
+        hiveManyPartitionsTable = new HiveTable(HIVE_MANY_PARTITIONED_TABLE, new String[] { "s1 STRING" });
         String[] partitionedColumns = Arrays.copyOfRange(HIVE_TYPES_COLS, 1, HIVE_TYPES_COLS.length);
         hiveManyPartitionsTable.setPartitionedBy(partitionedColumns);
         hive.createTableAndVerify(hiveManyPartitionsTable);
@@ -143,8 +118,8 @@ public class HiveTest extends HiveBaseTest {
         // Insert into table using dynamic partitioning.
         // Some of the fields are NULL so they will be inserted into the default partition.
         hive.insertDataToPartition(hiveTypesTable, hiveManyPartitionsTable,
-                new String[]{"s2", "n1", "d1", "dc1", "tm", "f", "bg", "b", "tn", "sml", "dt", "vc1", "c1", "bin"},
-                new String[]{"*"});
+                new String[] { "s2", "n1", "d1", "dc1", "tm", "f", "bg", "b", "tn", "sml", "dt", "vc1", "c1", "bin" },
+                new String[] { "*" });
     }
 
     private void preparePartitionedClusteredData() throws Exception {
@@ -154,7 +129,7 @@ public class HiveTest extends HiveBaseTest {
         hivePartitionedClusteredTable = TableFactory.getHiveByRowCommaExternalTable(
                 HIVE_PARTITIONED_CLUSTERED_TABLE, HIVE_RC_COLS);
         hivePartitionedClusteredTable.setPartitionedBy(HIVE_PARTITION_COLUMN);
-        hivePartitionedClusteredTable.setClusteredBy(new String[]{"t1"});
+        hivePartitionedClusteredTable.setClusteredBy(new String[] { "t1" });
         hivePartitionedClusteredTable.setClusterBucketCount(10);
         hive.createTableAndVerify(hivePartitionedClusteredTable);
         hiveAlterPartitionedFileFormats(hivePartitionedClusteredTable);
@@ -187,7 +162,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"hive", "sanity", "features", "gpdb", "security"})
+    @Test(groups = { "hive", "sanity", "features", "gpdb", "security" })
     public void sanity() throws Exception {
 
         createExternalTable(PXF_HIVE_SMALL_DATA_TABLE, PXF_HIVE_SMALLDATA_COLS, hiveSmallDataTable);
@@ -197,48 +172,11 @@ public class HiveTest extends HiveBaseTest {
     }
 
     /**
-     * query for small data hive table against two kerberized hive servers
-     *
-     * @throws Exception if test fails to run
-     */
-    @Test(groups = {"features", "security"})
-    public void testTwoSecuredServers() throws Exception {
-
-        Hdfs hdfs2 = (Hdfs) systemManager.
-                getSystemObject("/sut", "hdfs2", -1, (SystemObject) null, false, (String) null, SutFactory.getInstance().getSutInstance());
-
-        if (hdfs2 == null) return;
-
-        trySecureLogin(hdfs2, hdfs2.getTestKerberosPrincipal());
-        initializeWorkingDirectory(gpdb, hdfs2);
-        hive2 = (Hive) SystemManagerImpl.getInstance().getSystemObject("hive2");
-
-        HiveTable hiveSmallDataTable2 =
-                prepareSmallData(hdfs2, hive2, null, HIVE_SMALL_DATA_TABLE, HIVE_SMALLDATA_COLS, HIVE_DATA_FILE_NAME_2);
-        createExternalTable(PXF_HIVE_SMALL_DATA_TABLE_SECURE, PXF_HIVE_SMALLDATA_COLS, hiveSmallDataTable2, true, "SERVER=hdfs-secure");
-
-        runTincTest("pxf.features.hive.two_secured_hive.runTest");
-    }
-
-    @Test(groups = {"features", "security"})
-    public void testSecureServerAndNonSecuredServer() throws Exception {
-        if (hdfsNonSecure == null) return;
-
-        hiveNonSecure = (Hive) SystemManagerImpl.getInstance().getSystemObject("hiveNonSecure");
-
-        HiveTable hiveSmallDataTable3 =
-                prepareSmallData(hdfsNonSecure, hiveNonSecure, null, HIVE_SMALL_DATA_TABLE, HIVE_SMALLDATA_COLS, HIVE_DATA_FILE_NAME_3);
-        createExternalTable(PXF_HIVE_SMALL_DATA_TABLE_NON_SECURE, PXF_HIVE_SMALLDATA_COLS, hiveSmallDataTable3, true, "SERVER=hdfs-non-secure");
-
-        runTincTest("pxf.features.hive.secured_and_non_secured_hive.runTest");
-    }
-
-    /**
      * Query external table directed to hive table using hive primitive types
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"hive", "features", "gpdb", "security"})
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void hivePrimitiveTypes() throws Exception {
 
         createExternalTable(GPDB_HIVE_TYPES_TABLE,
@@ -253,12 +191,12 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"hive", "features", "gpdb", "security"})
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void hiveBinaryData() throws Exception {
 
         prepareBinaryData();
         createExternalTable(PXF_HIVE_BINARY_TABLE,
-                new String[]{"b1 BYTEA"}, hiveBinaryTable);
+                new String[] { "b1 BYTEA" }, hiveBinaryTable);
 
         runTincTest("pxf.features.hive.binary_data.runTest");
     }
@@ -268,7 +206,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"hive", "features", "gpdb", "security"})
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void storeAsOrc() throws Exception {
 
         prepareOrcData();
@@ -284,7 +222,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"hive", "features", "gpdb", "security"})
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void storeAsRc() throws Exception {
 
         prepareRCData();
@@ -300,7 +238,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"hive", "features", "gpdb", "security"})
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void storeAsSequenceFile() throws Exception {
 
         prepareSequenceData();
@@ -316,7 +254,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"hive", "features", "gpdb", "security"})
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void storeAsParquet() throws Exception {
 
         prepareParquetData();
@@ -332,7 +270,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"hive", "features", "gpdb", "security"})
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void storeAsAvro() throws Exception {
 
         prepareAvroData();
@@ -348,7 +286,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"features"})
+    @Test(groups = { "features" })
     public void viewNegative() throws Exception {
 
         HiveTable hiveTable = new HiveTable(hiveSmallDataTable.getName() + "_view", null);
@@ -356,7 +294,7 @@ public class HiveTest extends HiveBaseTest {
         hive.runQuery("CREATE VIEW " + hiveTable.getName()
                 + " AS SELECT s1 FROM " + hiveSmallDataTable.getName());
 
-        createExternalTable("pxf_hive_view_table", new String[]{"t1 TEXT"}, hiveTable);
+        createExternalTable("pxf_hive_view_table", new String[] { "t1 TEXT" }, hiveTable);
 
         runTincTest("pxf.features.hive.errors.hiveViews.runTest");
         runTincTest("pxf.features.hcatalog.errors.hiveViews.runTest");
@@ -367,12 +305,12 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"features"})
+    @Test(groups = { "features" })
     public void notExistingHiveTable() throws Exception {
 
         HiveTable hiveTable = new HiveTable("no_such_hive_table", null);
         createExternalTable("pxf_none_hive_table",
-                new String[]{"t1    TEXT", "num1  INTEGER"}, hiveTable);
+                new String[] { "t1    TEXT", "num1  INTEGER" }, hiveTable);
 
         runTincTest("pxf.features.hive.errors.notExistingHiveTable.runTest");
         runTincTest("pxf.features.hcatalog.errors.notExistingHiveTable.runTest");
@@ -383,7 +321,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"hive", "features", "gpdb", "security"})
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void hivePartitionedTable() throws Exception {
 
         preparePartitionedData();
@@ -400,7 +338,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"hive", "features", "gpdb", "security"})
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void hivePartitionedPPDTable() throws Exception {
 
         HiveExternalTable hivePartitionedPPDTable = TableFactory.getHiveByRowCommaExternalTable(HIVE_PARTITIONED_PPD_TABLE, HIVE_SMALLDATA_PPD_COLS);
@@ -410,7 +348,7 @@ public class HiveTest extends HiveBaseTest {
         hive.runQuery("SET hive.exec.dynamic.partition = true");
         hive.runQuery("SET hive.exec.dynamic.partition.mode = nonstrict");
         hive.insertDataToPartition(hiveSmallDataTable, hivePartitionedPPDTable,
-                new String[]{"s2, n1"}, new String[]{"s1", "d1", "s2", "n1"});
+                new String[] { "s2, n1" }, new String[] { "s1", "d1", "s2", "n1" });
 
         // Create PXF Table using Hive profile
         createExternalTable(PXF_HIVE_PARTITIONED_PPD_TABLE,
@@ -424,7 +362,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"hive", "features", "gpdb", "security"})
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void hivePartitionedPPDTableCustomFilters() throws Exception {
 
         // Hive talbe with partition columns s2, n1.
@@ -501,7 +439,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"features"})
+    @Test(groups = { "features" })
     public void defaultAnalyze() throws Exception {
 
         createExternalTable(PXF_HIVE_SMALL_DATA_TABLE,
@@ -520,7 +458,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"hive", "hcatalog", "features", "gpdb", "security"})
+    @Test(groups = { "hive", "hcatalog", "features", "gpdb", "security" })
     public void hiveCollectionTypes() throws Exception {
 
         prepareHiveCollection();
@@ -536,7 +474,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"hive", "features", "gpdb", "security"})
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void columnDataTypeMisMatch() throws Exception {
 
         /* Here t1 column data type is passed as integer where as expected as
@@ -554,7 +492,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"features"})
+    @Test(groups = { "features" })
     public void incorrectProfile() throws Exception {
 
         exTable = TableFactory.getPxfHiveReadableTable(PXF_HIVE_SMALL_DATA_TABLE,
@@ -571,7 +509,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"hive", "features", "gpdb", "security"})
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void columnCountMisMatch() throws Exception {
 
         // In pxf table creation a dummy extra column is added so that columns
@@ -587,7 +525,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"hive", "hcatalog", "features", "gpdb", "security"})
+    @Test(groups = { "hive", "hcatalog", "features", "gpdb", "security" })
     public void noDataFilePresentForHive() throws Exception {
         /*
          * In this test case , we want a hive table which is not pointed to any data file or not having
@@ -610,7 +548,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"hive", "features", "gpdb", "security"})
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void partitionFilterPushDown() throws Exception {
 
         // Create Hive table with partitions
@@ -682,7 +620,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"hive", "features", "gpdb", "security"})
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void invalidFilterPushDown() throws Exception {
 
         // Create Hive table with partitions
@@ -715,7 +653,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"hive", "hcatalog", "features", "gpdb", "security"})
+    @Test(groups = { "hive", "hcatalog", "features", "gpdb", "security" })
     public void partitionsAllTypes() throws Exception {
 
         prepareManyPartitionedData();
@@ -731,16 +669,16 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"hive", "features", "gpdb", "security"})
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void negativeCollectionTypes() throws Exception {
 
         HiveTable hiveTable = new HiveTable(HIVE_COLLECTIONS_TABLE,
-                new String[]{
+                new String[] {
                         "s1 STRING",
                         "f1 FLOAT",
                         "a1 ARRAY<STRING>",
                         "m1 MAP<STRING, FLOAT>",
-                        "sr1 STRUCT<street:STRING, city:STRING, state:ARRAY<STRING>, zip:INT>"});
+                        "sr1 STRUCT<street:STRING, city:STRING, state:ARRAY<STRING>, zip:INT>" });
 
         hiveTable.setFormat(FORMAT_ROW);
         hiveTable.setDelimiterFieldsBy("\\001");
@@ -752,12 +690,12 @@ public class HiveTest extends HiveBaseTest {
         hive.createTableAndVerify(hiveTable);
         loadDataIntoHive(HIVE_COLLECTIONS_FILE_NAME, hiveTable);
 
-        createExternalTable(PXF_HIVE_COLLECTIONS_TABLE, new String[]{
-                "t1    TEXT",
-                "f1    REAL",
-                "t2    TEXT",
-                "t3    TEXT",
-                "wrong_field_type    INT"}, hiveTable);
+        createExternalTable(PXF_HIVE_COLLECTIONS_TABLE, new String[] {
+                        "t1    TEXT",
+                        "f1    REAL",
+                        "t2    TEXT",
+                        "t3    TEXT",
+                        "wrong_field_type    INT" }, hiveTable);
         try {
             gpdb.queryResults(exTable, "SELECT * FROM " + exTable.getName() + " ORDER BY t1");
             Assert.fail("Querying a complex type using a wrong field type (non Text) should have throw Exception");
@@ -779,11 +717,11 @@ public class HiveTest extends HiveBaseTest {
     @Test(groups = "load")
     public void thirtyKPartitions() throws Exception {
 
-        HiveTable hiveTable = new HiveTable(HIVE_MANY_PARTITIONS, new String[]{"i INT"});
-        hiveTable.setPartitionedBy(new String[]{"date_i STRING"});
+        HiveTable hiveTable = new HiveTable(HIVE_MANY_PARTITIONS, new String[] { "i INT" });
+        hiveTable.setPartitionedBy(new String[] { "date_i STRING" });
         hive.createTableAndVerify(hiveTable);
-        hive.alterTableAddPartition(hiveTable, new String[]{"date_i=\"2015-01-01\""});
-        hive.alterTableAddPartition(hiveTable, new String[]{"date_i=\"2015-01-02\""});
+        hive.alterTableAddPartition(hiveTable, new String[] { "date_i=\"2015-01-01\"" });
+        hive.alterTableAddPartition(hiveTable, new String[] { "date_i=\"2015-01-02\"" });
 
         // Cleanup of temp directory
         File localDataTempFolder = new File(dataTempFolder);
@@ -804,7 +742,7 @@ public class HiveTest extends HiveBaseTest {
                 hdfs.getWorkingDirectory() + "/many_parts_with_data");
 
         hive.loadDataToPartition(hiveTable, hdfs.getWorkingDirectory()
-                + "/many_parts_with_data", false, new String[]{"date_i=\"2015-01-01\""});
+                + "/many_parts_with_data", false, new String[] { "date_i=\"2015-01-01\"" });
 
         // Create empty files to load into second partition:
         for (int i = 0; i < 30000; i++) {
@@ -816,10 +754,10 @@ public class HiveTest extends HiveBaseTest {
         }
 
         hive.loadDataToPartition(hiveTable, hdfs.getWorkingDirectory()
-                + "/many_parts_*.txt", false, new String[]{"date_i=\"2015-01-02\""});
+                + "/many_parts_*.txt", false, new String[] { "date_i=\"2015-01-02\"" });
 
         // Create pxf table
-        createExternalTable("hive_30k_parts", new String[]{"i INT", "date_i TEXT"}, hiveTable);
+        createExternalTable("hive_30k_parts", new String[] { "i INT", "date_i TEXT" }, hiveTable);
 
         runTincTest("pxf.features.hive.partitions_30k.runTest");
     }
@@ -829,7 +767,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"features", "hcatalog"})
+    @Test(groups = { "features", "hcatalog" })
     public void hcatalogInTransaction() throws Exception {
 
         // start transaction, query tables, stop transaction. then query different tables in the same session.
@@ -843,7 +781,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"hive", "hcatalog", "features", "gpdb", "security"})
+    @Test(groups = { "hive", "hcatalog", "features", "gpdb", "security" })
     public void hivePartitionedClusteredTable() throws Exception {
 
         preparePartitionedClusteredData();
@@ -859,7 +797,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"hive", "hcatalog", "features", "gpdb", "security"})
+    @Test(groups = { "hive", "hcatalog", "features", "gpdb", "security" })
     public void hivePartitionedClusteredSortedTable() throws Exception {
 
         preparePartitionedClusteredSortedData();
@@ -876,7 +814,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"hive", "hcatalog", "features", "gpdb", "security"})
+    @Test(groups = { "hive", "hcatalog", "features", "gpdb", "security" })
     public void hivePartitionedSkewedTable() throws Exception {
 
         prepareSkewedData();
@@ -885,14 +823,13 @@ public class HiveTest extends HiveBaseTest {
 
         runTincTest("pxf.features.hcatalog.hive_partitioned_skewed_table.runTest");
     }
-
     /**
      * Test that a Hive Skewed Table with Stored As Directories options with all supported storage formats
      * (text, rc, sequence, avro) can be queried through Hcatalog
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"hive", "hcatalog", "features", "gpdb", "security"})
+    @Test(groups = { "hive", "hcatalog", "features", "gpdb", "security" })
     public void hivePartitionedSkewedStoredAsDirsTable() throws Exception {
 
         prepareSkewedStoredAsDirsData();
@@ -907,7 +844,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"features", "hcatalog", "sanity"})
+    @Test(groups  = { "features", "hcatalog", "sanity" })
     public void describeHiveTable() throws Exception {
 
         prepareNonDefaultSchemaData();
@@ -927,28 +864,28 @@ public class HiveTest extends HiveBaseTest {
         hive.runQuery("DROP VIEW " + hiveViewName);
         hive.runQuery("CREATE VIEW " + hiveViewName
                 + " AS SELECT name FROM " + HIVE_SCHEMA + "." + hiveNonDefaultSchemaTable.getName());
-        psqlOutput = gpdb.runSqlCmd(sso, "\\d hcatalog." + HIVE_SCHEMA + "." + "*" +
+        psqlOutput = gpdb.runSqlCmd(sso, "\\d hcatalog."+ HIVE_SCHEMA + "." + "*" +
                 hiveNonDefaultSchemaTable.getName() + "*", true);
         hiveTables.remove(0);
 
         Assert.assertTrue(ComparisonUtils.comparePsqlDescribeHive(psqlOutput, hiveTables));
 
         // pattern is a name of a view ( \d should fail )
-        psqlOutput = gpdb.runSqlCmd(sso, "\\d hcatalog." + hiveViewName, false);
+        psqlOutput = gpdb.runSqlCmd(sso, "\\d hcatalog."+ hiveViewName, false);
         Assert.assertTrue(psqlOutput.contains("Hive views are not supported by GPDB"));
 
         // pattern which describes table with complex types ( \d shouldn't fail )
         HiveTable hiveTable = TableFactory.getHiveByRowCommaTable(HIVE_COLLECTIONS_TABLE, HIVE_COLLECTION_COLS);
-        psqlOutput = gpdb.runSqlCmd(sso, "\\d hcatalog." + HIVE_COLLECTIONS_TABLE, false);
+        psqlOutput = gpdb.runSqlCmd(sso, "\\d hcatalog."+ HIVE_COLLECTIONS_TABLE, false);
         hiveTables.clear();
         hiveTables.add(hiveTable);
         Assert.assertTrue(ComparisonUtils.comparePsqlDescribeHive(psqlOutput, hiveTables));
 
         // pattern which describes non existent table ( \d shouldn't fail )
-        gpdb.runSqlCmd(sso, "\\d hcatalog." + "abc*xyz", true);
+        gpdb.runSqlCmd(sso, "\\d hcatalog."+ "abc*xyz", true);
 
         // pattern which describes one non existent table ( \d should fail )
-        psqlOutput = gpdb.runSqlCmd(sso, "\\d hcatalog." + "abcxyz", false);
+        psqlOutput = gpdb.runSqlCmd(sso, "\\d hcatalog."+ "abcxyz", false);
         Assert.assertTrue(psqlOutput.contains("table not found"));
 
         // describe all Hive tables ( shouldn't fail )
@@ -987,7 +924,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"hive", "hcatalog", "features", "gpdb", "security"})
+    @Test(groups = { "hive", "hcatalog", "features", "gpdb", "security" })
     public void hiveHeterogenTableOptimizedProfile() throws Exception {
 
         // Create Hive table with partitions, when each partition has different data
@@ -1001,7 +938,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"hive", "hcatalog", "features", "gpdb", "security"})
+    @Test(groups = { "hive", "hcatalog", "features", "gpdb", "security" })
     public void aggregateQueries() throws Exception {
 
         // hive table with nulls
@@ -1022,7 +959,7 @@ public class HiveTest extends HiveBaseTest {
      *
      * @throws Exception if test fails to run
      */
-    @Test(groups = {"hive", "features", "gpdb", "security"})
+    @Test(groups = { "hive", "features", "gpdb", "security" })
     public void hiveTableWithSkipHeader() throws Exception {
         List<List<String>> tableProperties = new ArrayList<>();
         tableProperties.add(Arrays.asList("skip.header.line.count", "3"));

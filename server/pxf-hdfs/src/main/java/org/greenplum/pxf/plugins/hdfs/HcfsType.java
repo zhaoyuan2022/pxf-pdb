@@ -2,12 +2,11 @@ package org.greenplum.pxf.plugins.hdfs;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.CommonConfigurationKeys;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.mapreduce.MRJobConfig;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.greenplum.pxf.api.model.RequestContext;
-import org.greenplum.pxf.api.utilities.Utilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,7 +38,13 @@ public enum HcfsType {
         }
     },
     GS,
-    HDFS,
+    HDFS {
+        @Override
+        public String getDataUri(Configuration configuration, RequestContext context) {
+            // no token renewal disabling needed for HDFS
+            return getDataUriForPrefix(configuration, context, this.prefix);
+        }
+    },
     LOCALFILE("file") {
         @Override
         public String normalizeDataSource(String dataSource) {
@@ -80,15 +85,11 @@ public enum HcfsType {
      * @param context The input data parameters
      * @return an absolute data path
      */
-    public static HcfsType getHcfsType(Configuration configuration, RequestContext context) {
-        String scheme = getScheme(configuration, context);
+    public static HcfsType getHcfsType(Configuration conf, RequestContext context) {
+        String scheme = getScheme(conf, context);
 
         // now we have scheme, resolve to enum
-        HcfsType type = HcfsType.fromString(scheme.toUpperCase());
-        // disableSecureTokenRenewal for this configuration if non-secure
-        String uri = type.getDataUriForPrefix(configuration, "/", scheme);
-        type.disableSecureTokenRenewal(uri, configuration);
-        return type;
+        return HcfsType.fromString(scheme.toUpperCase());
     }
 
     private static String getScheme(Configuration configuration, RequestContext context) {
@@ -200,20 +201,14 @@ public enum HcfsType {
     }
 
     protected String getDataUriForPrefix(Configuration configuration, RequestContext context, String scheme) {
-
-        return getDataUriForPrefix(configuration, context.getDataSource(), scheme);
-    }
-
-    protected String getDataUriForPrefix(Configuration configuration, String dataSource, String scheme) {
-
         URI defaultFS = FileSystem.getDefaultUri(configuration);
 
         if (FILE_SCHEME.equals(defaultFS.getScheme())) {
             // if the defaultFS is file://, but enum is not FILE, use enum scheme only
-            return scheme + normalizeDataSource(dataSource);
+            return scheme + normalizeDataSource(context.getDataSource());
         } else {
             // if the defaultFS is not file://, use it, instead of enum scheme and append user's path
-            return StringUtils.removeEnd(defaultFS.toString(), "/") + "/" + StringUtils.removeStart(dataSource, "/");
+            return StringUtils.removeEnd(defaultFS.toString(), "/") + "/" + StringUtils.removeStart(context.getDataSource(), "/");
         }
     }
 
@@ -224,8 +219,9 @@ public enum HcfsType {
      * @param configuration configuration used for HCFS operations
      */
     protected void disableSecureTokenRenewal(String uri, Configuration configuration) {
-        if (Utilities.isSecurityEnabled(configuration))
+        if (!UserGroupInformation.isSecurityEnabled()) {
             return;
+        }
         // find the "host" that TokenCache will check against the exclusion list, for cloud file systems (like S3)
         // it might actually be a bucket in the full resource path
         String host = URI.create(uri).getHost();

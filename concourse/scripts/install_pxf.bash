@@ -7,7 +7,6 @@ GPHOME=/usr/local/greenplum-db-devel
 # we need word boundary in case of standby master (smdw)
 MASTER_HOSTNAME=$(grep < cluster_env_files/etc_hostfile '\bmdw' | awk '{print $2}')
 REALM=${REALM:-}
-REALM_2=${REALM_2:-}
 KERBEROS=${KERBEROS:-false}
 if [[ -f terraform_dataproc/name ]]; then
 	HADOOP_HOSTNAME=ccp-$(< terraform_dataproc/name)-m
@@ -20,7 +19,6 @@ else
 	HADOOP_HOSTNAME=hadoop
 	HADOOP_IP=$(grep < cluster_env_files/etc_hostfile edw0 | awk '{print $1}')
 fi
-PROXY_USER=${PROXY_USER:-pxfuser}
 PXF_CONF_DIR=~gpadmin/pxf
 INSTALL_GPHDFS=${INSTALL_GPHDFS:-true}
 
@@ -59,25 +57,10 @@ function create_pxf_installer_scripts() {
 		  fi
 
 		  if [[ $KERBEROS == true ]]; then
-
-		    cp ~/dataproc_env_files/krb5.conf /tmp/krb5.conf
-
-		    if [[ -f ~/dataproc_2_env_files/krb5.conf ]]; then
-		      # Merge krb5.conf files from two different REALMS
-		      diff --line-format %L /tmp/krb5.conf ~/dataproc_2_env_files/krb5.conf  > /tmp/krb5.conf-tmp || true
-		      rm -f /tmp/krb5.conf && mv /tmp/krb5.conf-tmp /tmp/krb5.conf
-		      # Remove the second instance of default_realm from the file
-		      awk '!/default_realm/ || !f++' /tmp/krb5.conf > /tmp/krb5.conf-tmp
-		      rm -f /tmp/krb5.conf && mv /tmp/krb5.conf-tmp /tmp/krb5.conf
-		      # Add missing } to the new REALM
-		      REALM_2=\$(cat ~/dataproc_2_env_files/REALM)
-		      sed -i "s/\${REALM_2} =/}\n\t\${REALM_2} =/g" /tmp/krb5.conf
-		    fi
-
 		    echo 'export PXF_KEYTAB="\${PXF_CONF}/keytabs/pxf.service.keytab"' >> "\${PXF_CONF}/conf/pxf-env.sh"
 		    echo 'export PXF_PRINCIPAL="gpadmin@${REALM}"' >> "\${PXF_CONF}/conf/pxf-env.sh"
 		    gpscp -f ~gpadmin/hostfile_all -v -r -u gpadmin ~/dataproc_env_files/pxf.service.keytab =:/home/gpadmin/pxf/keytabs/
-		    gpscp -f ~gpadmin/hostfile_all -v -r -u centos /tmp/krb5.conf =:/tmp/krb5.conf
+		    gpscp -f ~gpadmin/hostfile_all -v -r -u centos ~/dataproc_env_files/krb5.conf =:/tmp/krb5.conf
 		    gpssh -f ~gpadmin/hostfile_all -v -u centos -s -e 'sudo mv /tmp/krb5.conf /etc/krb5.conf'
 		  fi
 		}
@@ -89,9 +72,8 @@ function create_pxf_installer_scripts() {
 		    # required for recursive directories tests
 		    cp "\$PXF_CONF/templates/mapred-site.xml" "\$PXF_CONF/servers/default/mapred1-site.xml"
 		  else
-		    cp \$PXF_CONF/templates/{hdfs,mapred,yarn,core,hbase,hive,pxf}-site.xml "\$PXF_CONF/servers/default"
+		    cp \$PXF_CONF/templates/{hdfs,mapred,yarn,core,hbase,hive}-site.xml "\$PXF_CONF/servers/default"
 		    sed -i -e 's/\(0.0.0.0\|localhost\|127.0.0.1\)/${HADOOP_IP}/g' \$PXF_CONF/servers/default/*-site.xml
-		    sed -i -e 's|\${user.name}|${PROXY_USER}|g' \$PXF_CONF/servers/default/pxf-site.xml
 		  fi
 		  setup_pxf_env
 		}
@@ -182,10 +164,6 @@ function _main() {
 
 	if [[ -d dataproc_env_files ]]; then
 		SCP_FILES+=(dataproc_env_files)
-	fi
-
-	if [[ -d dataproc_2_env_files ]]; then
-		SCP_FILES+=(dataproc_2_env_files)
 	fi
 
 	scp -r "${SCP_FILES[@]}" "${MASTER_HOSTNAME}:~gpadmin"

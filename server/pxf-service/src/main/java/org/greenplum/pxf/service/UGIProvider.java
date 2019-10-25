@@ -21,7 +21,6 @@ package org.greenplum.pxf.service;
 
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.greenplum.pxf.api.utilities.Utilities;
 
 import java.io.IOException;
 
@@ -36,24 +35,23 @@ class UGIProvider {
      * Wrapper for {@link UserGroupInformation} creation
      *
      * @param effectiveUser the name of the user that we want to impersonate
-     * @param loginUser the UGI of the login user (or Kerberos principal)
      * @return a {@link UserGroupInformation} for impersonation.
      * @throws IOException
      */
-    UserGroupInformation createProxyUGI(String effectiveUser, UserGroupInformation loginUser) throws IOException {
-        return UserGroupInformation.createProxyUser(effectiveUser, loginUser);
+    UserGroupInformation createProxyUGI(String effectiveUser) throws IOException {
+        return UserGroupInformation.createProxyUser(
+                effectiveUser, UserGroupInformation.getLoginUser());
     }
 
     /**
      * Wrapper for {@link UserGroupInformation} creation of remote users
      *
      * @param user the name of the remote user
-     * @param session session containing information on current configuration and login user
      * @return a remote {@link UserGroupInformation}.
      */
-    UserGroupInformation createRemoteUser(String user, SessionId session) throws IOException {
-        if (Utilities.isSecurityEnabled(session.getConfiguration())) {
-            UserGroupInformation proxyUGI = createProxyUGI(user, session.getLoginUser());
+    UserGroupInformation createRemoteUser(String user) throws IOException {
+        if (UserGroupInformation.isSecurityEnabled()) {
+            UserGroupInformation proxyUGI = createProxyUGI(user);
             proxyUGI.setAuthenticationMethod(UserGroupInformation.AuthenticationMethod.KERBEROS);
             return proxyUGI;
         }

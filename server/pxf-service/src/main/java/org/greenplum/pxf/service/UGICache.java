@@ -92,10 +92,10 @@ public class UGICache {
                 UserGroupInformation ugi;
                 if (isProxyUser) {
                     LOG.debug("{} Creating proxy user = {}", session, user);
-                    ugi = ugiProvider.createProxyUGI(user, session.getLoginUser());
+                    ugi = ugiProvider.createProxyUGI(user);
                 } else {
                     LOG.debug("{} Creating remote user = {}", session, user);
-                    ugi = ugiProvider.createRemoteUser(user, session);
+                    ugi = ugiProvider.createRemoteUser(user);
                 }
                 entry = new Entry(ticker, ugi, session);
                 delayQueue.offer(entry);

@@ -20,7 +20,6 @@ package org.greenplum.pxf.api.utilities;
  */
 
 
-import org.apache.hadoop.conf.Configuration;
 import org.greenplum.pxf.api.OneField;
 import org.greenplum.pxf.api.OneRow;
 import org.greenplum.pxf.api.ReadVectorizedResolver;
@@ -46,6 +45,7 @@ import static org.mockito.Mockito.when;
 
 public class UtilitiesTest {
 
+    private String PROPERTY_KEY_USER_IMPERSONATION = "pxf.service.user.impersonation.enabled";
     private String PROPERTY_KEY_FRAGMENTER_CACHE = "pxf.service.fragmenter.cache.enabled";
 
     class StatsAccessorImpl implements StatsAccessor {
@@ -380,22 +380,32 @@ public class UtilitiesTest {
     }
 
     @Test
-    public void testSecurityIsDisabledOnNewConfiguration() {
-        Configuration configuration = new Configuration();
-        assertFalse(Utilities.isSecurityEnabled(configuration));
+    public void testImpersonationPropertyAbsent() {
+        System.clearProperty(PROPERTY_KEY_USER_IMPERSONATION);
+        assertFalse(Utilities.isUserImpersonationEnabled());
     }
 
     @Test
-    public void testSecurityIsDisabledWithSimpleAuthentication() {
-        Configuration configuration = new Configuration();
-        configuration.set("hadoop.security.authentication", "simple");
-        assertFalse(Utilities.isSecurityEnabled(configuration));
+    public void testImpersonationPropertyEmpty() {
+        System.setProperty(PROPERTY_KEY_USER_IMPERSONATION, "");
+        assertFalse(Utilities.isUserImpersonationEnabled());
     }
 
     @Test
-    public void testSecurityIsEnabledWithKerberosAuthentication() {
-        Configuration configuration = new Configuration();
-        configuration.set("hadoop.security.authentication", "kerberos");
-        assertTrue(Utilities.isSecurityEnabled(configuration));
+    public void testImpersonationPropertyFalse() {
+        System.setProperty(PROPERTY_KEY_USER_IMPERSONATION, "foo");
+        assertFalse(Utilities.isUserImpersonationEnabled());
+    }
+
+    @Test
+    public void testImpersonationPropertyTRUE() {
+        System.setProperty(PROPERTY_KEY_USER_IMPERSONATION, "TRUE");
+        assertTrue(Utilities.isUserImpersonationEnabled());
+    }
+
+    @Test
+    public void testImpersonationPropertyTrue() {
+        System.setProperty(PROPERTY_KEY_USER_IMPERSONATION, "true");
+        assertTrue(Utilities.isUserImpersonationEnabled());
     }
 }

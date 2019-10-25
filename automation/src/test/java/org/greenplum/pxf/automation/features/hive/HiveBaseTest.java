@@ -1,6 +1,5 @@
 package org.greenplum.pxf.automation.features.hive;
 
-import org.greenplum.pxf.automation.components.hdfs.Hdfs;
 import org.greenplum.pxf.automation.components.hive.Hive;
 import org.greenplum.pxf.automation.structures.tables.basic.Table;
 import org.greenplum.pxf.automation.structures.tables.hive.HiveExternalTable;
@@ -254,10 +253,6 @@ public class HiveBaseTest extends BaseFeature {
     }
 
     void loadDataIntoHive(String fileName, HiveTable tableName) throws Exception {
-        loadDataIntoHive(hdfs, hive, fileName, tableName);
-    }
-
-    void loadDataIntoHive(Hdfs hdfs, Hive hive, String fileName, HiveTable tableName) throws Exception {
 
         // copy data to hdfs
         hdfs.copyFromLocal(localDataResourcesFolder + "/hive/" + fileName,
@@ -267,7 +262,7 @@ public class HiveBaseTest extends BaseFeature {
     }
 
     String[] hiveTestFilter(String filterString) {
-        return new String[]{"TEST-HIVE-FILTER=" + filterString};
+        return new String[] { "TEST-HIVE-FILTER=" + filterString };
     }
 
     private HiveTable prepareData(String tableName, String format) throws Exception {
@@ -287,17 +282,11 @@ public class HiveBaseTest extends BaseFeature {
 
     void prepareSmallData() throws Exception {
 
-        hiveSmallDataTable = prepareSmallData(hdfs, hive, hiveSmallDataTable, HIVE_SMALL_DATA_TABLE, HIVE_SMALLDATA_COLS, HIVE_DATA_FILE_NAME);
-    }
-
-    HiveTable prepareSmallData(Hdfs hdfs, Hive hive, HiveTable hiveTable, String tableName, String[] tableColumns, String dataFileName) throws Exception {
-
-        if (hiveTable != null)
-            return hiveTable;
-        hiveTable = TableFactory.getHiveByRowCommaTable(tableName, tableColumns);
-        hive.createTableAndVerify(hiveTable);
-        loadDataIntoHive(hdfs, hive, dataFileName, hiveTable);
-        return hiveTable;
+        if (hiveSmallDataTable != null)
+            return;
+        hiveSmallDataTable = TableFactory.getHiveByRowCommaTable(HIVE_SMALL_DATA_TABLE, HIVE_SMALLDATA_COLS);
+        hive.createTableAndVerify(hiveSmallDataTable);
+        loadDataIntoHive(HIVE_DATA_FILE_NAME, hiveSmallDataTable);
     }
 
     void prepareTypesData() throws Exception {
@@ -396,7 +385,7 @@ public class HiveBaseTest extends BaseFeature {
         hive.insertData(hiveSmallDataTable, hiveSequenceTable);
     }
 
-    void prepareBinaryData() throws Exception {
+    void prepareBinaryData() throws Exception{
 
         if (hiveBinaryTable != null)
             return;
@@ -409,10 +398,10 @@ public class HiveBaseTest extends BaseFeature {
 
         if (hiveNonDefaultSchemaTable != null)
             return;
-        hiveNonDefaultSchemaTable = TableFactory.getHiveByRowCommaTable(
-                HIVE_SMALL_DATA_TABLE, HIVE_SCHEMA, new String[]{"id INT", "name STRING"});
-        hive.createDataBase(HIVE_SCHEMA, true);
-        hive.createTableAndVerify(hiveNonDefaultSchemaTable);
+    	hiveNonDefaultSchemaTable = TableFactory.getHiveByRowCommaTable(
+                HIVE_SMALL_DATA_TABLE, HIVE_SCHEMA, new String[] { "id INT", "name STRING" });
+    	hive.createDataBase(HIVE_SCHEMA, true);
+    	hive.createTableAndVerify(hiveNonDefaultSchemaTable);
     }
 
     void addHivePartition(String hiveTable, String partition, String location) throws Exception {
@@ -475,6 +464,7 @@ public class HiveBaseTest extends BaseFeature {
      *
      * @param tableName hive table name
      * @return hive table
+     *
      * @throws Exception if test fails to run
      */
     HiveExternalTable createGenerateHivePartitionTable(String tableName) throws Exception {
@@ -535,7 +525,7 @@ public class HiveBaseTest extends BaseFeature {
     void appendToEachRowOfComparisonTable(List<String> values) throws IOException {
 
         comparisonDataTable.loadDataFromFile(
-                localDataResourcesFolder + "/hive/" + HIVE_DATA_FILE_NAME, ",", 0);
+                localDataResourcesFolder + "/hive/" + HIVE_DATA_FILE_NAME,",",0);
 
         // get original number of line before pump
         int originalNumberOfLines = comparisonDataTable.getData().size();

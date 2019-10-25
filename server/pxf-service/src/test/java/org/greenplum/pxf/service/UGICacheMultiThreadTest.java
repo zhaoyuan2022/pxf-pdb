@@ -20,7 +20,6 @@ package org.greenplum.pxf.service;
  */
 
 import io.netty.util.internal.ConcurrentSet;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.junit.Before;
 import org.junit.Test;
@@ -44,16 +43,14 @@ public class UGICacheMultiThreadTest {
     private FakeTicker fakeTicker;
 
     @Before
-    public void setUp() throws IOException {
+    public void setUp() {
         provider = new FakeUgiProvider();
-
-        Configuration configuration = new Configuration();
 
         int l = 0;
         for (int i = 0; i < numberOfSegments; i++) {
             for (int j = 0; j < numberOfUsers; j++) {
                 for (int k = 0; k < numberOfTxns; k++) {
-                    sessions[l++] = new SessionId(i, "txn-id-" + k, "the-user-" + j, "default", configuration, UserGroupInformation.getLoginUser());
+                    sessions[l++] = new SessionId(i, "txn-id-" + k, "the-user-" + j);
                 }
             }
         }
@@ -111,7 +108,8 @@ public class UGICacheMultiThreadTest {
         Set<UserGroupInformation> ugis = new ConcurrentSet<>();
 
         @Override
-        UserGroupInformation createProxyUGI(String effectiveUser, UserGroupInformation ugi) {
+        UserGroupInformation createProxyUGI(String effectiveUser) {
+            UserGroupInformation ugi = mock(UserGroupInformation.class);
             ugis.add(ugi);
             return ugi;
         }

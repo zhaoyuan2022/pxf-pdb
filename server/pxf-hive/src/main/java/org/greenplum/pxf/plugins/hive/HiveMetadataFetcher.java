@@ -66,7 +66,7 @@ public class HiveMetadataFetcher extends BasePlugin implements MetadataFetcher {
         initialize(context);
 
         // init hive metastore client connection.
-        client = hiveClientWrapper.initHiveClient(context, configuration);
+        client = hiveClientWrapper.initHiveClient(configuration);
         jobConf = new JobConf(configuration);
     }
 

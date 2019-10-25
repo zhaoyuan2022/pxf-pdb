@@ -1,9 +1,8 @@
-from mpp.models import SQLConcurrencyTestCase
 from mpp.models import SQLTestCase
+from mpp.models import SQLConcurrencyTestCase
 
-class JdbcMultipleHiveRead(SQLConcurrencyTestCase):
+class PxfMultiServer(SQLConcurrencyTestCase):
     """
-    @product_version  gpdb: [2.0-]
     @db_name pxfautomation
     @concurrency 1
     @gpdiff True

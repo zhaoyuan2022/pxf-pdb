@@ -1,7 +1,5 @@
 package org.greenplum.pxf.automation.features.multiserver;
 
-import jsystem.framework.sut.SutFactory;
-import jsystem.framework.system.SystemObject;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.greenplum.pxf.automation.components.hdfs.Hdfs;
@@ -30,29 +28,16 @@ public class MultiServerTest extends BaseFeature {
             "longNum bigint",
             "bool boolean"
     };
-    private static final String SERVER_NON_SECURE_HDFS = "hdfs-non-secure";
-    private static final String SERVER_SECURE_HDFS_2 = "hdfs-secure";
     private Hdfs s3Server;
+    private ExternalTable s3Table;
     private String s3Path;
     private String defaultPath;
-
-    // and another kerberized hadoop environment
-    private Hdfs hdfs2;
 
     /**
      * Prepare all server configurations and components
      */
     @Override
     public void beforeClass() throws Exception {
-        // Initialize an additional HDFS system object (optional system object)
-        hdfs2 = (Hdfs) systemManager.
-                getSystemObject("/sut", "hdfs2", -1, (SystemObject) null, false, (String) null, SutFactory.getInstance().getSutInstance());
-
-        if (hdfs2 != null) {
-            trySecureLogin(hdfs2, hdfs2.getTestKerberosPrincipal());
-            initializeWorkingDirectory(gpdb, hdfs2);
-        }
-
         String hdfsWorkingDirectory = hdfs.getWorkingDirectory();
         defaultPath = hdfsWorkingDirectory + "/" + fileName;
 
@@ -87,39 +72,15 @@ public class MultiServerTest extends BaseFeature {
         s3Server.removeDirectory(PROTOCOL_S3 + s3Path);
     }
 
-    @Override
-    protected void afterClass() throws Exception {
-        super.afterClass();
-
-        removeWorkingDirectory(hdfs2);
-    }
-
     protected void prepareData() throws Exception {
         // Prepare data in table
-        Table dataTable = getSmallData("hdfs_data");
-
-        // Prepare data for S3 table
-        Table s3DataTable = getSmallData("data_on_s3");
+        Table dataTable = getSmallData();
 
         // default w/core-site.xml
         hdfs.writeTableToFile(defaultPath, dataTable, ",");
 
-        // hdfs-non-secure
-        if (hdfsNonSecure != null) {
-            // Prepare data for non-secure HDFS table
-            Table dataTableNonSecure = getSmallData("non_secure_hdfs");
-            hdfsNonSecure.writeTableToFile(defaultPath, dataTableNonSecure, ",");
-        }
-
-        // second hdfs sever
-        if (hdfs2 != null) {
-            // Prepare data for second HDFS table
-            Table dataTableHdfs2 = getSmallData("second_hdfs");
-            hdfs2.writeTableToFile(defaultPath, dataTableHdfs2, ",");
-        }
-
         // Create Data for s3Server
-        s3Server.writeTableToFile(PROTOCOL_S3 + s3Path + fileName, s3DataTable, ",");
+        s3Server.writeTableToFile(PROTOCOL_S3 + s3Path + fileName, dataTable, ",");
     }
 
     protected void createTables() throws Exception {
@@ -130,49 +91,18 @@ public class MultiServerTest extends BaseFeature {
         gpdb.createTableAndVerify(exTable);
 
         // Create GPDB external table directed to s3Server
-        ExternalTable s3Table = TableFactory.getPxfReadableTextTable(
-                "pxf_multiserver_s3", PXF_MULTISERVER_COLS, s3Path + fileName, ",");
+        s3Table =
+                TableFactory.getPxfReadableTextTable(
+                        "pxf_multiserver_s3", PXF_MULTISERVER_COLS, s3Path + fileName, ",");
         s3Table.setServer("server=s3");
         s3Table.setUserParameters(new String[]{"accesskey=" + ProtocolUtils.getAccess(), "secretkey=" + ProtocolUtils.getSecret()});
         s3Table.setProfile("s3:text");
         gpdb.createTableAndVerify(s3Table);
-
-        // hdfs-non-secure
-        if (hdfsNonSecure != null) {
-            exTable =
-                    TableFactory.getPxfReadableTextTable(
-                            "pxf_multiserver_non_secure", PXF_MULTISERVER_COLS, defaultPath, ",");
-            exTable.setServer("SERVER=" + SERVER_NON_SECURE_HDFS);
-            gpdb.createTableAndVerify(exTable);
-        }
-
-        // second hdfs sever
-        if (hdfs2 != null) {
-            exTable =
-                    TableFactory.getPxfReadableTextTable(
-                            "pxf_multiserver_secure_2", PXF_MULTISERVER_COLS, defaultPath, ",");
-            exTable.setServer("SERVER=" + SERVER_SECURE_HDFS_2);
-            gpdb.createTableAndVerify(exTable);
-        }
     }
 
     @Test(groups = {"features", "gpdb", "security"})
-    public void testHdfsAndCloudServers() throws Exception {
-        runTincTest("pxf.features.multi_server.hdfs_and_cloud.runTest");
+    public void testTwoServers() throws Exception {
+        runTincTest("pxf.features.multi_server.runTest");
     }
 
-    @Test(groups = {"features", "security"})
-    public void testTwoSecuredServers() throws Exception {
-        runTincTest("pxf.features.multi_server.two_secure_hdfs.runTest");
-    }
-
-    @Test(groups = {"features", "security"})
-    public void testSecureServerAndNonSecuredServer() throws Exception {
-        runTincTest("pxf.features.multi_server.secure_hdfs_and_non_secure_hdfs.runTest");
-    }
-
-    @Test(groups = {"features", "security"})
-    public void testTwoSecuredServersNonSecureServerAndCloudServer() throws Exception {
-        runTincTest("pxf.features.multi_server.test_all.runTest");
-    }
 }
