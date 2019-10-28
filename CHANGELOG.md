@@ -1,10 +1,18 @@
 # Changelog
 
+## 5.9.2 (10/28/2019)
+
+#### Bug Fixes:
+
+- [#253](https://github.com/greenplum-db/pxf/pull/253) Improve performance of HdfsFileFragmenter
+
+---
+
 ## 5.9.1 (10/15/2019)
 
 #### Bug Fixes:
 
-- [#251](https://github.com/greenplum-db/pxf/pull/251)  Fix regression in *:text:multi profiles when using wildcards
+- [#251](https://github.com/greenplum-db/pxf/pull/251) Fix regression in *:text:multi profiles when using wildcards
 
 ---
 
