@@ -28,9 +28,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
@@ -43,6 +45,7 @@ public class Utilities {
     private static final String PROPERTY_KEY_USER_IMPERSONATION = "pxf.service.user.impersonation.enabled";
     private static final String PROPERTY_KEY_FRAGMENTER_CACHE = "pxf.service.fragmenter.cache.enabled";
     private static final char[] PROHIBITED_CHARS = new char[]{'/', '\\', '.', ' ', ',', ';'};
+    private static final String[] HOSTS = new String[]{"localhost"};
 
     /**
      * Returns a decoded base64 byte[], or throws an error if the base64 string is invalid
@@ -235,23 +238,22 @@ public class Utilities {
     /**
      * Parses input data and returns fragment metadata.
      *
-     * @param requestContext input data which has protocol information
+     * @param context input data which has protocol information
      * @return fragment metadata
-     * @throws IllegalArgumentException if fragment metadata information wasn't found in input data
-     * @throws Exception                when error occurred during metadata parsing
+     * @throws RuntimeException when error occurred during metadata parsing
      */
-    public static FragmentMetadata parseFragmentMetadata(RequestContext requestContext) {
-        if (requestContext.getFragmentMetadata() == null) {
-            throw new IllegalArgumentException("Missing fragment location information");
+    public static FragmentMetadata parseFragmentMetadata(RequestContext context) {
+        if (context.getFragmentMetadata() == null) {
+            return new FragmentMetadata(0, 0, HOSTS);
         }
         try (ObjectInputStream objectStream =
-                     new ObjectInputStream(new ByteArrayInputStream(requestContext.getFragmentMetadata()))) {
+                     new ObjectInputStream(new ByteArrayInputStream(context.getFragmentMetadata()))) {
             long start = objectStream.readLong();
             long end = objectStream.readLong();
             String[] hosts = (String[]) objectStream.readObject();
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Parsed split: path={} start={} end={} hosts={}",
-                        requestContext.getDataSource(),
+                        context.getDataSource(),
                         start,
                         end,
                         ArrayUtils.toString(hosts));
