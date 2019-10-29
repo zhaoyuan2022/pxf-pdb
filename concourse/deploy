@@ -184,6 +184,7 @@ if __name__ == "__main__":
     elif ARGS.gpdb_branch == '6x':
         ARGS.gpdb_branch = '6X_STABLE'
         ARGS.ICW_GREEN_BUCKET = 'gpdb5-assert-concourse-builds'
+        ARGS.PGPORT = '6000'
     elif ARGS.gpdb_branch == 'master':
         ARGS.ICW_GREEN_BUCKET = 'gpdb5-assert-concourse-builds'
         ARGS.PGPORT = '7000'
