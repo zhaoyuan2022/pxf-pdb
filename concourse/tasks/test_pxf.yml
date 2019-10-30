@@ -20,6 +20,7 @@ params:
   TEST_ENV:
   TEST_OS:
   RUN_JDK_VERSION: 8
+  PORT_BASE:
   PROTOCOL:
   PG_REGRESS:
 run:
