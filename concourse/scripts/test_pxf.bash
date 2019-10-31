@@ -46,6 +46,12 @@ function run_pg_regress() {
 	# and may also need to create files like ~gpamdin/pxf/servers/s3/s3-site.xml
 	chown -R gpadmin "${PWD}/pxf_src/regression"
 	chmod a+x ~gpadmin/run_pxf_automation_test.sh
+
+	if [[ ${ACCEPTANCE} == true ]]; then
+		echo 'Acceptance test pipeline'
+		exit 1
+	fi
+
 	su gpadmin -c ~gpadmin/run_pxf_automation_test.sh
 }
 
@@ -220,11 +226,6 @@ function _main() {
 
 	# Create fat jar for automation
 	generate_extras_fat_jar
-
-	if [[ ${ACCEPTANCE} == true ]]; then
-		echo 'Acceptance test pipeline'
-		exit 1
-	fi
 
 	configure_sut
 
