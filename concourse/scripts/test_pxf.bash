@@ -91,6 +91,12 @@ function run_pxf_automation() {
 
 	chown gpadmin:gpadmin ~gpadmin/run_pxf_automation_test.sh
 	chmod a+x ~gpadmin/run_pxf_automation_test.sh
+
+	if [[ ${ACCEPTANCE} == true ]]; then
+		echo 'Acceptance test pipeline'
+		exit 1
+	fi
+
 	su gpadmin -c ~gpadmin/run_pxf_automation_test.sh
 }
 
