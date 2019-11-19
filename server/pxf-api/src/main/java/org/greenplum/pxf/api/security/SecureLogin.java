@@ -156,9 +156,9 @@ public class SecureLogin {
 
             LOG.info("User impersonation is {} for server {}", (isUserImpersonationEnabled ? "enabled" : "disabled"), serverName);
 
-            UserGroupInformation.reset();
             Configuration config = new Configuration();
             config.set("hadoop.security.authentication", "kerberos");
+            UserGroupInformation.reset();
             UserGroupInformation.setConfiguration(config);
 
             String principal = getServicePrincipal(serverName, configuration);
