@@ -1087,6 +1087,7 @@ jobs:
       <<: *dataproc_timed_destroy
     image: gpdb-pxf-dev-centos6-hdp2-server
     file: pxf_src/concourse/tasks/test_pxf_multinode.yml
+    attempts: 2
     params:
       ACCESS_KEY_ID: {{tf-machine-access-key-id}}
       SECRET_ACCESS_KEY: {{tf-machine-secret-access-key}}
