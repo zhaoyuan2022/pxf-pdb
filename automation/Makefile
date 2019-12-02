@@ -27,6 +27,9 @@ else
 	MAVEN_TEST_OPTS+= -o
 endif
 
+# lowercase the protocol
+PROTOCOL := $(shell echo $(PROTOCOL) | tr A-Z a-z)
+
 ifeq "$(PROTOCOL)" "minio"
 	MINIO=true
 	PROTOCOL=s3
@@ -120,7 +123,6 @@ sync_jdbc_config:
 		sed $(SED_OPTS) "s|pxfautomation|template1|" $(PXF_CONF_SERVERS)/database/testuser-user.xml; \
 	fi
 	@cp src/test/resources/report.sql $(PXF_CONF_SERVERS)/database
-
 	@mkdir -p $(PXF_CONF_SERVERS)/db-session-params
 	@if [ ! -f $(PXF_CONF_SERVERS)/db-session-params/jdbc-site.xml ]; then \
 		cp $(PXF_HOME)/templates/user/templates/jdbc-site.xml $(PXF_CONF_SERVERS)/db-session-params/; \
@@ -131,7 +133,6 @@ sync_jdbc_config:
 		sed $(SED_OPTS) "s|</configuration>|<property><name>jdbc.session.property.client_min_messages</name><value>debug1</value></property></configuration>|"  $(PXF_CONF_SERVERS)/db-session-params/jdbc-site.xml; \
 		sed $(SED_OPTS) "s|</configuration>|<property><name>jdbc.session.property.default_statistics_target</name><value>123</value></property></configuration>|"  $(PXF_CONF_SERVERS)/db-session-params/jdbc-site.xml; \
 	fi
-
 	@mkdir -p $(PXF_CONF_SERVERS)/db-hive
 	@if [ ! -f $(PXF_CONF_SERVERS)/db-hive/jdbc-site.xml ]; then \
 		cp $(PXF_HOME)/templates/user/templates/jdbc-site.xml $(PXF_CONF_SERVERS)/db-hive/; \
