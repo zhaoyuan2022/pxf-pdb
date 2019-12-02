@@ -189,6 +189,18 @@ public enum HcfsType {
     }
 
     /**
+     * Returns a fully resolved path include protocol
+     *
+     * @param path The path to file
+     * @return an absolute data path
+     */
+    public String getDataUri(Configuration configuration, String path) {
+        String uri = getDataUriForPrefix(configuration, path, this.prefix);
+        disableSecureTokenRenewal(uri, configuration);
+        return uri;
+    }
+
+    /**
      * Returns the normalized data source for the given protocol
      *
      * @param dataSource The path to the data source
@@ -225,9 +237,11 @@ public enum HcfsType {
     protected void disableSecureTokenRenewal(String uri, Configuration configuration) {
         if (Utilities.isSecurityEnabled(configuration))
             return;
+
         // find the "host" that TokenCache will check against the exclusion list, for cloud file systems (like S3)
         // it might actually be a bucket in the full resource path
-        String host = URI.create(uri).getHost();
+        String host = URI.create(StringUtils.replace(uri, " ", "%20")).getHost();
+        // String host = URI.create(uri).getHost();
         LOG.debug("Disabling token renewal for host {} for path {}", host, uri);
         if (host != null) {
             // disable token renewal for the "host" in the path

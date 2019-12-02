@@ -20,7 +20,6 @@ package org.greenplum.pxf.service.rest;
  */
 
 import org.apache.catalina.connector.ClientAbortException;
-import org.greenplum.pxf.api.io.Text;
 import org.greenplum.pxf.api.io.Writable;
 import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.service.HttpRequestParser;
@@ -77,7 +76,7 @@ public class BridgeResource extends BaseResource {
      * @param bridgeFactory bridge factory
      */
     BridgeResource(RequestParser<HttpHeaders> parser, BridgeFactory bridgeFactory) {
-        super(parser);
+        super(RequestContext.RequestType.READ_BRIDGE, parser);
         this.bridgeFactory = bridgeFactory;
     }
 
@@ -90,12 +89,11 @@ public class BridgeResource extends BaseResource {
      * @param servletContext Servlet context contains attributes required by SecuredHDFS
      * @param headers Holds HTTP headers from request
      * @return response object containing stream that will output records
-     * @throws Exception in case of wrong request parameters, or failure to initialize a bridge
      */
     @GET
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
     public Response read(@Context final ServletContext servletContext,
-                         @Context HttpHeaders headers) throws Exception {
+                         @Context HttpHeaders headers) {
 
         RequestContext context = parseRequest(headers);
         Bridge bridge = bridgeFactory.getReadBridge(context);

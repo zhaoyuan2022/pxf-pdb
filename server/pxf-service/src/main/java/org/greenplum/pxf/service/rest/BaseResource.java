@@ -15,30 +15,28 @@ import javax.ws.rs.core.HttpHeaders;
 public abstract class BaseResource {
 
     protected final Logger LOG = LoggerFactory.getLogger(this.getClass());
+    protected final RequestContext.RequestType requestType;
 
     private RequestParser<HttpHeaders> parser;
 
     /**
-     * Creates an instance of the resource with a default singleton request parser.
-     */
-    public BaseResource() {
-        this(HttpRequestParser.getInstance());
-    }
-
-    /**
      * Creates an instance of the resource with a given request parser.
-     * @param parser request parser
+     *
+     * @param requestType
+     * @param parser      request parser
      */
-    BaseResource(RequestParser<HttpHeaders> parser) {
+    BaseResource(RequestContext.RequestType requestType, RequestParser<HttpHeaders> parser) {
+        this.requestType = requestType;
         this.parser = parser;
     }
 
     /**
      * Parses incoming request into request context
+     *
      * @param headers the HTTP headers of incoming request
      * @return parsed request context
      */
     protected RequestContext parseRequest(HttpHeaders headers) {
-        return parser.parseRequest(headers);
+        return parser.parseRequest(headers, requestType);
     }
 }
