@@ -1,5 +1,21 @@
 # Changelog
 
+## 5.10.0 (12/02/2019)
+
+#### Enhancements:
+
+- [#248](https://github.com/greenplum-db/pxf/pull/268) Enable Avro write
+- [#261](https://github.com/greenplum-db/pxf/pull/261) Add Support for impersonation per server
+- [#257](https://github.com/greenplum-db/pxf/pull/257) Add Support for Kerberized Hive 3
+- [#254](https://github.com/greenplum-db/pxf/pull/254) Merge pxf impersonation jdbc
+- [#247](https://github.com/greenplum-db/pxf/pull/247) Add support for multiple kerberos Hadoop and Hive servers
+
+#### Bug Fixes:
+
+- [#268](https://github.com/greenplum-db/pxf/pull/268) Fallback on using LineRecordReader when reading encrypted files
+
+---
+
 ## 5.9.2 (10/28/2019)
 
 #### Bug Fixes:
