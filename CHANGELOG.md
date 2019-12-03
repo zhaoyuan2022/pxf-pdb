@@ -1,5 +1,13 @@
 # Changelog
 
+## 5.10.1 (12/02/2019)
+
+#### Notes:
+
+- PXF does not certify using spaces in the Avro schema name, when the Avro schema is stored in Cloud Stores
+
+---
+
 ## 5.10.0 (12/02/2019)
 
 #### Enhancements:
