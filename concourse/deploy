@@ -43,7 +43,8 @@ def create_pipeline():
         'compile_gpdb': ARGS.compile_gpdb,
         'acceptance': ARGS.acceptance,
         'gpdb_type': ARGS.gpdb_branch,
-        'gpdb_branch': ARGS.actual_gpdb_branch
+        'gpdb_branch': ARGS.actual_gpdb_branch,
+        'deploy_env': ARGS.deploy_env
     }
 
     pipeline_yml = render_template(ARGS.template_filename, context)
