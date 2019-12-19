@@ -53,6 +53,19 @@
         <description>The minimum number of idle connections to maintain in the pool</description>
     </property>
 
+    <!--
+    <property>
+        <name>jdbc.pool.qualifier</name>
+        <value>${pxf.session.user}</value>
+        <description>
+            A separate connection pool will be created for each value of the given qualifier, even if all other parameters
+            are the same. Might be useful when jdbc.session.property is set to do session authorization to switch users
+            once connected, in which case set it to ${pxf.session.user} so that a separate pool is created for every
+            effective user.
+        </description>
+    </property>
+    -->
+
     <!-- Statement level properties -->
     <!--
     <property>
