@@ -6,6 +6,7 @@ import org.greenplum.pxf.api.utilities.ColumnDescriptor;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,7 +21,7 @@ public class S3SelectQueryBuilderTest {
     private S3SelectQueryBuilder builderPosition, builderNoPosition;
 
     @Before
-    public void setup() {
+    public void setup() throws SQLException {
         context = new RequestContext();
         context.setDataSource("sales");
         List<ColumnDescriptor> columns = new ArrayList<>();
@@ -125,8 +126,8 @@ public class S3SelectQueryBuilderTest {
     public void testReal() {
         // a5 = 2.0
         context.setFilterString("a5c701s1d2o5");
-        assertEquals(SQL_POSITION + " WHERE CAST (s._6 AS decimal) = 2.0", builderPosition.buildSelectQuery());
-        assertEquals(SQL_NO_POSITION + " WHERE CAST (s.\"weight\" AS decimal) = 2.0", builderNoPosition.buildSelectQuery());
+        assertEquals(SQL_POSITION + " WHERE CAST (s._6 AS decimal) = 2", builderPosition.buildSelectQuery());
+        assertEquals(SQL_NO_POSITION + " WHERE CAST (s.\"weight\" AS decimal) = 2", builderNoPosition.buildSelectQuery());
     }
 
     @Test

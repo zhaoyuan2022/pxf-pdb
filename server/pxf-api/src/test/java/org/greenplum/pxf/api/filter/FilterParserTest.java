@@ -1,4 +1,4 @@
-package org.greenplum.pxf.api;
+package org.greenplum.pxf.api.filter;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -19,40 +19,67 @@ package org.greenplum.pxf.api;
  * under the License.
  */
 
-
-import org.greenplum.pxf.api.FilterParser.Operator;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import static org.greenplum.pxf.api.filter.Operator.AND;
+import static org.greenplum.pxf.api.filter.Operator.EQUALS;
+import static org.greenplum.pxf.api.filter.Operator.GREATER_THAN;
+import static org.greenplum.pxf.api.filter.Operator.GREATER_THAN_OR_EQUAL;
+import static org.greenplum.pxf.api.filter.Operator.IS_NULL;
+import static org.greenplum.pxf.api.filter.Operator.LESS_THAN;
+import static org.greenplum.pxf.api.filter.Operator.LESS_THAN_OR_EQUAL;
+import static org.greenplum.pxf.api.filter.Operator.LIKE;
+import static org.greenplum.pxf.api.filter.Operator.NOT;
+import static org.greenplum.pxf.api.filter.Operator.NOT_EQUALS;
+import static org.greenplum.pxf.api.filter.Operator.OR;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 public class FilterParserTest {
 
-    private FilterBuilder filterBuilder;
     private FilterParser filterParser;
     private String filter, exception;
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
 
     @Before
     public void setUp() {
-        filterBuilder = mock(FilterBuilder.class);
-        filterParser = new FilterParser(filterBuilder);
+        filterParser = new FilterParser();
     }
 
     @Test
-    public void parseNegativeEmpty() {
+    public void testNullFilterString() throws Exception {
+        thrown.expect(FilterParser.FilterStringSyntaxException.class);
+        thrown.expectMessage("filter parsing ended with no result");
+
+        filterParser.parse(null);
+    }
+
+    @Test
+    public void testLongIndexFails() throws Exception {
+        thrown.expect(FilterParser.FilterStringSyntaxException.class);
+        thrown.expectMessage("value 2147483648 larger than intmax ending at 11");
+
+        filter = "a2147483647o8";
+        filterParser.parse(filter); // succeeds because it's a valid int32
+
+        filter = "a2147483648o8";
+        filterParser.parse(filter); // fails
+    }
+
+    @Test
+    public void parseNegativeEmpty() throws Exception {
         filter = "";
         runParseNegative("empty string", filter, "filter parsing ended with no result");
     }
 
     @Test
-    public void parseNegativeNotOperand() {
+    public void parseNegativeNotOperand() throws Exception {
         filter = "g is not an operand";
         int index = 0;
         char op = filter.charAt(index);
@@ -62,7 +89,7 @@ public class FilterParserTest {
     }
 
     @Test
-    public void parseNegativeBadNumber() {
+    public void parseNegativeBadNumber() throws Exception {
 
         filter = "a";
         int index = 1;
@@ -97,7 +124,7 @@ public class FilterParserTest {
     }
 
     @Test
-    public void parseNegativeBadConst() {
+    public void parseNegativeBadConst() throws Exception {
         filter = "cs";
         int index = 1;
         exception = "datatype OID should follow at " + index;
@@ -133,8 +160,7 @@ public class FilterParserTest {
         runParseNegative("const operand with missing data", filter, exception);
 
         filter = "c20s3ds9r";
-        index = 6;
-        exception = "failed to parse number data type starting at " + index;
+        exception = "filter parsing failed, missing operators?";
         runParseNegative("const operand with an invalid value", filter, exception);
 
         filter = "m1122";
@@ -157,7 +183,7 @@ public class FilterParserTest {
     }
 
     @Test
-    public void parseNegativeBadOperation() {
+    public void parseNegativeBadOperation() throws Exception {
         filter = "o";
         int index = 1;
         exception = "numeric argument expected at " + index;
@@ -174,7 +200,7 @@ public class FilterParserTest {
     }
 
     @Test
-    public void parseNegativeNoOperator() {
+    public void parseNegativeNoOperator() throws Exception {
 
         filter = "a1234567890";
         runParseNegative("filter with only column", filter, "filter parsing failed, missing operators?");
@@ -184,14 +210,14 @@ public class FilterParserTest {
     }
 
     @Test
-    public void parseEmptyString() {
+    public void parseEmptyString() throws Exception {
         filter = "c25s0d";
         exception = "filter parsing failed, missing operators?";
         runParseNegative("const operand with empty string", filter, exception);
     }
 
     @Test
-    public void parseDecimalValues() {
+    public void parseDecimalValues() throws Exception {
         filter = "c700s3d9.0";
         exception = "filter parsing failed, missing operators?";
         runParseNegative("const operand with decimal value", filter, exception);
@@ -202,7 +228,7 @@ public class FilterParserTest {
     }
 
     @Test
-    public void parseNegativeValues() {
+    public void parseNegativeValues() throws Exception {
         filter = "c700s3d-90";
         exception = "filter parsing failed, missing operators?";
         runParseNegative("const operand with decimal value", filter, exception);
@@ -213,7 +239,7 @@ public class FilterParserTest {
     }
 
     @Test
-    public void parseNegativeTwoParams() {
+    public void parseNegativeTwoParams() throws Exception {
 
         filter = "c20s1d1c20s1d1";
         exception = "Stack not empty, missing operators?";
@@ -229,17 +255,17 @@ public class FilterParserTest {
     }
 
     @Test
-    public void parseNegativeOperationFirst() {
+    public void parseNegativeOperationFirst() throws Exception {
 
         filter = "o1a3";
         int index = 2;
-        Operator operation = FilterParser.Operator.LESS_THAN;
-        exception = "missing operands for op " + operation + " at " + index;
+        Operator operator = LESS_THAN;
+        exception = "missing operands for op " + operator + " at " + index;
         runParseNegative("filter with operation first", filter, exception);
 
         filter = "a2o1";
         index = 4;
-        exception = "missing operands for op " + operation + " at " + index;
+        exception = "missing operands for op " + operator + " at " + index;
         runParseNegative("filter with only attribute before operation", filter, exception);
     }
 
@@ -247,174 +273,136 @@ public class FilterParserTest {
     public void parseColumnOnLeft() throws Exception {
 
         filter = "a1c20s1d1o1";
-        Operator op = Operator.LESS_THAN;
-
-        runParseOneOperation("this filter was build from LESS_THAN", filter, op);
+        Operator op = LESS_THAN;
+        runParseOneOperation(filter, op);
 
         filter = "a1c20s1d1o2";
-        op = Operator.GREATER_THAN;
-        runParseOneOperation("this filter was build from GREATER_THAN", filter, op);
+        op = GREATER_THAN;
+        runParseOneOperation(filter, op);
 
         filter = "a1c20s1d1o3";
-        op = Operator.LESS_THAN_OR_EQUAL;
-        runParseOneOperation("this filter was build from LESS_THAN_OR_EQUAL", filter, op);
+        op = LESS_THAN_OR_EQUAL;
+        runParseOneOperation(filter, op);
 
         filter = "a1c20s1d1o4";
-        op = Operator.GREATER_THAN_OR_EQUAL;
-        runParseOneOperation("this filter was build from GREATER_THAN_OR_EQUAL", filter, op);
+        op = GREATER_THAN_OR_EQUAL;
+        runParseOneOperation(filter, op);
 
         filter = "a1c20s1d1o5";
-        op = Operator.EQUALS;
-        runParseOneOperation("this filter was build from EQUALS", filter, op);
+        op = EQUALS;
+        runParseOneOperation(filter, op);
 
         filter = "a1c20s1d1o6";
-        op = Operator.NOT_EQUALS;
-        runParseOneOperation("this filter was build from NOT_EQUALS", filter, op);
+        op = NOT_EQUALS;
+        runParseOneOperation(filter, op);
 
         filter = "a1c20s1d1o7";
-        op = FilterParser.Operator.LIKE;
-        runParseOneOperation("this filter was built from LIKE", filter, op);
+        op = LIKE;
+        runParseOneOperation(filter, op);
 
         filter = "a1o8";
-        op = Operator.IS_NULL;
-        runParseOneUnaryOperation("this filter was build from IS_NULL", filter, op);
+        op = IS_NULL;
+        runParseOneUnaryOperation(filter, op);
 
         filter = "a1o9";
         op = Operator.IS_NOT_NULL;
-        runParseOneUnaryOperation("this filter was build from IS_NULL", filter, op);
+        runParseOneUnaryOperation(filter, op);
 
         filter = "a1m1005s1d1s1d2s1d3o10";
         op = Operator.IN;
-        runParseOneOperation("this filter was built from IN", filter, op);
-
+        runParseOneOperation(filter, op);
     }
 
     @Test
     public void parseColumnOnRight() throws Exception {
 
         filter = "c20s1d1a1o1";
-        Operator op = Operator.GREATER_THAN;
-        runParseOneOperation("this filter was build from LESS_THAN -> GREATER_THAN using reverse!", filter, op);
+        Operator op = GREATER_THAN;
+        runParseOneOperation(filter, op);
 
         filter = "c20s1d1a1o2";
-        op = FilterParser.Operator.LESS_THAN;
-        runParseOneOperation("this filter was build from GREATER_THAN -> LESS_THAN using reverse!", filter, op);
+        op = LESS_THAN;
+        runParseOneOperation(filter, op);
 
         filter = "c20s1d1a1o3";
-        op = Operator.GREATER_THAN_OR_EQUAL;
-        runParseOneOperation("this filter was build from LESS_THAN_OR_EQUAL -> GREATER_THAN_OR_EQUAL using reverse!", filter, op);
+        op = GREATER_THAN_OR_EQUAL;
+        runParseOneOperation(filter, op);
 
         filter = "c20s1d1a1o4";
-        op = Operator.LESS_THAN_OR_EQUAL;
-        runParseOneOperation("this filter was build from GREATER_THAN_OR_EQUAL -> LESS_THAN_OR_EQUAL using reverse!", filter, op);
+        op = LESS_THAN_OR_EQUAL;
+        runParseOneOperation(filter, op);
 
         filter = "c20s1d1a1o5";
-        op = Operator.EQUALS;
-        runParseOneOperation("this filter was build from EQUALS using reverse!", filter, op);
+        op = EQUALS;
+        runParseOneOperation(filter, op);
 
         filter = "c20s1d1a1o6";
-        op = Operator.NOT_EQUALS;
-        runParseOneOperation("this filter was build from NOT_EQUALS using reverse!", filter, op);
+        op = NOT_EQUALS;
+        runParseOneOperation(filter, op);
 
         filter = "c20s1d1a1o7";
-        op = FilterParser.Operator.LIKE;
-        runParseOneOperation("this filter was build from LIKE using reverse!", filter, op);
+        op = LIKE;
+        runParseOneOperation(filter, op);
     }
 
     @Test
     public void parseFilterWith2Operations() throws Exception {
         filter = "a1c25s5dfirsto5a2c20s1d1o2l0";
 
-        Object firstOp = "first operation EQUALS";
-        Object secondOp = "second operation GREATER_THAN";
-        Object lastOp = "filter with 2 operations connected by AND";
-
-        when(filterBuilder.build(eq(Operator.EQUALS),
-                any(),
-                any())).thenReturn(firstOp);
-
-        when(filterBuilder.build(eq(Operator.GREATER_THAN),
-                any(),
-                any())).thenReturn(secondOp);
-
-        when(filterBuilder.build(eq(Operator.AND),
-                eq(firstOp),
-                eq(secondOp))).thenReturn(lastOp);
-
-        Object result = filterParser.parse(filter.getBytes());
-
-        assertEquals(lastOp, result);
+        Node result = filterParser.parse(filter);
+        assertNotNull(result);
+        assertOperatorEquals(AND, result);
+        assertEquals(2, result.childCount());
+        assertOperatorEquals(EQUALS, result.getLeft());
+        assertOperatorEquals(GREATER_THAN, result.getRight());
     }
 
     @Test
     public void parseLogicalAndOperator() throws Exception {
         filter = "a1c20s1d0o5a2c20s1d3o2l0";
 
-        Object firstOp = "first operation EQUALS";
-        Object secondOp = "second operation GREATER_THAN";
-        Object lastOp = "filter with 2 operations connected by AND";
-
-        when(filterBuilder.build(eq(Operator.EQUALS),
-                any(),
-                any())).thenReturn(firstOp);
-
-        when(filterBuilder.build(eq(Operator.GREATER_THAN),
-                any(),
-                any())).thenReturn(secondOp);
-
-        when(filterBuilder.build(eq(Operator.AND),
-                any(),
-                any())).thenReturn(lastOp);
-
-        Object result = filterParser.parse(filter.getBytes());
-
-        assertEquals(lastOp, result);
+        Node result = filterParser.parse(filter);
+        assertNotNull(result);
+        assertOperatorEquals(AND, result);
+        assertEquals(2, result.childCount());
+        assertOperatorEquals(EQUALS, result.getLeft());
+        assertOperatorEquals(GREATER_THAN, result.getRight());
     }
 
     @Test
     public void parseLogicalOrOperator() throws Exception {
+        // (_1_ = 0 OR _2_ > 3)
         filter = "a1c20s1d0o5a2c20s1d3o2l1";
 
-        Object firstOp = "first operation EQUALS";
-        Object secondOp = "second operation GREATER_THAN";
-        Object lastOp = "filter with 1 OR operator";
+        Node result = filterParser.parse(filter);
+        assertNotNull(result);
+        assertOperatorEquals(OR, result);
+        assertEquals(2, result.childCount());
+        assertOperatorEquals(EQUALS, result.getLeft());
+        assertOperatorEquals(GREATER_THAN, result.getRight());
 
-        when(filterBuilder.build(eq(Operator.EQUALS),
-                any(),
-                any())).thenReturn(firstOp);
+        assertTrue(result.getLeft().getLeft() instanceof ColumnIndexOperandNode);
+        assertEquals(1, ((ColumnIndexOperandNode) result.getLeft().getLeft()).index());
+        assertTrue(result.getLeft().getRight() instanceof ScalarOperandNode);
+        assertEquals("0", ((ScalarOperandNode) result.getLeft().getRight()).getValue());
 
-        when(filterBuilder.build(eq(FilterParser.Operator.GREATER_THAN),
-                any(),
-                any())).thenReturn(secondOp);
-
-        when(filterBuilder.build(eq(Operator.OR),
-                any(),
-                any())).thenReturn(lastOp);
-
-        Object result = filterParser.parse(filter.getBytes());
-        assertEquals(lastOp, result);
+        assertTrue(result.getRight().getLeft() instanceof ColumnIndexOperandNode);
+        assertEquals(2, ((ColumnIndexOperandNode) result.getRight().getLeft()).index());
+        assertTrue(result.getRight().getRight() instanceof ScalarOperandNode);
+        assertEquals("3", ((ScalarOperandNode) result.getRight().getRight()).getValue());
     }
 
     @Test
     public void parseLogicalNotOperator() throws Exception {
+        // NOT (_1_ = 0)
         filter = "a1c20s1d0o5l2";
 
-        Object firstOp = "first operation EQUALS";
-        Object op = "filter with NOT operator";
-
-        when(filterBuilder.build(eq(FilterParser.Operator.EQUALS),
-                any(),
-                any())).thenReturn(firstOp);
-
-        when(filterBuilder.build(eq(Operator.NOT),
-                any())).thenReturn(op);
-
-        Object result = filterParser.parse(filter.getBytes());
-        assertEquals(op, result);
+        Node result = filterParser.parse(filter);
+        assertNotNull(result);
+        assertOperatorEquals(Operator.NOT, result);
+        assertEquals(1, result.childCount());
+        assertOperatorEquals(Operator.EQUALS, result.getLeft());
     }
-
-    @Rule
-    public ExpectedException thrown = ExpectedException.none();
 
     @Test
     public void parseLogicalUnknownCodeError() throws Exception {
@@ -422,70 +410,49 @@ public class FilterParserTest {
         thrown.expectMessage("unknown op ending at 2");
 
         filter = "l7";
-        filterParser.parse(filter.getBytes());
+        filterParser.parse(filter);
     }
 
     @Test
     public void parseLogicalOperatorNotExpression() throws Exception {
         filter = "a1c25s5dfirsto5a2c20s1d2o2l0l2";
-        Object firstOp = "first operation EQUALS";
-        Object secondOp = "second operation GREATER_THAN";
-        Object thirdOp = "filter with 2 operations connected by AND";
-        Object lastOp = "filter with 1 NOT operation";
 
-        when(filterBuilder.build(eq(FilterParser.Operator.EQUALS),
-                any(),
-                any())).thenReturn(firstOp);
-
-
-        when(filterBuilder.build(eq(Operator.GREATER_THAN),
-                any(),
-                any())).thenReturn(secondOp);
-
-        when(filterBuilder.build(eq(Operator.AND),
-                any(),
-                any())).thenReturn(thirdOp);
-
-        when(filterBuilder.build(eq(Operator.NOT),
-                any())).thenReturn(lastOp);
-
-        Object result = filterParser.parse(filter.getBytes());
-        assertEquals(lastOp, result);
+        Node result = filterParser.parse(filter);
+        assertOperatorEquals(NOT, result);
+        assertEquals(1, result.childCount());
+        assertOperatorEquals(AND, result.getLeft());
+        assertEquals(2, result.getLeft().childCount());
+        assertOperatorEquals(EQUALS, result.getLeft().getLeft());
+        assertOperatorEquals(GREATER_THAN, result.getLeft().getRight());
     }
 
     /*
      * Helper functions
      */
-    private void runParseNegative(String description, String filter, String exception) {
-        try {
-            filterParser.parse(filter.getBytes());
-            fail(description + ": should have failed with FilterStringSyntaxException");
-        } catch (FilterParser.FilterStringSyntaxException e) {
-            assertEquals(description, exception + filterStringMsg(filter), e.getMessage());
-        } catch (Exception e) {
-            fail(description + ": should have failed with FilterStringSyntaxException and not " + e.getMessage());
-        }
+    private void runParseNegative(String description, String filter, String exception) throws Exception {
+        thrown.expect(FilterParser.FilterStringSyntaxException.class);
+        thrown.expectMessage(exception + filterStringMsg(filter));
+
+        filterParser.parse(filter);
+        fail(description);
     }
 
-    private void runParseOneOperation(String description, String filter, Operator op) throws Exception {
-        when(filterBuilder.build(eq(op),
-                any(),
-                any())).thenReturn(description);
-
-        Object result = filterParser.parse(filter.getBytes());
-
-        assertEquals(description, result);
+    private void runParseOneOperation(String filter, Operator op) throws Exception {
+        Node result = filterParser.parse(filter);
+        assertOperatorEquals(op, result);
     }
 
-    private void runParseOneUnaryOperation(String description, String filter, FilterParser.Operator op) throws Exception {
-        when(filterBuilder.build(eq(op), any())).thenReturn(description);
-
-        Object result = filterParser.parse(filter.getBytes());
-
-        assertEquals(description, result);
+    private void runParseOneUnaryOperation(String filter, Operator op) throws Exception {
+        Node result = filterParser.parse(filter);
+        assertOperatorEquals(op, result);
     }
 
     private String filterStringMsg(String filter) {
         return " (filter string: '" + filter + "')";
+    }
+
+    private void assertOperatorEquals(Operator operator, Node node) {
+        assertTrue(node instanceof OperatorNode);
+        assertEquals(operator, ((OperatorNode) node).getOperator());
     }
 }

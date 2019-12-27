@@ -35,18 +35,25 @@ import org.apache.hadoop.mapred.InputFormat;
 import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.TextInputFormat;
+import org.greenplum.pxf.api.filter.FilterParser;
+import org.greenplum.pxf.api.filter.Node;
+import org.greenplum.pxf.api.filter.Operator;
+import org.greenplum.pxf.api.filter.TreeTraverser;
+import org.greenplum.pxf.api.filter.TreeVisitor;
 import org.greenplum.pxf.api.model.BaseConfigurationFactory;
 import org.greenplum.pxf.api.model.ConfigurationFactory;
 import org.greenplum.pxf.api.model.Fragment;
 import org.greenplum.pxf.api.model.FragmentStats;
 import org.greenplum.pxf.api.model.Metadata;
 import org.greenplum.pxf.api.model.RequestContext;
+import org.greenplum.pxf.api.utilities.ColumnDescriptor;
 import org.greenplum.pxf.plugins.hdfs.HdfsDataFragmenter;
 import org.greenplum.pxf.plugins.hdfs.utilities.HdfsUtilities;
 import org.greenplum.pxf.plugins.hive.utilities.ProfileFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -75,8 +82,21 @@ public class HiveDataFragmenter extends HdfsDataFragmenter {
     public static final String HIVE_PARTITIONS_DELIM = "!HPAD!";
     public static final String HIVE_NO_PART_TBL = "!HNPT!";
 
+    static final EnumSet<Operator> SUPPORTED_OPERATORS =
+            EnumSet.of(
+                    Operator.EQUALS,
+                    Operator.LESS_THAN,
+                    Operator.GREATER_THAN,
+                    Operator.LESS_THAN_OR_EQUAL,
+                    Operator.GREATER_THAN_OR_EQUAL,
+                    Operator.NOT_EQUALS,
+                    Operator.AND,
+                    Operator.OR
+            );
+
+    private static final TreeTraverser TRAVERSER = new TreeTraverser();
+
     private IMetaStoreClient client;
-    private HiveFilterBuilder filterBuilder;
     private HiveClientWrapper hiveClientWrapper;
 
     private boolean filterInFragmenter = false;
@@ -88,24 +108,18 @@ public class HiveDataFragmenter extends HdfsDataFragmenter {
     private Map<String, String> partitionKeyTypes = new HashMap<>();
 
     public HiveDataFragmenter() {
-        this(BaseConfigurationFactory.getInstance(), new HiveFilterBuilder(), HiveClientWrapper.getInstance());
+        this(BaseConfigurationFactory.getInstance(), HiveClientWrapper.getInstance());
     }
 
-    HiveDataFragmenter(ConfigurationFactory configurationFactory, HiveFilterBuilder filterBuilder, HiveClientWrapper hiveClientWrapper) {
+    HiveDataFragmenter(ConfigurationFactory configurationFactory, HiveClientWrapper hiveClientWrapper) {
         this.configurationFactory = configurationFactory;
-        this.filterBuilder = filterBuilder;
         this.hiveClientWrapper = hiveClientWrapper;
     }
 
     @Override
-    public void initialize(RequestContext requestContext) {
-        super.initialize(requestContext);
-
-        client = hiveClientWrapper.initHiveClient(context, configuration);
-        // canPushDownIntegral represents hive.metastore.integral.jdo.pushdown property in hive-site.xml
-        filterBuilder.setColumnDescriptors(requestContext.getTupleDescription());
-        filterBuilder.setCanPushDownIntegral(configuration.getBoolean(HiveConf.ConfVars.METASTORE_INTEGER_JDO_PUSHDOWN.varname,
-                false));
+    public void initialize(RequestContext context) {
+        super.initialize(context);
+        client = hiveClientWrapper.initHiveClient(this.context, configuration);
     }
 
     @Override
@@ -154,7 +168,7 @@ public class HiveDataFragmenter extends HdfsDataFragmenter {
 
         verifySchema(tbl);
 
-        List<Partition> partitions = null;
+        List<Partition> partitions;
         String filterStringForHive = "";
 
         // If query has filter and hive table has partitions, prepare the filter
@@ -169,19 +183,34 @@ public class HiveDataFragmenter extends HdfsDataFragmenter {
 
             LOG.debug("setPartitions: {}", setPartitions);
 
+            // canPushDownIntegral represents hive.metastore.integral.jdo.pushdown property in hive-site.xml
+            boolean canPushDownIntegral = configuration
+                    .getBoolean(HiveConf.ConfVars.METASTORE_INTEGER_JDO_PUSHDOWN.varname, false);
+
+            List<ColumnDescriptor> columnDescriptors = context.getTupleDescription();
+
+            HivePartitionFilterBuilder hivePartitionFilterBuilder = new HivePartitionFilterBuilder(columnDescriptors);
+            TreeVisitor hivePartitionPruner = new HivePartitionPruner(SUPPORTED_OPERATORS,
+                    canPushDownIntegral, partitionKeyTypes, columnDescriptors);
+
+            // Parse the filter string into a expression tree Node
+            Node root = new FilterParser().parse(context.getFilterString());
+            // Prune the parsed tree with valid supported operators and then
+            // traverse the pruned tree with the hivePartitionFilterBuilder to produce a filter string for hive
+            TRAVERSER.traverse(root, hivePartitionPruner, hivePartitionFilterBuilder);
+
             // Generate filter string for retrieve match pxf filter/hive partition name
-            filterBuilder.setPartitionKeys(partitionKeyTypes);
-            filterStringForHive = filterBuilder.buildFilterString(context.getFilterString());
+            filterStringForHive = hivePartitionFilterBuilder.toString();
         }
 
         if (StringUtils.isNotBlank(filterStringForHive)) {
 
-            LOG.debug("Filter String for Hive partition retrieval : "
-                    + filterStringForHive);
+            LOG.debug("Filter String for Hive partition retrieval : {}",
+                    filterStringForHive);
 
             filterInFragmenter = true;
 
-            // API call to Hive Metastore, will return a List of all the
+            // API call to Hive MetaStore, will return a List of all the
             // partitions for this table, that matches the partition filters
             // Defined in filterStringForHive.
             partitions = client.listPartitionsByFilter(tblDesc.getPath(),
@@ -190,23 +219,16 @@ public class HiveDataFragmenter extends HdfsDataFragmenter {
             // No matched partitions for the filter, no fragments to return.
             if (partitions == null || partitions.isEmpty()) {
 
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("Table -  " + tblDesc.getPath() + "."
-                            + tblDesc.getName()
-                            + " Has no matched partitions for the filter : "
-                            + filterStringForHive);
-                }
+                LOG.debug("Table - {}.{} has no matched partitions for the filter : {}",
+                        tblDesc.getPath(), tblDesc.getName(), filterStringForHive);
                 return;
             }
 
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Table -  " + tblDesc.getPath() + "."
-                        + tblDesc.getName()
-                        + " Matched partitions list size: " + partitions.size());
-            }
+            LOG.debug("Table - {}.{} matched partitions list size: {}",
+                    tblDesc.getPath(), tblDesc.getName(), partitions.size());
 
         } else {
-            // API call to Hive Metastore, will return a List of all the
+            // API call to Hive MetaStore, will return a List of all the
             // partitions for this table (no filtering)
             partitions = client.listPartitions(tblDesc.getPath(),
                     tblDesc.getName(), ALL_PARTS);
@@ -278,7 +300,7 @@ public class HiveDataFragmenter extends HdfsDataFragmenter {
             // if user passed accessor+fragmenter+resolver - use them
             profile = ProfileFactory.get(fformat, hasComplexTypes, userProfile);
         }
-        String fragmenterForProfile = null;
+        String fragmenterForProfile;
         if (profile != null) {
             fragmenterForProfile = context.getPluginConf().getPlugins(profile).get("FRAGMENTER");
         } else {
@@ -288,7 +310,7 @@ public class HiveDataFragmenter extends HdfsDataFragmenter {
         FileInputFormat.setInputPaths(jobConf, new Path(
                 tablePartition.storageDesc.getLocation()));
 
-        InputSplit[] splits = null;
+        InputSplit[] splits;
         try {
             splits = fformat.getSplits(jobConf, 1);
         } catch (org.apache.hadoop.mapred.InvalidInputException e) {
