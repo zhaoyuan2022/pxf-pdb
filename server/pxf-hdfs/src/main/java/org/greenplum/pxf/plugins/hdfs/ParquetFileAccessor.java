@@ -22,6 +22,7 @@ package org.greenplum.pxf.plugins.hdfs;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hive.common.type.HiveDecimal;
 import org.apache.hadoop.mapred.FileSplit;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.page.PageReadStore;
@@ -67,14 +68,23 @@ import java.util.stream.Collectors;
  */
 public class ParquetFileAccessor extends BasePlugin implements Accessor {
 
-    private static final int DECIMAL_SCALE = 18;
-    private static final int DECIMAL_PRECISION = 38;
     private static final int DEFAULT_PAGE_SIZE = 1024 * 1024;
     private static final int DEFAULT_FILE_SIZE = 128 * 1024 * 1024;
     private static final int DEFAULT_ROWGROUP_SIZE = 8 * 1024 * 1024;
     private static final int DEFAULT_DICTIONARY_PAGE_SIZE = 512 * 1024;
     private static final WriterVersion DEFAULT_PARQUET_VERSION = WriterVersion.PARQUET_1_0;
     private static final CompressionCodecName DEFAULT_COMPRESSION = CompressionCodecName.SNAPPY;
+
+    // From org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+    public static final int PRECISION_TO_BYTE_COUNT[] = new int[38];
+
+    static {
+        for (int prec = 1; prec <= 38; prec++) {
+            // Estimated number of bytes needed.
+            PRECISION_TO_BYTE_COUNT[prec - 1] = (int)
+                    Math.ceil((Math.log(Math.pow(10, prec) - 1) / Math.log(2) + 1) / 8);
+        }
+    }
 
     private ParquetFileReader fileReader;
     private MessageColumnIO columnIO;
@@ -367,8 +377,16 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
                 case NUMERIC:
                     origType = OriginalType.DECIMAL;
                     typeName = PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
-                    length = 16; //per parquet specs
-                    dmt = new DecimalMetadata(DECIMAL_PRECISION, DECIMAL_SCALE);
+                    Integer[] columnTypeModifiers = column.columnTypeModifiers();
+                    int precision = HiveDecimal.SYSTEM_DEFAULT_PRECISION;
+                    int scale = HiveDecimal.SYSTEM_DEFAULT_SCALE;
+
+                    if (columnTypeModifiers != null && columnTypeModifiers.length > 1) {
+                        precision = columnTypeModifiers[0];
+                        scale = columnTypeModifiers[1];
+                    }
+                    length = PRECISION_TO_BYTE_COUNT[precision - 1];
+                    dmt = new DecimalMetadata(precision, scale);
                     break;
                 case TIMESTAMP:
                 case TIMESTAMP_WITH_TIME_ZONE:
