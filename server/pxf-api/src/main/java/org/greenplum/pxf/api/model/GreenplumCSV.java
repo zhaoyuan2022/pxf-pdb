@@ -22,15 +22,17 @@ public class GreenplumCSV {
     private String newline;
     private Character delimiter;
 
+    private int newlineLength;
+
     /**
      * Initialize with Greenplum CSV defaults
      */
     public GreenplumCSV() {
-        quote = QUOTE;
-        escape = ESCAPE;
-        newline = NEWLINE;
-        delimiter = DELIMITER;
-        valueOfNull = VALUE_OF_NULL;
+        withQuoteChar(QUOTE);
+        withEscapeChar(ESCAPE);
+        withNewline(NEWLINE);
+        withDelimiter(DELIMITER);
+        withValueOfNull(VALUE_OF_NULL);
     }
 
     public String getValueOfNull() {
@@ -78,8 +80,19 @@ public class GreenplumCSV {
     public GreenplumCSV withQuoteChar(String quoteString) {
         if (StringUtils.isNotEmpty(quoteString)) {
             validateSingleCharacter(quoteString, "QUOTE");
-            quote = quoteString.charAt(0);
+            withQuoteChar(quoteString.charAt(0));
         }
+        return this;
+    }
+
+    /**
+     * Set quote character for parsing CSV with customized character.
+     *
+     * @param quoteChar the quote character to be set
+     * @return GreenplumCSV object for builder pattern
+     */
+    public GreenplumCSV withQuoteChar(char quoteChar) {
+        this.quote = quoteChar;
         return this;
     }
 
@@ -94,8 +107,19 @@ public class GreenplumCSV {
     public GreenplumCSV withEscapeChar(String escapeString) {
         if (StringUtils.isNotEmpty(escapeString)) {
             validateSingleCharacter(escapeString, "ESCAPE");
-            escape = escapeString.charAt(0);
+            withEscapeChar(escapeString.charAt(0));
         }
+        return this;
+    }
+
+    /**
+     * Set escape character for parsing CSV with customized character.
+     *
+     * @param escapeChar the escape character to be set
+     * @return GreenplumCSV object for builder pattern
+     */
+    public GreenplumCSV withEscapeChar(char escapeChar) {
+        escape = escapeChar;
         return this;
     }
 
@@ -119,6 +143,7 @@ public class GreenplumCSV {
                         "invalid newline character '%s'. Only LF, CR, or CRLF are supported for newline.", newline));
             }
         }
+        this.newlineLength = newline != null ? newline.length() : 0;
         return this;
     }
 
@@ -133,8 +158,19 @@ public class GreenplumCSV {
     public GreenplumCSV withDelimiter(String delimiterString) {
         if (StringUtils.isNotEmpty(delimiterString)) {
             validateSingleCharacter(delimiterString, "DELIMITER");
-            delimiter = delimiterString.charAt(0);
+            withDelimiter(delimiterString.charAt(0));
         }
+        return this;
+    }
+
+    /**
+     * Set delimiter character for parsing CSV with customized character.
+     *
+     * @param delimiterChar the delimiter to be set
+     * @return GreenplumCSV object for builder pattern
+     */
+    public GreenplumCSV withDelimiter(char delimiterChar) {
+        delimiter = delimiterChar;
         return this;
     }
 
@@ -181,21 +217,20 @@ public class GreenplumCSV {
             char curr = s.charAt(i);
             if (curr == quote) quotes++;
             if (delimiter != null && curr == delimiter) specialChars++;
-            if (newline != null && newline.length() > 0) {
-
+            if (newlineLength > 0) {
                 j = 0;
 
                 // let's say we have input asd\r\nacd
                 // and newline \r\n then we need to
                 // increase the specialChars count by 1
 
-                while (i < length && j < newline.length()
+                while (i < length && j < newlineLength
                         && newline.charAt(j) == s.charAt(i)) {
                     j++;
-                    if (j < newline.length()) i++;
+                    if (j < newlineLength) i++;
                 }
 
-                if (j == newline.length()) specialChars++;
+                if (j == newlineLength) specialChars++;
             }
         }
 

@@ -22,9 +22,7 @@ package org.greenplum.pxf.api.io;
 
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Supported Data Types and OIDs (GPDB Data Type identifiers).
@@ -64,7 +62,8 @@ public enum DataType {
     UNSUPPORTED_TYPE(-1);
 
     private static final Map<Integer, DataType> lookup = new HashMap<>();
-    private static final Set<Integer> notText = new HashSet<>();
+    private static final int[] NOT_TEXT = {BIGINT.OID, BOOLEAN.OID, BYTEA.OID,
+            FLOAT8.OID, INTEGER.OID, REAL.OID, SMALLINT.OID};
 
     static {
 
@@ -73,14 +72,6 @@ public enum DataType {
         INT8ARRAY.typeElem = BIGINT;
         BOOLARRAY.typeElem = BOOLEAN;
         TEXTARRAY.typeElem = TEXT;
-
-        notText.add(BIGINT.OID);
-        notText.add(BOOLEAN.OID);
-        notText.add(BYTEA.OID);
-        notText.add(FLOAT8.OID);
-        notText.add(INTEGER.OID);
-        notText.add(REAL.OID);
-        notText.add(SMALLINT.OID);
 
         for (DataType dt : EnumSet.allOf(DataType.class)) {
             lookup.put(dt.getOID(), dt);
@@ -111,7 +102,10 @@ public enum DataType {
     }
 
     public static boolean isTextForm(int OID) {
-        return !notText.contains(OID);
+        for (int value : NOT_TEXT) {
+            if (OID == value) return false;
+        }
+        return true;
     }
 
     public int getOID() {
