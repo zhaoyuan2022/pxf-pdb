@@ -437,8 +437,7 @@ public class HdfsReadableAvroTest extends BaseFeature {
      *
      * @throws Exception
      */
-    // TODO: Add back to HCFS group after updating Google dependency
-    @Test(groups = {"features", "gpdb", "security"})
+    @Test(groups = {"features", "gpdb", "hcfs", "security"})
     public void avroFileNameWithSpacesOnHcfs() throws Exception {
 
         hdfs.copyFromLocal(resourcePath + avroInSequenceArraysSchemaFileWithSpaces, hdfsPath + avroInSequenceArraysSchemaFileWithSpaces);

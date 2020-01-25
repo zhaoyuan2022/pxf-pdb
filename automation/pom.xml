@@ -254,7 +254,7 @@
         <dependency>
             <groupId>com.google.cloud.bigdataoss</groupId>
             <artifactId>gcs-connector</artifactId>
-            <version>1.9.2-hadoop2</version>
+            <version>hadoop2-1.9.17</version>
             <classifier>shaded</classifier>
             <!--The block below excludes all transitive dependencies for the gcs-connector jar-->
             <exclusions>
