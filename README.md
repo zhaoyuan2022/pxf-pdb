@@ -98,6 +98,16 @@ make
 make unittest
 ```
 
+## Install
+
+To install PXF, specify the `PXF_HOME` location, for example `/usr/local/gpdb/pxf`:
+
+```bash
+cd ~/workspace/pxf
+
+PXF_HOME=/usr/local/gpdb/pxf make install
+```
+
 ## Demonstrating Hadoop Integration
 In order to demonstrate end to end functionality you will need GPDB and Hadoop installed.
 
