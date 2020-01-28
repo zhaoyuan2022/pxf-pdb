@@ -55,12 +55,26 @@ ln -s ~/<git_repos_root> ~/workspace
 
 To build PXF, you must have:
 
-- JDK 1.8 (6/7/2019: can't go above 1.8 or it won't work)
+- JDK 1.8 to compile (PXF runs on Java 8 and Java 11)
 - Go (1.9 or later)
+- unzip
+
+Export your `JAVA_HOME`.
+
+```
+export JAVA_HOME=<PATH_TO_YOUR_JAVA_HOME>
+```
 
 To install Go on CentOS, `sudo yum install go`.
 
 For other platforms, see the [Go downloads page](https://golang.org/dl/).
+
+Make sure to export your `GOPATH` and add go to your `PATH`. For example:
+
+```
+export GOPATH=$HOME/go
+export PATH=$PATH:/usr/local/go/bin:$GOPATH/bin
+```
 
 Once you have installed Go, you will need the `dep` and `ginkgo` tools, which install Go dependencies and run Go tests,
 respectively. Assuming `go` is on your `PATH`, you can run:
