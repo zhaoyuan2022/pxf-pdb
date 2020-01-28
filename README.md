@@ -95,7 +95,7 @@ cd ~/workspace/pxf
 make
   
 # Simply Run unittest
-make unittest
+make test
 ```
 
 ## Install
