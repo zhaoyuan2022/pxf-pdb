@@ -1,6 +1,7 @@
-package org.greenplum.pxf.plugins.hdfs;
+package org.greenplum.pxf.plugins.hdfs.parquet;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import org.apache.hadoop.hive.serde2.io.DateWritable;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.NanoTime;
 import org.apache.parquet.io.api.Binary;
@@ -68,7 +69,11 @@ public enum ParquetTypeConverter {
         @Override
         public DataType getDataType(Type type) {
             OriginalType originalType = type.getOriginalType();
-            if (originalType == OriginalType.INT_8 || originalType == OriginalType.INT_16) {
+            if (originalType == OriginalType.DATE) {
+                return DataType.DATE;
+            } else if (originalType == OriginalType.DECIMAL) {
+                return DataType.NUMERIC;
+            } else if (originalType == OriginalType.INT_8 || originalType == OriginalType.INT_16) {
                 return DataType.SMALLINT;
             } else {
                 return DataType.INTEGER;
@@ -77,9 +82,14 @@ public enum ParquetTypeConverter {
 
         @Override
         public Object getValue(Group group, int columnIndex, int repeatIndex, Type type) {
-            Integer result = group.getInteger(columnIndex, repeatIndex);
-            if (getDataType(type) == DataType.SMALLINT) {
-                return Short.valueOf(result.shortValue());
+            int result = group.getInteger(columnIndex, repeatIndex);
+            OriginalType originalType = type.getOriginalType();
+            if (originalType == OriginalType.DATE) {
+                return new DateWritable(result).get(true);
+            } else if (originalType == OriginalType.DECIMAL) {
+                return ParquetTypeConverter.bigDecimalFromLong(type, result);
+            } else if (originalType == OriginalType.INT_8 || originalType == OriginalType.INT_16) {
+                return (short) result;
             } else {
                 return result;
             }
@@ -94,12 +104,21 @@ public enum ParquetTypeConverter {
     INT64 {
         @Override
         public DataType getDataType(Type type) {
+            OriginalType originalType = type.getOriginalType();
+            if (originalType == OriginalType.DECIMAL) {
+                return DataType.NUMERIC;
+            }
             return DataType.BIGINT;
         }
 
         @Override
         public Object getValue(Group group, int columnIndex, int repeatIndex, Type type) {
-            return group.getLong(columnIndex, repeatIndex);
+            long value = group.getLong(columnIndex, repeatIndex);
+            OriginalType originalType = type.getOriginalType();
+            if (originalType == OriginalType.DECIMAL) {
+                return ParquetTypeConverter.bigDecimalFromLong(type, value);
+            }
+            return value;
         }
 
         @Override
@@ -201,7 +220,6 @@ public enum ParquetTypeConverter {
     }
 
 
-
     // ********** PUBLIC INTERFACE **********
     public abstract DataType getDataType(Type type);
 
@@ -251,7 +269,8 @@ public enum ParquetTypeConverter {
     /**
      * Converts a "timestamp with time zone" string to a INT96 byte array.
      * Supports microseconds for timestamps
-     * @param timestampWithTimeZoneString
+     *
+     * @param timestampWithTimeZoneString the greenplum string of the timestamp with the time zone
      * @return Binary format of the timestamp with time zone string
      */
     public static Binary getBinaryFromTimestampWithTimeZone(String timestampWithTimeZoneString) {
@@ -268,5 +287,11 @@ public enum ParquetTypeConverter {
         long timeOfDayNanos = (timeMicros % MICROS_IN_DAY) * NANOS_IN_MICROS;
         LOG.debug("Converted timestamp: {} to julianDays: {}, timeOfDayNanos: {}", timestampString, julianDays, timeOfDayNanos);
         return new NanoTime(julianDays, timeOfDayNanos).toBinary();
+    }
+
+    // Helper method that returns a BigDecimal from the long value
+    private static BigDecimal bigDecimalFromLong(Type type, long value) {
+        int scale = type.asPrimitiveType().getDecimalMetadata().getScale();
+        return new BigDecimal(BigInteger.valueOf(value), scale);
     }
 }
