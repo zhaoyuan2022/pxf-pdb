@@ -163,7 +163,7 @@ fly -t ud set-pipeline -p pg_regress \
 	-l ~/workspace/gp-continuous-integration/secrets/gpdb6-integration-testing.dev.yml \
 	-l ~/workspace/gp-continuous-integration/secrets/ccp-integration-pipelne-secrets.yml \
 	-l ~/workspace/gp-continuous-integration/secrets/gpdb_common-ci-secrets.yml \
-	-v folder-prefix=dev/pivotal \
-	-v gpdb-git-branch=pxf-fdw-pass-filter-string -v gpdb-git-remote=https://github.com/pivotal/gp-gpdb-dev \
-	-v pxf-git-branch=master -v pxf-git-remote=https://github.com/greenplum-db/pxf \
+	-v "folder-prefix=dev/${USER}" -v gpdb-branch=master -v pgport=7000 \
+	-v gpdb-git-branch=master -v gpdb-git-remote=https://github.com/greenplum-db/gpdb \
+	-v pxf-git-branch=master -v pxf-git-remote=https://github.com/greenplum-db/pxf
 ```

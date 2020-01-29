@@ -375,7 +375,7 @@ function configure_hdfs_client_for_minio() {
 }
 
 function configure_hdfs_client_for_gs() {
-	cp "${PXF_HOME}/lib/shared/"gcs-connector-*-hadoop2-shaded.jar \
+	cp "${PXF_HOME}/lib/shared/"gcs-connector-hadoop2-*-shaded.jar \
 		"${GPHD_ROOT}/hadoop/share/hadoop/hdfs/lib"
 	GS_CORE_SITE_XML=$(mktemp)
 	cat <<-EOF > "${GS_CORE_SITE_XML}"
