@@ -11,7 +11,7 @@ resources:
 - name: gpdb_src
   type: git
   source:
-    branch: master
+    branch: 6X_STABLE
     uri: https://github.com/greenplum-db/gpdb.git
 
 - name: pxf_src
@@ -103,7 +103,7 @@ jobs:
         GROUP: smoke,proxy
         HADOOP_CLIENT: HDP
         IMPERSONATION: true
-        PGPORT: 7000
+        PGPORT: 6000
         TARGET_OS: centos
         TARGET_OS_VERSION: 6
       run:
