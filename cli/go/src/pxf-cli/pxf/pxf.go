@@ -99,12 +99,13 @@ func promptUser(input io.Reader, prompt string) bool {
 type CommandName string
 
 const (
-	Init     = "init"
-	Start    = "start"
-	Stop     = "stop"
-	Sync     = "sync"
-	Statuses = "status"
-	Reset    = "reset"
+	Init       = "init"
+	Start      = "start"
+	Stop       = "stop"
+	Sync       = "sync"
+	Statuses   = "status"
+	Reset      = "reset"
+	Restart    = "restart"
 )
 
 var (
@@ -175,6 +176,17 @@ var (
 		warn:       true,
 		envVars:    []EnvVar{Gphome},
 		whereToRun: cluster.ON_HOSTS_AND_MASTER,
+	}
+	RestartCommand = Command{
+		commandName: Restart,
+		messages: map[MessageType]string{
+			Success: "PXF has restarted successfully on %d out of %d hosts\n",
+			Status:  "Restarting PXF on %d segment hosts...\n",
+			Error:   "Failed to restart PXF on %d out of %d hosts\n",
+		},
+		warn:       false,
+		envVars:    []EnvVar{Gphome},
+		whereToRun: cluster.ON_HOSTS,
 	}
 )
 

@@ -31,7 +31,7 @@ var _ = Describe("CommandFunc", func() {
 			_ = os.Unsetenv("PXF_CONF")
 		})
 
-		It("successfully generates start, stop, status, and reset commands", func() {
+		It("successfully generates start, stop, status, restart, and reset commands", func() {
 			commandFunc, err := pxf.StartCommand.GetFunctionToExecute()
 			Expect(err).To(BeNil())
 			Expect(commandFunc("foo")).To(Equal("/test/gphome/pxf/bin/pxf start"))
@@ -43,6 +43,10 @@ var _ = Describe("CommandFunc", func() {
 			commandFunc, err = pxf.StatusCommand.GetFunctionToExecute()
 			Expect(err).To(BeNil())
 			Expect(commandFunc("foo")).To(Equal("/test/gphome/pxf/bin/pxf status"))
+
+			commandFunc, err = pxf.RestartCommand.GetFunctionToExecute()
+			Expect(err).To(BeNil())
+			Expect(commandFunc("foo")).To(Equal("/test/gphome/pxf/bin/pxf restart"))
 
 			commandFunc, err = pxf.ResetCommand.GetFunctionToExecute()
 			Expect(err).To(BeNil())
@@ -83,7 +87,7 @@ var _ = Describe("CommandFunc", func() {
 			))
 		})
 
-		It("fails to init, start, stop, or tell status", func() {
+		It("fails to init, start, stop, restart, or tell status", func() {
 			commandFunc, err := pxf.InitCommand.GetFunctionToExecute()
 			Expect(commandFunc).To(BeNil())
 			Expect(err).To(Equal(errors.New("GPHOME must be set")))
@@ -91,6 +95,9 @@ var _ = Describe("CommandFunc", func() {
 			Expect(commandFunc).To(BeNil())
 			Expect(err).To(Equal(errors.New("GPHOME must be set")))
 			commandFunc, err = pxf.StopCommand.GetFunctionToExecute()
+			Expect(commandFunc).To(BeNil())
+			Expect(err).To(Equal(errors.New("GPHOME must be set")))
+			commandFunc, err = pxf.RestartCommand.GetFunctionToExecute()
 			Expect(commandFunc).To(BeNil())
 			Expect(err).To(Equal(errors.New("GPHOME must be set")))
 			commandFunc, err = pxf.StatusCommand.GetFunctionToExecute()
@@ -120,7 +127,7 @@ var _ = Describe("CommandFunc", func() {
 			_ = os.Setenv("GPHOME", "")
 			_ = os.Unsetenv("PXF_CONF")
 		})
-		It("fails to init, start, stop, or status", func() {
+		It("fails to init, start, stop, restart, or status", func() {
 			_ = os.Setenv("GPHOME", "")
 			commandFunc, err := pxf.InitCommand.GetFunctionToExecute()
 			Expect(commandFunc).To(BeNil())
@@ -129,6 +136,9 @@ var _ = Describe("CommandFunc", func() {
 			Expect(commandFunc).To(BeNil())
 			Expect(err).To(Equal(errors.New("GPHOME cannot be blank")))
 			commandFunc, err = pxf.StopCommand.GetFunctionToExecute()
+			Expect(commandFunc).To(BeNil())
+			Expect(err).To(Equal(errors.New("GPHOME cannot be blank")))
+			commandFunc, err = pxf.RestartCommand.GetFunctionToExecute()
 			Expect(commandFunc).To(BeNil())
 			Expect(err).To(Equal(errors.New("GPHOME cannot be blank")))
 			commandFunc, err = pxf.StatusCommand.GetFunctionToExecute()

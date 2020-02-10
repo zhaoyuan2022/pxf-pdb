@@ -38,13 +38,14 @@ func createCobraCommand(use string, short string, command *pxf.Command) *cobra.C
 }
 
 var (
-	clusterCmd = createCobraCommand("cluster", "Perform <command> on each segment host in the cluster", nil)
-	initCmd    = createCobraCommand("init", "Initialize the PXF server instances on master, standby master, and all segment hosts", &pxf.InitCommand)
-	startCmd   = createCobraCommand("start", "Start the PXF server instances on all segment hosts", &pxf.StartCommand)
-	stopCmd    = createCobraCommand("stop", "Stop the PXF server instances on all segment hosts", &pxf.StopCommand)
-	statusCmd  = createCobraCommand("status", "Get status of PXF servers on all segment hosts", &pxf.StatusCommand)
-	syncCmd    = createCobraCommand("sync", "Sync PXF configs from master to standby master and all segment hosts", &pxf.SyncCommand)
-	resetCmd   = createCobraCommand("reset", "Reset PXF (undo initialization) on all segment hosts", &pxf.ResetCommand)
+	clusterCmd   = createCobraCommand("cluster", "Perform <command> on each segment host in the cluster", nil)
+	initCmd      = createCobraCommand("init", "Initialize the PXF server instances on master, standby master, and all segment hosts", &pxf.InitCommand)
+	startCmd     = createCobraCommand("start", "Start the PXF server instances on all segment hosts", &pxf.StartCommand)
+	stopCmd      = createCobraCommand("stop", "Stop the PXF server instances on all segment hosts", &pxf.StopCommand)
+	statusCmd    = createCobraCommand("status", "Get status of PXF servers on all segment hosts", &pxf.StatusCommand)
+	syncCmd      = createCobraCommand("sync", "Sync PXF configs from master to standby master and all segment hosts", &pxf.SyncCommand)
+	resetCmd     = createCobraCommand("reset", "Reset PXF (undo initialization) on all segment hosts", &pxf.ResetCommand)
+	restartCmd   = createCobraCommand("restart", "Restart the PXF server on all segment hosts", &pxf.RestartCommand)
 )
 
 func init() {
@@ -55,6 +56,7 @@ func init() {
 	clusterCmd.AddCommand(statusCmd)
 	clusterCmd.AddCommand(syncCmd)
 	clusterCmd.AddCommand(resetCmd)
+	clusterCmd.AddCommand(restartCmd)
 }
 
 func exitWithReturnCode(err error) {
