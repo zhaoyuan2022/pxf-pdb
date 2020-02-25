@@ -1,5 +1,25 @@
 # Changelog
 
+## 5.11.0 (02/25/2020)
+
+#### Enhancements:
+
+- [#302](https://github.com/greenplum-db/pxf/pull/302) pxf cluster sync: support deletion of extraneous files
+- [#304](https://github.com/greenplum-db/pxf/pull/304) Harden PXF's Tomcat configuration
+- [#300](https://github.com/greenplum-db/pxf/pull/300) Implement `pxf cluster restart`
+- [#295](https://github.com/greenplum-db/pxf/pull/295) (parquet-refactor) Use the first version of Guava that has a stable Cache API
+- [#287](https://github.com/greenplum-db/pxf/pull/287) Update GCS connector jar in automation/prod
+- [#286](https://github.com/greenplum-db/pxf/pull/286) Parquet record filter
+
+### Bug Fixes:
+
+- [#305](https://github.com/greenplum-db/pxf/pull/305) pxf cluster init: enforce JAVA_HOME is set
+- [#299](https://github.com/greenplum-db/pxf/pull/299) Log org.apache.parquet at WARN level
+- [#292](https://github.com/greenplum-db/pxf/pull/292) Fix compilation with JDK 11.
+- [#290](https://github.com/greenplum-db/pxf/pull/290) Log ClientAbortException at debug level
+
+---
+
 ## 5.10.1 (01/07/2020)
 
 #### Enhancements:
