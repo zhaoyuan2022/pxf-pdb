@@ -312,7 +312,7 @@ doHelp() {
 	  reset               undo the local PXF initialization
 	  cluster <command>   perform <command> on all the segment hosts in the cluster; try ${bold}pxf cluster help$normal
 
-	  sync <hostname>     synchronize \$PXF_CONF/{conf,lib,servers} directories onto <hostname>
+	  sync <hostname>     synchronize \$PXF_CONF/{conf,lib,servers} directories onto <hostname>. Use --delete to delete extraneous remote files
 
 	${bold}Options${normal}:
 	  -h, --help    show command help
@@ -439,7 +439,7 @@ function doSync()
     get_environment
     checkPxfConf
     warnUserEnvScript
-    rsync -az -e "ssh -o StrictHostKeyChecking=no" "$PXF_CONF"/{conf,lib,servers} "${target_host}:$PXF_CONF"
+    rsync -az${DELETE:+ --delete} -e "ssh -o StrictHostKeyChecking=no" "$PXF_CONF"/{conf,lib,servers} "${target_host}:$PXF_CONF"
 }
 
 function doCluster()
@@ -499,7 +499,11 @@ case $pxf_script_command in
         doStatus
         ;;
     'sync')
-        doSync "$2"
+        if [[ $2 == -d || $2 == --delete ]]; then
+            DELETE=1 doSync "$3"
+        else
+            doSync "$2"
+        fi
         ;;
     'help' | '-h' | '--help')
         doHelp

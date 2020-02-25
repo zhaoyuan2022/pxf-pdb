@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"pxf-cli/pxf"
 	"strings"
 
 	"github.com/greenplum-db/gp-common-go-libs/cluster"
@@ -13,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// ClusterData is exported for testing
 type ClusterData struct {
 	Cluster    *cluster.Cluster
 	Output     *cluster.RemoteOutput
@@ -20,17 +20,17 @@ type ClusterData struct {
 	connection *dbconn.DBConn
 }
 
-func createCobraCommand(use string, short string, command *pxf.Command) *cobra.Command {
-	if command == nil {
+func createCobraCommand(use string, short string, cmd *command) *cobra.Command {
+	if cmd == nil {
 		return &cobra.Command{Use: use, Short: short}
 	}
 	return &cobra.Command{
 		Use:   use,
 		Short: short,
-		Run: func(cmd *cobra.Command, args []string) {
-			clusterData, err := doSetup(command)
+		Run: func(cobraCmd *cobra.Command, args []string) {
+			clusterData, err := doSetup(cmd)
 			if err == nil {
-				err = clusterRun(command, clusterData)
+				err = clusterRun(cmd, clusterData)
 			}
 			exitWithReturnCode(err)
 		},
@@ -38,14 +38,16 @@ func createCobraCommand(use string, short string, command *pxf.Command) *cobra.C
 }
 
 var (
-	clusterCmd   = createCobraCommand("cluster", "Perform <command> on each segment host in the cluster", nil)
-	initCmd      = createCobraCommand("init", "Initialize the PXF server instances on master, standby master, and all segment hosts", &pxf.InitCommand)
-	startCmd     = createCobraCommand("start", "Start the PXF server instances on all segment hosts", &pxf.StartCommand)
-	stopCmd      = createCobraCommand("stop", "Stop the PXF server instances on all segment hosts", &pxf.StopCommand)
-	statusCmd    = createCobraCommand("status", "Get status of PXF servers on all segment hosts", &pxf.StatusCommand)
-	syncCmd      = createCobraCommand("sync", "Sync PXF configs from master to standby master and all segment hosts", &pxf.SyncCommand)
-	resetCmd     = createCobraCommand("reset", "Reset PXF (undo initialization) on all segment hosts", &pxf.ResetCommand)
-	restartCmd   = createCobraCommand("restart", "Restart the PXF server on all segment hosts", &pxf.RestartCommand)
+	clusterCmd = createCobraCommand("cluster", "Perform <command> on each segment host in the cluster", nil)
+	initCmd    = createCobraCommand("init", "Initialize the PXF server instances on master, standby master, and all segment hosts", &InitCommand)
+	startCmd   = createCobraCommand("start", "Start the PXF server instances on all segment hosts", &StartCommand)
+	stopCmd    = createCobraCommand("stop", "Stop the PXF server instances on all segment hosts", &StopCommand)
+	statusCmd  = createCobraCommand("status", "Get status of PXF servers on all segment hosts", &StatusCommand)
+	syncCmd    = createCobraCommand("sync", "Sync PXF configs from master to standby master and all segment hosts. Use --delete to delete extraneous remote files", &SyncCommand)
+	resetCmd   = createCobraCommand("reset", "Reset PXF (undo initialization) on all segment hosts", &ResetCommand)
+	restartCmd = createCobraCommand("restart", "Restart the PXF server on all segment hosts", &RestartCommand)
+	// DeleteOnSync is a boolean for determining whether to use rsync with --delete, exported for tests
+	DeleteOnSync bool
 )
 
 func init() {
@@ -54,6 +56,7 @@ func init() {
 	clusterCmd.AddCommand(startCmd)
 	clusterCmd.AddCommand(stopCmd)
 	clusterCmd.AddCommand(statusCmd)
+	syncCmd.Flags().BoolVarP(&DeleteOnSync, "delete", "d", false, "delete extraneous files on remote host")
 	clusterCmd.AddCommand(syncCmd)
 	clusterCmd.AddCommand(resetCmd)
 	clusterCmd.AddCommand(restartCmd)
@@ -66,6 +69,7 @@ func exitWithReturnCode(err error) {
 	os.Exit(0)
 }
 
+// CountHostsExcludingMaster is exported for testing
 func (c *ClusterData) CountHostsExcludingMaster() error {
 	hostSegMap := make(map[string]int, 0)
 	for contentID, seg := range c.Cluster.Segments {
@@ -78,17 +82,19 @@ func (c *ClusterData) CountHostsExcludingMaster() error {
 	return nil
 }
 
-func GenerateStatusReport(command *pxf.Command, clusterData *ClusterData) string {
-	cmdMsg := fmt.Sprintf(command.Messages(pxf.Status), clusterData.NumHosts)
+// GenerateStatusReport is exported for testing
+func GenerateStatusReport(cmd *command, clusterData *ClusterData) string {
+	cmdMsg := fmt.Sprintf(cmd.messages[status], clusterData.NumHosts)
 	gplog.Info(cmdMsg)
 	return cmdMsg
 }
 
-func GenerateOutput(command *pxf.Command, clusterData *ClusterData) error {
+// GenerateOutput is exported for testing
+func GenerateOutput(cmd *command, clusterData *ClusterData) error {
 	numHosts := len(clusterData.Output.Stdouts)
 	numErrors := clusterData.Output.NumErrors
 	if numErrors == 0 {
-		gplog.Info(command.Messages(pxf.Success), numHosts-numErrors, numHosts)
+		gplog.Info(cmd.messages[success], numHosts-numErrors, numHosts)
 		return nil
 	}
 	response := ""
@@ -111,12 +117,12 @@ func GenerateOutput(command *pxf.Command, clusterData *ClusterData) error {
 		}
 		response += fmt.Sprintf("%s ==> %s\n", host, errorMessage)
 	}
-	gplog.Info("ERROR: "+command.Messages(pxf.Error), numErrors, numHosts)
+	gplog.Info("ERROR: "+cmd.messages[err], numErrors, numHosts)
 	gplog.Error("%s", response)
 	return errors.New(response)
 }
 
-func doSetup(command *pxf.Command) (*ClusterData, error) {
+func doSetup(cmd *command) (*ClusterData, error) {
 	connection := dbconn.NewDBConnFromEnvironment("postgres")
 	err := connection.Connect(1)
 	if err != nil {
@@ -126,7 +132,7 @@ func doSetup(command *pxf.Command) (*ClusterData, error) {
 	}
 	segConfigs := cluster.MustGetSegmentConfiguration(connection)
 	clusterData := &ClusterData{Cluster: cluster.NewCluster(segConfigs), connection: connection}
-	if command.Name() == pxf.Sync || command.Name() == pxf.Init || command.Name() == pxf.Reset {
+	if cmd.name == sync || cmd.name == pxfInit || cmd.name == reset {
 		err = clusterData.appendMasterStandby()
 		if err != nil {
 			return nil, err
@@ -146,28 +152,28 @@ func adaptContentIDToHostname(cluster *cluster.Cluster, f func(string) string) f
 	}
 }
 
-func clusterRun(command *pxf.Command, clusterData *ClusterData) error {
+func clusterRun(cmd *command, clusterData *ClusterData) error {
 	defer clusterData.connection.Close()
 
-	err := command.Warn(os.Stdin)
+	err := cmd.Warn(os.Stdin)
 	if err != nil {
 		gplog.Info(fmt.Sprintf("%s", err))
 		return err
 	}
 
-	f, err := command.GetFunctionToExecute()
+	f, err := cmd.GetFunctionToExecute()
 	if err != nil {
 		gplog.Error(fmt.Sprintf("Error: %s", err))
 		return err
 	}
 
-	cmdMsg := GenerateStatusReport(command, clusterData)
+	cmdMsg := GenerateStatusReport(cmd, clusterData)
 	clusterData.Output = clusterData.Cluster.GenerateAndExecuteCommand(
 		cmdMsg,
 		adaptContentIDToHostname(clusterData.Cluster, f),
-		command.WhereToRun(),
+		cmd.whereToRun,
 	)
-	return GenerateOutput(command, clusterData)
+	return GenerateOutput(cmd, clusterData)
 }
 
 func (c *ClusterData) appendMasterStandby() error {
