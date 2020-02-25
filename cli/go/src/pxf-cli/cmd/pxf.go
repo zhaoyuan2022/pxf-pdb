@@ -14,8 +14,9 @@ import (
 type envVar string
 
 const (
-	gphome  envVar = "GPHOME"
-	pxfConf envVar = "PXF_CONF"
+	gphome   envVar = "GPHOME"
+	pxfConf  envVar = "PXF_CONF"
+	javaHome envVar = "JAVA_HOME"
 )
 
 type messageType int
@@ -70,6 +71,9 @@ func (cmd *command) GetFunctionToExecute() (func(string) string, error) {
 		if inputs[pxfConf] != "" {
 			pxfCommand += "PXF_CONF=" + inputs[pxfConf] + " "
 		}
+		if inputs[javaHome] != "" {
+			pxfCommand += "JAVA_HOME=" + inputs[javaHome] + " "
+		}
 		pxfCommand += inputs[gphome] + "/pxf/bin/pxf" + " " + string(cmd.name)
 		if cmd.name == reset {
 			pxfCommand += " --force" // there is a prompt for local reset as well
@@ -108,7 +112,7 @@ var (
 			err:     "PXF failed to initialize on %d out of %d hosts\n",
 		},
 		warn:       false,
-		envVars:    []envVar{gphome, pxfConf},
+		envVars:    []envVar{gphome, pxfConf, javaHome},
 		whereToRun: cluster.ON_HOSTS_AND_MASTER,
 	}
 	StartCommand = command{

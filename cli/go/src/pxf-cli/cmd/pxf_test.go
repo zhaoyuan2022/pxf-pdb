@@ -11,16 +11,17 @@ import (
 )
 
 var _ = Describe("CommandFunc", func() {
-	Context("when PXF_CONF and GPHOME are set", func() {
+	Context("when JAVA_HOME, PXF_CONF and GPHOME are set", func() {
 		BeforeEach(func() {
 			_ = os.Setenv("GPHOME", "/test/gphome")
 			_ = os.Setenv("PXF_CONF", "/test/gphome/pxf_conf")
+			_ = os.Setenv("JAVA_HOME", "/etc/java/home")
 		})
 
 		It("successfully generates init command", func() {
 			commandFunc, err := cmd.InitCommand.GetFunctionToExecute()
 			Expect(err).To(BeNil())
-			expected := "PXF_CONF=/test/gphome/pxf_conf /test/gphome/pxf/bin/pxf init"
+			expected := "PXF_CONF=/test/gphome/pxf_conf JAVA_HOME=/etc/java/home /test/gphome/pxf/bin/pxf init"
 			Expect(commandFunc("foo")).To(Equal(expected))
 		})
 	})

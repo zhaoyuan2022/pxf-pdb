@@ -103,11 +103,11 @@ function get_environment()
 
 }
 
-checkJavaHome()
+function checkJavaHome()
 {
     # validate JAVA_HOME
     if [[ ! -x ${JAVA_HOME}/bin/java ]]; then
-        fail "\$JAVA_HOME=$JAVA_HOME is invalid. Set \$JAVA_HOME in ~/.bashrc or $default_env_script on all Greenplum hosts."
+        fail "\$JAVA_HOME=$JAVA_HOME is invalid. Set \$JAVA_HOME in your environment before initializing PXF."
     fi
 }
 
@@ -370,10 +370,16 @@ function doInit()
     checkJavaHome
     generatePrivateClasspath || return 1
     generateUserConfigs || return 1
+    editPxfEnvSh || return 1
     createInstance || return 1
     deployWebapp || return 1
     createLogsDir || return 1
     createRunDir  || return 1
+}
+
+function editPxfEnvSh()
+{
+	sed -i.bak -e "s|.*JAVA_HOME=.*|JAVA_HOME=${JAVA_HOME}|g" "${PXF_CONF}/conf/pxf-env.sh" && rm "${PXF_CONF}/conf/pxf-env.sh.bak"
 }
 
 #
