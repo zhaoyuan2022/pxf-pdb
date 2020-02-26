@@ -92,7 +92,7 @@ function update_pxf_conf()
     sed "${SED_OPTS[@]}" "s|{PXF_CONF:-.*}$|{PXF_CONF:-\"${PXF_CONF}\"}|g" "$default_env_script"
 }
 
-function get_environment()
+function getEnvironment()
 {
     # load default environment
     if [[ ! -f $default_env_script ]]; then
@@ -206,6 +206,11 @@ function instanceExists()
     fi
 
     "${instance}/bin/catalina.sh" version > /dev/null 2>&1
+}
+
+function checkInstance()
+{
+	instanceExists || fail 'Cannot find PXF instance, maybe call init?'
 }
 
 function createLogsDir()
@@ -366,7 +371,7 @@ function doInit()
     fi
 
     update_pxf_conf
-    get_environment
+    getEnvironment
     checkJavaHome
     generatePrivateClasspath || return 1
     generateUserConfigs || return 1
@@ -392,11 +397,9 @@ function editPxfEnvSh()
 function doStart()
 {
     local flags=()
-    if ! instanceExists; then
-        fail 'Cannot find PXF instance, maybe call init?'
-    fi
-    get_environment
+    getEnvironment
     checkJavaHome
+    checkInstance
     checkPxfConf
     warnUserEnvScript
     [[ $PXF_DEBUG == true ]] && flags+=(jpda)
@@ -414,11 +417,9 @@ function doStart()
 #
 function doStop()
 {
-    if ! instanceExists; then
-        fail 'Cannot find PXF instance, maybe call init?'
-    fi
-    get_environment
+    getEnvironment
     checkJavaHome
+    checkInstance
     checkPxfConf
     warnUserEnvScript
     "${instance}/bin/catalina.sh" stop -force || return 1
@@ -426,8 +427,9 @@ function doStop()
 
 function doStatus()
 {
-    get_environment
+    getEnvironment
     checkJavaHome
+    checkInstance
     checkPxfConf
     warnUserEnvScript
     checkWebapp 1 || return 1
@@ -439,10 +441,8 @@ function doSync()
     if [[ -z $target_host ]]; then
         fail 'A destination hostname must be provided'
     fi
-    if ! instanceExists; then
-        fail 'Cannot find PXF instance, maybe call init?'
-    fi
-    get_environment
+    getEnvironment
+    checkInstance
     checkPxfConf
     warnUserEnvScript
     rsync -az${DELETE:+ --delete} -e "ssh -o StrictHostKeyChecking=no" "$PXF_CONF"/{conf,lib,servers} "${target_host}:$PXF_CONF"
@@ -451,7 +451,7 @@ function doSync()
 function doCluster()
 {
     local pxf_cluster_command=$2
-    get_environment
+    getEnvironment
     # Go CLI handles unset PXF_CONF when appropriate
     [[ $PXF_CONF == NOT_INITIALIZED ]] && unset PXF_CONF
     if [[ $pxf_cluster_command != init ]]; then
