@@ -21,14 +21,12 @@ fly -t ud set-pipeline \
 The following commands would create three PXF pipelines - **gpdb_master**, **6X_STABLE** and **5X_STABLE**
 ```
 pushd ~/workspace/gp-continuous-integration && git pull && popd
-./deploy prod master
 ./deploy prod 6x
 ./deploy prod 5x
 ```
 
 The following commands will expose these pipelines:
 ```
-fly -t ud expose-pipeline -p pxf_master
 fly -t ud expose-pipeline -p pxf_6X_STABLE
 fly -t ud expose-pipeline -p pxf_5X_STABLE
 ```
@@ -166,4 +164,10 @@ fly -t ud set-pipeline -p pg_regress \
     -v "folder-prefix=dev/${USER}" -v gpdb-branch=master -v pgport=7000 \
     -v gpdb-git-branch=master -v gpdb-git-remote=https://github.com/greenplum-db/gpdb \
     -v pxf-git-branch=master -v pxf-git-remote=https://github.com/greenplum-db/pxf
+```
+
+Expose the `pg_regress` pipeline:
+
+```
+fly -t ud expose-pipeline -p pg_regress
 ```
