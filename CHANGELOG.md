@@ -1,5 +1,12 @@
 # Changelog
 
+## 5.11.1 (03/02/2020)
+
+### Bug Fixes:
+
+- [#308](https://github.com/greenplum-db/pxf/pull/308) Fix ESCAPE 'OFF' is not processed correctly on PXF side error
+- [#306](https://github.com/greenplum-db/pxf/pull/306) Fix JAVA_HOME from $PXF_CONF/conf/pxf-env.sh being overridden
+
 ## 5.11.0 (02/25/2020)
 
 #### Enhancements:
