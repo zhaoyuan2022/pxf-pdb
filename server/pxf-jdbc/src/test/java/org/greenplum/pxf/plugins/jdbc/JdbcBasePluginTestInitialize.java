@@ -43,6 +43,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import org.mockito.Mockito;
+
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.internal.util.reflection.Whitebox.getInternalState;
@@ -62,6 +63,7 @@ public class JdbcBasePluginTestInitialize {
     private static final String JDBC_DRIVER = "java.lang.Object";  // we cannot mock Class.forName()
     private static final String JDBC_URL = "jdbc:postgresql://localhost/postgres";
     private static final List<ColumnDescriptor> COLUMNS;
+
     static {
         COLUMNS = new ArrayList<>();
         COLUMNS.add(new ColumnDescriptor("c1", DataType.INTEGER.getOID(), 1, null, null, true));
@@ -83,6 +85,7 @@ public class JdbcBasePluginTestInitialize {
         RequestContext context = new RequestContext();
         context.setDataSource(DATA_SOURCE);
         context.setTupleDescription(COLUMNS);
+        context.setRequestType(RequestContext.RequestType.WRITE_BRIDGE);
         return context;
     }
 
@@ -109,6 +112,7 @@ public class JdbcBasePluginTestInitialize {
     /**
      * Prepare {@link BaseConfigurationFactory} getInstance() method to return
      * provided configuration
+     *
      * @param configuration
      */
     private void prepareBaseConfigurationFactory(Configuration configuration) throws Exception {
@@ -157,7 +161,7 @@ public class JdbcBasePluginTestInitialize {
 
         // Checks
         assertEquals(1, getInternalState(plugin, "batchSize"));
-        assertTrue((boolean)getInternalState(plugin, "batchSizeIsSetByUser"));
+        assertTrue((boolean) getInternalState(plugin, "batchSizeIsSetByUser"));
     }
 
     @Test
@@ -173,7 +177,7 @@ public class JdbcBasePluginTestInitialize {
 
         // Checks
         assertEquals(1, getInternalState(plugin, "batchSize"));
-        assertTrue((boolean)getInternalState(plugin, "batchSizeIsSetByUser"));
+        assertTrue((boolean) getInternalState(plugin, "batchSizeIsSetByUser"));
     }
 
     @Test
@@ -189,11 +193,43 @@ public class JdbcBasePluginTestInitialize {
 
         // Checks
         assertEquals(2, getInternalState(plugin, "batchSize"));
-        assertTrue((boolean)getInternalState(plugin, "batchSizeIsSetByUser"));
+        assertTrue((boolean) getInternalState(plugin, "batchSizeIsSetByUser"));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
+    public void testBatchSizeOnRead() throws Exception {
+        // Configuration
+        Configuration configuration = makeConfiguration();
+        configuration.set("jdbc.statement.batchSize", "foobar");
+
+        // Initialize plugin
+        prepareBaseConfigurationFactory(configuration);
+        JdbcBasePlugin plugin = new JdbcBasePlugin();
+        RequestContext context = makeContext();
+        context.setRequestType(RequestContext.RequestType.READ_BRIDGE);
+        plugin.initialize(context);
+
+        // should not error because we don't validate this on the READ path
+    }
+
+    @Test
+    public void testBatchSizeOnWrite() throws Exception {
+        thrown.expect(NumberFormatException.class);
+        thrown.expectMessage("For input string: \"foobar\"");
+        // Configuration
+        Configuration configuration = makeConfiguration();
+        configuration.set("jdbc.statement.batchSize", "foobar");
+
+        // Initialize plugin
+        prepareBaseConfigurationFactory(configuration);
+        JdbcBasePlugin plugin = new JdbcBasePlugin();
+        plugin.initialize(makeContext());
+    }
+
+    @Test
     public void testBatchSizeNegative() throws Exception {
+        thrown.expect(IllegalArgumentException.class);
+        thrown.expectMessage("Property jdbc.statement.batchSize has incorrect value -1 : must be a non-negative integer");
         // Configuration
         Configuration configuration = makeConfiguration();
         configuration.set("jdbc.statement.batchSize", "-1");
@@ -315,7 +351,7 @@ public class JdbcBasePluginTestInitialize {
         plugin.initialize(context);
 
         // Checks
-        assertFalse((Boolean)getInternalState(plugin, "quoteColumns"));
+        assertFalse((Boolean) getInternalState(plugin, "quoteColumns"));
     }
 
     @Test
@@ -333,7 +369,7 @@ public class JdbcBasePluginTestInitialize {
         plugin.initialize(context);
 
         // Checks
-        assertTrue((Boolean)getInternalState(plugin, "quoteColumns"));
+        assertTrue((Boolean) getInternalState(plugin, "quoteColumns"));
     }
 
     @Test
@@ -351,7 +387,7 @@ public class JdbcBasePluginTestInitialize {
         plugin.initialize(context);
 
         // Checks
-        assertFalse((Boolean)getInternalState(plugin, "quoteColumns"));
+        assertFalse((Boolean) getInternalState(plugin, "quoteColumns"));
     }
 
     @Test
@@ -374,11 +410,13 @@ public class JdbcBasePluginTestInitialize {
         Map<String, String> expected = new HashMap<String, String>();
         expected.put(CONFIG_PROPERTIES_KEYS[0], "v1");
         expected.put(CONFIG_PROPERTIES_KEYS[1], "v2");
-        assertEquals(expected.entrySet(), ((Map<String, String>)getInternalState(plugin, "sessionConfiguration")).entrySet());
+        assertEquals(expected.entrySet(), ((Map<String, String>) getInternalState(plugin, "sessionConfiguration")).entrySet());
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testSessionConfigurationForbiddenSymbols() throws Exception {
+        thrown.expect(IllegalArgumentException.class);
+        thrown.expectMessage("Some session configuration parameter contains forbidden characters");
         // Configuration
         Configuration configuration = makeConfiguration();
         configuration.set(CONFIG_SESSION_KEY_PREFIX + CONFIG_PROPERTIES_KEYS[0], "v1");
@@ -413,7 +451,7 @@ public class JdbcBasePluginTestInitialize {
         Properties expected = new Properties();
         expected.setProperty(CONFIG_PROPERTIES_KEYS[0], "v1");
         expected.setProperty(CONFIG_PROPERTIES_KEYS[1], "v2");
-        assertEquals(expected.entrySet(), ((Properties)getInternalState(plugin, "connectionConfiguration")).entrySet());
+        assertEquals(expected.entrySet(), ((Properties) getInternalState(plugin, "connectionConfiguration")).entrySet());
     }
 
     @Test
@@ -433,7 +471,7 @@ public class JdbcBasePluginTestInitialize {
         // Checks
         Properties expected = new Properties();
         expected.setProperty("user", "user");
-        assertEquals(expected.entrySet(), ((Properties)getInternalState(plugin, "connectionConfiguration")).entrySet());
+        assertEquals(expected.entrySet(), ((Properties) getInternalState(plugin, "connectionConfiguration")).entrySet());
     }
 
     @Test
@@ -454,7 +492,7 @@ public class JdbcBasePluginTestInitialize {
         // Checks
         Properties expected = new Properties();
         expected.setProperty("user", "proxy");
-        assertEquals(expected.entrySet(), ((Properties)getInternalState(plugin, "connectionConfiguration")).entrySet());
+        assertEquals(expected.entrySet(), ((Properties) getInternalState(plugin, "connectionConfiguration")).entrySet());
     }
 
     @Test
@@ -476,7 +514,7 @@ public class JdbcBasePluginTestInitialize {
         // Checks
         Properties expected = new Properties();
         expected.setProperty("user", "proxy");
-        assertEquals(expected.entrySet(), ((Properties)getInternalState(plugin, "connectionConfiguration")).entrySet());
+        assertEquals(expected.entrySet(), ((Properties) getInternalState(plugin, "connectionConfiguration")).entrySet());
     }
 
     @Test
@@ -498,7 +536,7 @@ public class JdbcBasePluginTestInitialize {
         // Checks
         Properties expected = new Properties();
         expected.setProperty("user", "user");
-        assertEquals(expected.entrySet(), ((Properties)getInternalState(plugin, "connectionConfiguration")).entrySet());
+        assertEquals(expected.entrySet(), ((Properties) getInternalState(plugin, "connectionConfiguration")).entrySet());
     }
 
     @Test
@@ -519,7 +557,7 @@ public class JdbcBasePluginTestInitialize {
         // Checks
         Properties expected = new Properties();
         expected.setProperty("user", "user");
-        assertEquals(expected.entrySet(), ((Properties)getInternalState(plugin, "connectionConfiguration")).entrySet());
+        assertEquals(expected.entrySet(), ((Properties) getInternalState(plugin, "connectionConfiguration")).entrySet());
     }
 
 
@@ -542,7 +580,7 @@ public class JdbcBasePluginTestInitialize {
         Properties expected = new Properties();
         expected.setProperty("user", "user");
         expected.setProperty("password", "password");
-        assertEquals(expected.entrySet(), ((Properties)getInternalState(plugin, "connectionConfiguration")).entrySet());
+        assertEquals(expected.entrySet(), ((Properties) getInternalState(plugin, "connectionConfiguration")).entrySet());
     }
 
     @Test
@@ -561,7 +599,7 @@ public class JdbcBasePluginTestInitialize {
 
         // Checks
         Properties expected = new Properties();
-        assertEquals(expected.entrySet(), ((Properties)getInternalState(plugin, "connectionConfiguration")).entrySet());
+        assertEquals(expected.entrySet(), ((Properties) getInternalState(plugin, "connectionConfiguration")).entrySet());
     }
 
     @Test

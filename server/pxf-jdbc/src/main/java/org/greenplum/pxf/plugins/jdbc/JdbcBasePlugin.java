@@ -223,13 +223,15 @@ public class JdbcBasePlugin extends BasePlugin {
 
         // Optional parameters
         batchSizeIsSetByUser = configuration.get(JDBC_STATEMENT_BATCH_SIZE_PROPERTY_NAME) != null;
-        batchSize = configuration.getInt(JDBC_STATEMENT_BATCH_SIZE_PROPERTY_NAME, DEFAULT_BATCH_SIZE);
+        if (context.getRequestType() == RequestContext.RequestType.WRITE_BRIDGE) {
+            batchSize = configuration.getInt(JDBC_STATEMENT_BATCH_SIZE_PROPERTY_NAME, DEFAULT_BATCH_SIZE);
 
-        if (batchSize == 0) {
-            batchSize = 1; // if user set to 0, it is the same as batchSize of 1
-        } else if (batchSize < 0) {
-            throw new IllegalArgumentException(String.format(
-                    "Property %s has incorrect value %s : must be a non-negative integer", JDBC_STATEMENT_BATCH_SIZE_PROPERTY_NAME, batchSize));
+            if (batchSize == 0) {
+                batchSize = 1; // if user set to 0, it is the same as batchSize of 1
+            } else if (batchSize < 0) {
+                throw new IllegalArgumentException(String.format(
+                        "Property %s has incorrect value %s : must be a non-negative integer", JDBC_STATEMENT_BATCH_SIZE_PROPERTY_NAME, batchSize));
+            }
         }
 
         fetchSize = configuration.getInt(JDBC_STATEMENT_FETCH_SIZE_PROPERTY_NAME, DEFAULT_FETCH_SIZE);
