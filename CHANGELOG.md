@@ -1,5 +1,17 @@
 # Changelog
 
+## 5.11.2 (03/20/2020)
+
+#### Minor enhancements:
+
+- [#318](https://github.com/greenplum-db/pxf/pull/318) pxf-public classpath is no longer being used
+- [#311](https://github.com/greenplum-db/pxf/pull/311) JDBC: Validate batchsize only on write
+
+### Dependency updates:
+
+- [#316](https://github.com/greenplum-db/pxf/pull/316) Tomcat: Address CVE-2020-1938
+- [#313](https://github.com/greenplum-db/pxf/pull/313) Update jackson-databind
+
 ## 5.11.1 (03/02/2020)
 
 ### Bug Fixes:
