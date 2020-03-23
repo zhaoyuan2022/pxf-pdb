@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # defaults
-CCP_REAP_MINUTES=${ccp_reap_minutes:-}
+CCP_REAP_MINUTES=${ccp_reap_minutes:-120}
 HADOOP_USER=${HADOOP_USER:-gpadmin}
 IMAGE_VERSION=${IMAGE_VERSION:-1.3}
 INITIALIZATION_SCRIPT=${INITIALIZATION_SCRIPT:-gs://pxf-perf/scripts/initialization-for-kerberos.sh}
