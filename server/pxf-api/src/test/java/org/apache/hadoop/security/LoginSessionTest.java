@@ -1,7 +1,9 @@
 package org.apache.hadoop.security;
 
 import com.google.common.collect.Sets;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import javax.security.auth.Subject;
@@ -17,6 +19,24 @@ public class LoginSessionTest {
     private UserGroupInformation ugiFoo, ugiBar;
     private Subject subjectFoo, subjectBar;
     private User userFoo, userBar;
+
+    private static final String PROPERTY_KEY_KERBEROS_KDC = "java.security.krb5.kdc";
+    private static final String PROPERTY_KEY_KERBEROS_REALM = "java.security.krb5.realm";
+    private static String kdcDefault;
+    private static String realmDefault;
+
+    @BeforeClass
+    public static void setProperties() {
+        // simulate presence of krb.conf file, important for prevention of test pollution when creating Users
+        kdcDefault = System.setProperty(PROPERTY_KEY_KERBEROS_KDC, "localhost");
+        realmDefault = System.setProperty(PROPERTY_KEY_KERBEROS_REALM, "DEFAULT_REALM");
+    }
+
+    @AfterClass
+    public static void resetProperties() {
+        resetProperty(PROPERTY_KEY_KERBEROS_KDC, kdcDefault);
+        resetProperty(PROPERTY_KEY_KERBEROS_REALM, realmDefault);
+    }
 
     @Before
     public void setup() {
@@ -109,4 +129,11 @@ public class LoginSessionTest {
         assertEquals("LoginSession[config=config,principal=principal,keytab=keytab,kerberosMinMillisBeforeRelogin=1]", session.toString());
     }
 
+    private static void resetProperty(String key, String val) {
+        if (val != null) {
+            System.setProperty(key, val);
+            return;
+        }
+        System.clearProperty(key);
+    }
 }

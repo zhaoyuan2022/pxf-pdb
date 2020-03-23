@@ -4,7 +4,9 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.LoginSession;
 import org.apache.hadoop.security.PxfUserGroupInformation;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -34,10 +36,35 @@ public class SecureLoginTest {
     private static final String PROPERTY_KEY_USER_IMPERSONATION = "pxf.service.user.impersonation.enabled";
     private static final String PROPERTY_KEY_SERVICE_PRINCIPAL = "pxf.service.kerberos.principal";
     private static final String PROPERTY_KEY_SERVICE_KEYTAB = "pxf.service.kerberos.keytab";
+    private static final String PROPERTY_KEY_KERBEROS_KDC = "java.security.krb5.kdc";
+    private static final String PROPERTY_KEY_KERBEROS_REALM = "java.security.krb5.realm";
+    private static String userImpersonationEnabled;
+    private static String kerberosPrincipal;
+    private static String kerberosKeytab;
+    private static String kdcDefault;
+    private static String realmDefault;
 
+    @BeforeClass
+    public static void getProperties() {
+        userImpersonationEnabled = System.getProperty(PROPERTY_KEY_USER_IMPERSONATION);
+        kerberosPrincipal = System.getProperty(PROPERTY_KEY_SERVICE_PRINCIPAL);
+        kerberosKeytab = System.getProperty(PROPERTY_KEY_SERVICE_KEYTAB);
+        kdcDefault = System.getProperty(PROPERTY_KEY_KERBEROS_KDC);
+        realmDefault = System.getProperty(PROPERTY_KEY_KERBEROS_REALM);
+    }
+
+    @AfterClass
+    public static void resetProperties() {
+        resetProperty(PROPERTY_KEY_USER_IMPERSONATION, userImpersonationEnabled);
+        resetProperty(PROPERTY_KEY_SERVICE_PRINCIPAL, kerberosPrincipal);
+        resetProperty(PROPERTY_KEY_SERVICE_KEYTAB, kerberosKeytab);
+        resetProperty(PROPERTY_KEY_KERBEROS_KDC, kdcDefault);
+        resetProperty(PROPERTY_KEY_KERBEROS_REALM, realmDefault);
+    }
 
     private static final String hostname;
     private static final String RESOLVED_PRINCIPAL;
+
     static {
         try {
             hostname = InetAddress.getLocalHost().getCanonicalHostName();
@@ -63,10 +90,9 @@ public class SecureLoginTest {
         System.clearProperty(PROPERTY_KEY_USER_IMPERSONATION);
         System.clearProperty(PROPERTY_KEY_SERVICE_PRINCIPAL);
         System.clearProperty(PROPERTY_KEY_SERVICE_KEYTAB);
-
         // simulate presence of krb.conf file
-        System.setProperty("java.security.krb5.kdc", "localhost");
-        System.setProperty("java.security.krb5.realm", "DEFAULT_REALM");
+        System.setProperty(PROPERTY_KEY_KERBEROS_KDC, "localhost");
+        System.setProperty(PROPERTY_KEY_KERBEROS_REALM, "DEFAULT_REALM");
     }
 
     @Test
@@ -487,4 +513,11 @@ public class SecureLoginTest {
         assertFalse(secureLogin.isUserImpersonationEnabled(configuration));
     }
 
+    private static void resetProperty(String key, String val) {
+        if (val != null) {
+            System.setProperty(key, val);
+            return;
+        }
+        System.clearProperty(key);
+    }
 }

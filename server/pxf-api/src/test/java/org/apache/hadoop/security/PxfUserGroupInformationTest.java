@@ -3,7 +3,9 @@ package org.apache.hadoop.security;
 import com.google.common.collect.Sets;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.authentication.util.KerberosUtil;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -50,6 +52,24 @@ public class PxfUserGroupInformationTest {
 
     @Rule
     public ExpectedException expectedException = ExpectedException.none();
+
+    private static final String PROPERTY_KEY_KERBEROS_KDC = "java.security.krb5.kdc";
+    private static final String PROPERTY_KEY_KERBEROS_REALM = "java.security.krb5.realm";
+    private static String kdcDefault;
+    private static String realmDefault;
+
+    @BeforeClass
+    public static void setProperties() {
+        // simulate presence of krb.conf file, important for prevention of test pollution when creating Users
+        kdcDefault = System.setProperty(PROPERTY_KEY_KERBEROS_KDC, "localhost");
+        realmDefault = System.setProperty(PROPERTY_KEY_KERBEROS_REALM, "DEFAULT_REALM");
+    }
+
+    @AfterClass
+    public static void resetProperties() {
+        resetProperty(PROPERTY_KEY_KERBEROS_KDC, kdcDefault);
+        resetProperty(PROPERTY_KEY_KERBEROS_REALM, realmDefault);
+    }
 
     @Before
     public void setup() throws Exception {
@@ -318,4 +338,11 @@ public class PxfUserGroupInformationTest {
         PxfUserGroupInformation.reloginFromKeytab(serverName, session);
     }
 
+    private static void resetProperty(String key, String val) {
+        if (val != null) {
+            System.setProperty(key, val);
+            return;
+        }
+        System.clearProperty(key);
+    }
 }
