@@ -256,7 +256,17 @@ resources:
     source:
       branch: {{pxf-git-branch}}
       uri: https://github.com/greenplum-db/pxf.git
-      paths: [concourse/docker/pxf-dev-base]
+      paths:
+        - Makefile
+        - automation/Makefile
+        - automation/pom.xml
+        - cli/go/src/pxf-cli/Gopkg.lock
+        - cli/go/src/pxf-cli/Gopkg.toml
+        - cli/go/src/pxf-cli/Makefile
+        - concourse/docker/pxf-dev-base
+        - server/Makefile
+        - server/build.gradle
+        - server/gradle.properties
 
   - name: gpdb-pxf-dev-centos6-image
     type: docker-image
