@@ -28,7 +28,7 @@ func createCobraCommand(use string, short string, cmd *command) *cobra.Command {
 		Use:   use,
 		Short: short,
 		Run: func(cobraCmd *cobra.Command, args []string) {
-			clusterData, err := doSetup(cmd)
+			clusterData, err := doSetup()
 			if err == nil {
 				err = clusterRun(cmd, clusterData)
 			}
@@ -69,43 +69,48 @@ func exitWithReturnCode(err error) {
 	os.Exit(0)
 }
 
-// CountHostsExcludingMaster is exported for testing
-func (c *ClusterData) CountHostsExcludingMaster() error {
-	hostSegMap := make(map[string]int, 0)
-	for contentID, seg := range c.Cluster.Segments {
-		if contentID == -1 {
-			continue
-		}
-		hostSegMap[seg.Hostname]++
+func handlePlurality(num int) string {
+	if num == 1 {
+		return ""
 	}
-	c.NumHosts = len(hostSegMap)
-	return nil
+	return "s"
 }
 
-// GenerateStatusReport is exported for testing
-func GenerateStatusReport(cmd *command, clusterData *ClusterData) string {
-	cmdMsg := fmt.Sprintf(cmd.messages[status], clusterData.NumHosts)
-	gplog.Info(cmdMsg)
-	return cmdMsg
+// GenerateStatusReport exported for testing
+func GenerateStatusReport(cmd *command, clusterData *ClusterData) {
+	if _, ok := cmd.messages[standby]; !ok {
+		// this command cares not about standby
+		gplog.Info(fmt.Sprintf(cmd.messages[status], clusterData.NumHosts, handlePlurality(clusterData.NumHosts)))
+		return
+	}
+	standbyMsg := ""
+	numHosts := clusterData.NumHosts
+	if cmd.whereToRun&cluster.INCLUDE_MASTER == cluster.INCLUDE_MASTER {
+		numHosts--
+	}
+	if isStandbyAloneOnHost(clusterData) {
+		standbyMsg = cmd.messages[standby]
+		numHosts--
+	}
+	gplog.Info(fmt.Sprintf(cmd.messages[status], standbyMsg, numHosts, handlePlurality(numHosts)))
 }
 
 // GenerateOutput is exported for testing
 func GenerateOutput(cmd *command, clusterData *ClusterData) error {
-	numHosts := len(clusterData.Output.Stdouts)
 	numErrors := clusterData.Output.NumErrors
 	if numErrors == 0 {
-		gplog.Info(cmd.messages[success], numHosts-numErrors, numHosts)
+		gplog.Info(cmd.messages[success], clusterData.NumHosts-numErrors, clusterData.NumHosts, handlePlurality(clusterData.NumHosts))
 		return nil
 	}
 	response := ""
-	for index, stderr := range clusterData.Output.Stderrs {
-		if clusterData.Output.Errors[index] == nil {
+	for _, failedCommand := range clusterData.Output.FailedCommands {
+		if failedCommand == nil {
 			continue
 		}
-		host := clusterData.Cluster.Segments[index].Hostname
-		errorMessage := stderr
+		host := failedCommand.Host
+		errorMessage := failedCommand.Stderr
 		if len(errorMessage) == 0 {
-			errorMessage = clusterData.Output.Stdouts[index]
+			errorMessage = failedCommand.Stdout
 		}
 		lines := strings.Split(errorMessage, "\n")
 		errorMessage = lines[0]
@@ -117,12 +122,12 @@ func GenerateOutput(cmd *command, clusterData *ClusterData) error {
 		}
 		response += fmt.Sprintf("%s ==> %s\n", host, errorMessage)
 	}
-	gplog.Info("ERROR: "+cmd.messages[err], numErrors, numHosts)
+	gplog.Info("ERROR: "+cmd.messages[err], numErrors, clusterData.NumHosts, handlePlurality(clusterData.NumHosts))
 	gplog.Error("%s", response)
 	return errors.New(response)
 }
 
-func doSetup(cmd *command) (*ClusterData, error) {
+func doSetup() (*ClusterData, error) {
 	connection := dbconn.NewDBConnFromEnvironment("postgres")
 	err := connection.Connect(1)
 	if err != nil {
@@ -130,26 +135,14 @@ func doSetup(cmd *command) (*ClusterData, error) {
 			"Please make sure that your Greenplum database is running and you are on the master node.", err.Error()))
 		return nil, err
 	}
-	segConfigs := cluster.MustGetSegmentConfiguration(connection)
-	clusterData := &ClusterData{Cluster: cluster.NewCluster(segConfigs), connection: connection}
-	if cmd.name == sync || cmd.name == pxfInit || cmd.name == reset {
-		err = clusterData.appendMasterStandby()
-		if err != nil {
-			return nil, err
-		}
-	}
-	err = clusterData.CountHostsExcludingMaster()
+	segConfigs, err := cluster.GetSegmentConfiguration(connection, true)
 	if err != nil {
-		gplog.Error(err.Error())
+		gplog.Error(fmt.Sprintf("ERROR: Could not retrieve segment information from GPDB.\n%s\n" + err.Error()))
 		return nil, err
 	}
-	return clusterData, nil
-}
+	clusterData := &ClusterData{Cluster: cluster.NewCluster(segConfigs), connection: connection}
 
-func adaptContentIDToHostname(cluster *cluster.Cluster, f func(string) string) func(int) string {
-	return func(contentId int) string {
-		return f(cluster.GetHostForContent(contentId))
-	}
+	return clusterData, nil
 }
 
 func clusterRun(cmd *command, clusterData *ClusterData) error {
@@ -161,57 +154,23 @@ func clusterRun(cmd *command, clusterData *ClusterData) error {
 		return err
 	}
 
-	f, err := cmd.GetFunctionToExecute()
+	functionToExecute, err := cmd.GetFunctionToExecute()
 	if err != nil {
 		gplog.Error(fmt.Sprintf("Error: %s", err))
 		return err
 	}
 
-	cmdMsg := GenerateStatusReport(cmd, clusterData)
-	clusterData.Output = clusterData.Cluster.GenerateAndExecuteCommand(
-		cmdMsg,
-		adaptContentIDToHostname(clusterData.Cluster, f),
-		cmd.whereToRun,
-	)
+	commandList := clusterData.Cluster.GenerateSSHCommandList(cmd.whereToRun, functionToExecute)
+	clusterData.NumHosts = len(commandList)
+	GenerateStatusReport(cmd, clusterData)
+	clusterData.Output = clusterData.Cluster.ExecuteClusterCommand(cmd.whereToRun, commandList)
 	return GenerateOutput(cmd, clusterData)
 }
 
-func (c *ClusterData) appendMasterStandby() error {
-	query := ""
-	if c.connection.Version.Before("6") {
-		query = `
-SELECT
-        s.dbid,
-        s.content as contentid,
-        s.port,
-        s.hostname,
-        e.fselocation as datadir
-FROM gp_segment_configuration s
-JOIN pg_filespace_entry e ON s.dbid = e.fsedbid
-JOIN pg_filespace f ON e.fsefsoid = f.oid
-WHERE s.role = 'm' AND f.fsname = 'pg_system' AND s.content = '-1'
-ORDER BY s.content;`
-	} else {
-		query = `
-SELECT
-        dbid,
-        content as contentid,
-        port,
-        hostname,
-        datadir
-FROM gp_segment_configuration
-WHERE role = 'm' AND content = '-1'
-ORDER BY content;`
+func isStandbyAloneOnHost(clusterData *ClusterData) bool {
+	standbyHost := clusterData.Cluster.GetHostForContent(-1, "m")
+	if standbyHost == "" {
+		return false // there is no standby master
 	}
-
-	results := make([]cluster.SegConfig, 0)
-	err := c.connection.Select(&results, query)
-	if err != nil {
-		return err
-	}
-	standbyMasterContentID := len(c.Cluster.Segments)
-	if len(results) > 0 {
-		c.Cluster.Segments[standbyMasterContentID] = results[0]
-	}
-	return nil
+	return len(clusterData.Cluster.GetContentsForHost(standbyHost)) == 1
 }
