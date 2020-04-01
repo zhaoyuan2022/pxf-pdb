@@ -94,13 +94,16 @@ function update_pxf_conf()
 
 function getEnvironment()
 {
+    local USER_SPECIFIED_JAVA_HOME=${JAVA_HOME}
     # load default environment
     if [[ ! -f $default_env_script ]]; then
         fail "Failed to find $default_env_script"
     fi
     # shellcheck source=/Users/pivotal/workspace/pxf/server/pxf-service/src/scripts/pxf-env-default.sh
     source "$default_env_script"
-
+    # we may have just overridden the user's intended JAVA_HOME
+    # by sourcing PXF_CONF/conf/pxf-env.sh
+    [[ ${PRESERVE_JAVA_HOME} == true ]] && JAVA_HOME=${USER_SPECIFIED_JAVA_HOME}
 }
 
 function checkJavaHome()
@@ -371,7 +374,8 @@ function doInit()
     fi
 
     update_pxf_conf
-    getEnvironment
+    # preserve JAVA_HOME in case user is trying to change it
+    PRESERVE_JAVA_HOME=true getEnvironment
     checkJavaHome
     generatePrivateClasspath || return 1
     generateUserConfigs || return 1
@@ -450,13 +454,12 @@ function doSync()
 
 function doCluster()
 {
-    local pxf_cluster_command=$2
-    getEnvironment
+    local pxf_cluster_command=$2 is_init=false
+    [[ ${pxf_cluster_command} == init ]] && is_init=true
+    PRESERVE_JAVA_HOME=${is_init} getEnvironment
     # Go CLI handles unset PXF_CONF when appropriate
     [[ $PXF_CONF == NOT_INITIALIZED ]] && unset PXF_CONF
-    if [[ $pxf_cluster_command != init ]]; then
-        warnUserEnvScript
-    fi
+    [[ ${is_init} == false ]] && warnUserEnvScript
     GPHOME=${GPHOME:-"${PXF_HOME}/.."} "${parent_script_dir}/bin/pxf-cli" "$@"
 }
 
