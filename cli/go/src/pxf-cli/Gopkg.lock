@@ -18,6 +18,7 @@
   version = "v3.6.1"
 
 [[projects]]
+  branch = "master"
   digest = "1:49d5798b3f2c70191a267d7b66ec771b62b5c835ce61320d20b6e79a9766a3b5"
   name = "github.com/greenplum-db/gp-common-go-libs"
   packages = [
@@ -28,7 +29,7 @@
     "testhelper",
   ]
   pruneopts = "UT"
-  revision = "1a4969cbabb6e2f16bb2db542deccbee9965d33c"
+  revision = "b955fb7f9ec008ede2c6e81f31c4224978a9da64"
 
 [[projects]]
   digest = "1:a1038ef593beb4771c8f0f9c26e8b00410acd800af5c6864651d9bf160ea1813"
