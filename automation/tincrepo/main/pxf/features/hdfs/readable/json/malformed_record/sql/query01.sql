@@ -1,6 +1,10 @@
 -- start_matchsubs
 -- m/^CONTEXT: */
 -- s/^CONTEXT: *//
+--
+-- m/^DETAIL:*/
+-- s/^DETAIL:*//
+--
 -- end_matchsubs
 -- @description query01 for PXF HDFS Readable Json with malformed record test cases
 SELECT *
