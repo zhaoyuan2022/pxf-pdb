@@ -42,8 +42,23 @@ all:
 compile:
 	./gradlew compileJava
 
+GRADLEW_TEST_PARAMS = test
+ifneq "$(TEST)" ""
+	# find test file, remove leading "./" and trailing ".java"
+	TEST_FILE = $(shell : "$$(find . -name $(TEST).java)"; : "$${_%.java}"; echo "$${_\#./}")
+	# parse out the gradle project by grabbing top-level dir name
+	PROJECT   = $(shell : '${TEST_FILE}'; echo "$${_%%/*}")
+	# get java-style path with dots, starting at "org"
+	TEST_PATH = $(shell : '${TEST_FILE}'; : "$${_\#${PROJECT}/src/test/java/}"; echo "$${_//\//.}")
+	GRADLEW_TEST_PARAMS = :$(PROJECT):test --rerun-tasks --tests $(TEST_PATH)
+endif
+
 test unittest:
-	./gradlew test
+	@if [ -n '$(TEST)' ] && [ -z '${TEST_FILE}' ]; then \
+		echo 'Test $(TEST) was not found'; \
+		exit 1; \
+	fi
+	./gradlew ${GRADLEW_TEST_PARAMS}
 
 tar: tomcat
 	./gradlew tar ${BUILD_PARAMS}
