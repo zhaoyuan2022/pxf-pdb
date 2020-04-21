@@ -48,7 +48,7 @@ RUN ["/bin/bash", "-c", "export BUILD_PARAMS=-Dorg.gradle.daemon=false && \
     fi && \
     if grep 'CentOS Linux release 7' /etc/centos-release; then \
       yum install -y apr-util bzip2 openssl zip && yum clean all; \
-    fi; \
+    fi && \
     if grep 'VERSION=.*18.04.*LTS.*Bionic Beaver.*$' /etc/os-release; then \
       apt-get update && apt-get install -y zip libaprutil1 && rm -rf /var/lib/apt/lists/* && \
       PERL_VERSION=perl-5.22.1 && \
