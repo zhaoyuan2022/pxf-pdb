@@ -62,6 +62,12 @@ groups:
   - docker-gpdb-pxf-dev-ubuntu18-cdh-server
   - docker-gpdb-pxf-dev-ubuntu18-hdp2-server
 
+- name: singlecluster
+  jobs:
+  - singlecluster_noarch_cdh
+  - singlecluster_noarch_hdp2
+  - singlecluster_noarch_hdp3
+
 ## ======================================================================
 ## RESOURCES
 ## ======================================================================
