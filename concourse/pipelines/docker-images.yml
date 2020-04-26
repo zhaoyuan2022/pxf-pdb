@@ -69,6 +69,15 @@ groups:
   - singlecluster_noarch_hdp3
 
 ## ======================================================================
+## RESOURCE TYPES
+## ======================================================================
+resource_types:
+- name: google-cloud-storage
+  type: docker-image
+  source:
+    repository: frodenas/gcs-resource
+
+## ======================================================================
 ## RESOURCES
 ## ======================================================================
 resources:
@@ -115,7 +124,7 @@ resources:
       secret_access_key: {{bucket-secret-access-key}}
       bucket: {{pxf-aws-bucket-name}}
       region_name: {{aws-region}}
-      versioned_file: tomcat/apache-tomcat-7.0.96.tar.gz
+      versioned_file: tomcat/apache-tomcat-7.0.100.tar.gz
 
   - name: singlecluster-HDP2
     type: s3
@@ -126,6 +135,14 @@ resources:
       region_name: {{aws-region}}
       versioned_file: singlecluster/singlecluster-HDP2.tar.gz
 
+  - name: singlecluster-HDP2-gcs
+    type: google-cloud-storage
+    icon: google-drive
+    source:
+      bucket: {{pxf-gcs-bucket-name}}
+      json_key: {{data-gpdb-ud-google-json-key}}
+      versioned_file: singlecluster/HDP2/singlecluster-HDP2.tar.gz
+
   - name: singlecluster-HDP3
     type: s3
     source:
@@ -135,6 +152,14 @@ resources:
       region_name: {{aws-region}}
       versioned_file: singlecluster/singlecluster-HDP3.tar.gz
 
+  - name: singlecluster-HDP3-gcs
+    type: google-cloud-storage
+    icon: google-drive
+    source:
+      bucket: {{pxf-gcs-bucket-name}}
+      json_key: {{data-gpdb-ud-google-json-key}}
+      versioned_file: singlecluster/HDP3/singlecluster-HDP3.tar.gz
+
   - name: singlecluster-CDH
     type: s3
     source:
@@ -143,6 +168,14 @@ resources:
       bucket: {{pxf-aws-bucket-name}}
       region_name: {{aws-region}}
       versioned_file: singlecluster/singlecluster-CDH.tar.gz
+
+  - name: singlecluster-CDH-gcs
+    type: google-cloud-storage
+    icon: google-drive
+    source:
+      bucket: {{pxf-gcs-bucket-name}}
+      json_key: {{data-gpdb-ud-google-json-key}}
+      versioned_file: singlecluster/CDH/singlecluster-CDH.tar.gz
 
   - name: pxf_singlecluster
     type: git
@@ -619,9 +652,13 @@ jobs:
     - task: package_singlecluster
       file: pxf_src/singlecluster/package_singlecluster_cdh.yml
       image: gpdb-dev-centos6-image
-    - put: singlecluster-CDH
-      params:
-        file: artifacts/singlecluster-CDH.tar.gz
+    - in_parallel:
+      - put: singlecluster-CDH
+        params:
+          file: artifacts/singlecluster-CDH.tar.gz
+      - put: singlecluster-CDH-gcs
+        params:
+          file: artifacts/singlecluster-CDH.tar.gz
 
   - name: singlecluster_noarch_hdp2
     plan:
@@ -639,9 +676,13 @@ jobs:
     - task: package_singlecluster
       file: pxf_src/singlecluster/package_singlecluster_hdp2.yml
       image: gpdb-dev-centos6-image
-    - put: singlecluster-HDP2
-      params:
-        file: artifacts/singlecluster-HDP.tar.gz
+    - in_parallel:
+      - put: singlecluster-HDP2
+        params:
+          file: artifacts/singlecluster-HDP.tar.gz
+      - put: singlecluster-HDP2-gcs
+        params:
+          file: artifacts/singlecluster-HDP.tar.gz
 
   - name: singlecluster_noarch_hdp3
     plan:
@@ -659,9 +700,13 @@ jobs:
     - task: package_singlecluster
       file: pxf_src/singlecluster/package_singlecluster_hdp3.yml
       image: gpdb-dev-centos7-image
-    - put: singlecluster-HDP3
-      params:
-        file: artifacts/singlecluster-HDP.tar.gz
+    - in_parallel:
+      - put: singlecluster-HDP3
+        params:
+          file: artifacts/singlecluster-HDP.tar.gz
+      - put: singlecluster-HDP3-gcs
+        params:
+          file: artifacts/singlecluster-HDP.tar.gz
 
   - name: docker-gpdb-pxf-dev-centos6-cdh-server
     plan:
