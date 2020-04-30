@@ -139,7 +139,7 @@ resources:
     type: google-cloud-storage
     icon: google-drive
     source:
-      bucket: {{pxf-gcs-bucket-name}}
+      bucket: {{pxf-build-resources-bucket-name}}
       json_key: {{data-gpdb-ud-google-json-key}}
       versioned_file: singlecluster/HDP2/singlecluster-HDP2.tar.gz
 
@@ -156,7 +156,7 @@ resources:
     type: google-cloud-storage
     icon: google-drive
     source:
-      bucket: {{pxf-gcs-bucket-name}}
+      bucket: {{pxf-build-resources-bucket-name}}
       json_key: {{data-gpdb-ud-google-json-key}}
       versioned_file: singlecluster/HDP3/singlecluster-HDP3.tar.gz
 
@@ -173,7 +173,7 @@ resources:
     type: google-cloud-storage
     icon: google-drive
     source:
-      bucket: {{pxf-gcs-bucket-name}}
+      bucket: {{pxf-build-resources-bucket-name}}
       json_key: {{data-gpdb-ud-google-json-key}}
       versioned_file: singlecluster/CDH/singlecluster-CDH.tar.gz
 
