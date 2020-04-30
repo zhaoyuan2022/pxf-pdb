@@ -214,7 +214,7 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
 
     @Override
     public void copyFromLocal(String srcPath, String destPath) throws Exception {
-        ReportUtils.startLevel(report, getClass(), "Copy From " + srcPath
+        ReportUtils.startLevel(report, getClass(), "Copy from " + srcPath
                 + " to " + destPath);
         fs.copyFromLocalFile(new Path(srcPath), getDatapath(destPath));
         ReportUtils.stopLevel(report);
@@ -222,8 +222,8 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
 
     @Override
     public void copyToLocal(String srcPath, String destPath) throws Exception {
-        ReportUtils.startLevel(report, getClass(), "Copy to " + srcPath
-                + " from " + destPath);
+        ReportUtils.startLevel(report, getClass(), "Copy to " + destPath
+                + " from " + srcPath);
         fs.copyToLocalFile(new Path(srcPath), new Path(destPath));
         ReportUtils.stopLevel(report);
     }
