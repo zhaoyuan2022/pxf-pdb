@@ -80,7 +80,7 @@ public class HiveOrcTest extends HiveBaseTest {
         // Insert into table using dynamic partitioning.
         // Some of the fields are NULL so they will be inserted into the default partition.
         hive.insertDataToPartition(hiveTypesTable, hiveOrcPartitionedTable,
-                new String[] { "fmt" }, new String[] { "s1", "s2", "n1", "s1", "vc1" });
+                new String[] { "fmt" }, new String[] { "t1", "t2", "num1", "t1", "vc1" });
     }
 
     private void preparePxfHiveOrcTypes() throws Exception {
@@ -113,6 +113,38 @@ public class HiveOrcTest extends HiveBaseTest {
 
         runTincTest("pxf.features.hive.small_data_orc.runTest");
         runTincTest("pxf.features.hcatalog.small_data.runTest");
+    }
+
+    /**
+     * Create a Greenplum table with a subset of columns from the original
+     * Hive table
+     *
+     * @throws Exception if test fails to run
+     */
+    @Test(groups = {"hive", "features", "gpdb", "security"})
+    public void columnSubsetOfHiveSchema() throws Exception {
+
+        createExternalTable(PXF_HIVE_SMALL_DATA_TABLE,
+                PXF_HIVE_SUBSET_COLS, hiveOrcSmallDataTable);
+
+        runTincTest("pxf.features.hive.column_subset.runTest");
+    }
+
+    /**
+     * Create a Greenplum table with a subset of columns from the original
+     * partitioned Hive table
+     *
+     * @throws Exception if test fails to run
+     */
+    @Test(groups = { "hive", "features", "gpdb", "security" })
+    public void columnSubsetOfPartitionedHiveSchema() throws Exception {
+
+        preparePartitionedData();
+        // Create PXF Table using HiveOrc profile
+        createExternalTable(PXF_HIVE_SMALL_DATA_TABLE,
+                PXF_HIVE_SUBSET_FMT_COLS, hiveOrcPartitionedTable);
+
+        runTincTest("pxf.features.hive.column_subset_partitioned_table_orc.runTest");
     }
 
     /**

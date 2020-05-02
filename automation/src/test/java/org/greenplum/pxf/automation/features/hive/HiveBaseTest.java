@@ -44,17 +44,17 @@ public class HiveBaseTest extends BaseFeature {
             "r     REAL",
             "bg    BIGINT",
             "b     BOOLEAN",
-            "si    SMALLINT",
-            "ba    BYTEA"
+            "sml   SMALLINT",
+            "bin   BYTEA"
     };
     static final String[] HIVE_TYPES_COLS = {
-            "s1    STRING",
-            "s2    STRING",
-            "n1    INT",
-            "d1    DOUBLE",
-            "dc1   DECIMAL(38,18)",
+            "t1    STRING",
+            "t2    STRING",
+            "num1  INT",
+            "dub1  DOUBLE",
+            "dec1  DECIMAL(38,18)",
             "tm    TIMESTAMP",
-            "f     FLOAT",
+            "r     FLOAT",
             "bg    BIGINT",
             "b     BOOLEAN",
             "tn    TINYINT",
@@ -66,32 +66,32 @@ public class HiveBaseTest extends BaseFeature {
     };
     static final String[] HIVE_TYPES_LIMITED_COLS = {
             "key   STRING",
-            "s1    STRING",
-            "n1    INT",
-            "d1    DOUBLE",
+            "t1    STRING",
+            "num1  INT",
+            "dub1  DOUBLE",
             "tm    TIMESTAMP",
-            "f     FLOAT",
+            "r     FLOAT",
             "bg    BIGINT",
             "b     BOOLEAN",
-            "si    SMALLINT",
+            "sml   SMALLINT",
             "bin   BINARY"
     };
     static final String[] HIVE_SMALLDATA_COLS = {
-            "s1    STRING",
-            "s2    STRING",
-            "n1    INT",
-            "d1    DOUBLE"
+            "t1    STRING",
+            "t2    STRING",
+            "num1  INT",
+            "dub1  DOUBLE"
     };
     static final String[] HIVE_RC_COLS = { // TODO: dedup with HIVE_SMALLDATA_COLS above
             "t1    STRING",
             "t2    STRING",
             "num1  INT",
-            "d1    DOUBLE"
+            "dub1  DOUBLE"
     };
     // Hive Table columns for Predicate pushdown test on partitioned hive table
     static final String[] HIVE_SMALLDATA_PPD_COLS = {
-            "s1    STRING",
-            "d1    DOUBLE",
+            "t1    STRING",
+            "dub1  DOUBLE",
     };
     static final String[] PXF_HIVE_SMALLDATA_COLS = {
             "t1    TEXT",
@@ -99,12 +99,21 @@ public class HiveBaseTest extends BaseFeature {
             "num1  INTEGER",
             "dub1  DOUBLE PRECISION"
     };
+    static final String[] PXF_HIVE_SUBSET_COLS = {
+            "dub1  DOUBLE PRECISION",
+            "t2    TEXT"
+    };
     static final String[] PXF_HIVE_SMALLDATA_FMT_COLS = {
             "t1    TEXT",
             "t2    TEXT",
             "num1  INTEGER",
             "dub1  DOUBLE PRECISION",
             "fmt   TEXT"
+    };
+    static final String[] PXF_HIVE_SUBSET_FMT_COLS = {
+            "fmt   TEXT",
+            "num1  INTEGER",
+            "t2    TEXT"
     };
     static final String[] PXF_HIVE_SMALLDATA_PRT_COLS = {
             "t1    TEXT",
@@ -116,10 +125,10 @@ public class HiveBaseTest extends BaseFeature {
     };
     // PXF Table columns for Predicate pushdown test on partitioned hive table
     static final String[] PXF_HIVE_SMALLDATA_PPD_COLS = {
-            "s1    TEXT",
-            "d1    DOUBLE PRECISION",
-            "s2    TEXT",
-            "n1    INTEGER"
+            "t1    TEXT",
+            "dub1  DOUBLE PRECISION",
+            "t2    TEXT",
+            "num1  INTEGER"
     };
     static final String[] PXF_HIVE_COLLECTION_COLS = {
             "t1    TEXT",
@@ -130,12 +139,12 @@ public class HiveBaseTest extends BaseFeature {
             "t5    TEXT"
     };
     static final String[] HIVE_COLLECTION_COLS = {
-            "s1    STRING",
+            "t1    STRING",
             "f1    FLOAT",
-            "a1    ARRAY<STRING>",
-            "m1    MAP<STRING, FLOAT>",
-            "sr1   STRUCT<street:STRING, city:STRING, state:STRING, zip:INT>",
-            "ut1   UNIONTYPE<STRING, INT, ARRAY<INT>, ARRAY<STRING>>"
+            "t2    ARRAY<STRING>",
+            "t3    MAP<STRING, FLOAT>",
+            "t4    STRUCT<street:STRING, city:STRING, state:STRING, zip:INT>",
+            "t5    UNIONTYPE<STRING, INT, ARRAY<INT>, ARRAY<STRING>>"
     };
     static final String[] HIVE_TYPES_BINARY = {
             "b1    BINARY"
@@ -149,8 +158,8 @@ public class HiveBaseTest extends BaseFeature {
     };
     // Hive table partition columns for Predicate pushdown test
     static final String[] HIVE_PARTITION_PPD_COLS = {
-            "s2    STRING",
-            "n1    INT"
+            "t2    STRING",
+            "num1  INT"
     };
 
     static final String[] PARQUET_TIMESTAMP_COLS ={
@@ -166,6 +175,7 @@ public class HiveBaseTest extends BaseFeature {
     static final String HIVE_TYPES_TABLE = "hive_types";
     static final String HIVE_TEXT_TABLE = "hive_text_table";
     static final String HIVE_RC_TABLE = "hive_rc_table";
+    static final String HIVE_RC_FOR_ALTER_TABLE = "hive_rc_alter_table";
     static final String HIVE_ORC_TABLE = "hive_orc_table";
     static final String HIVE_ORC_SNAPPY_TABLE = "hive_orc_snappy";
     static final String HIVE_ORC_ZLIB_TABLE = "hive_orc_zlib";
@@ -174,6 +184,7 @@ public class HiveBaseTest extends BaseFeature {
     static final String HIVE_COLLECTIONS_TABLE = "hive_collections_table";
     static final String HIVE_AVRO_TABLE = "hive_avro_table";
     static final String HIVE_PARQUET_TABLE = "hive_parquet_table";
+    static final String HIVE_PARQUET_FOR_ALTER_TABLE = "hive_parquet_alter_table";
     static final String HIVE_SEQUENCE_TABLE = "hive_sequence_table";
     static final String HIVE_PARTITIONED_TABLE = "hive_partitioned_table";
     static final String HIVE_PARTITIONED_PPD_TABLE = "hive_partitioned_ppd_table";
@@ -213,8 +224,10 @@ public class HiveBaseTest extends BaseFeature {
     HiveTable hiveOrcSnappyTable;
     HiveTable hiveOrcZlibTable;
     HiveTable hiveRcTable;
+    HiveTable hiveRcForAlterTable;
     HiveTable hiveSequenceTable;
     HiveTable hiveParquetTable;
+    HiveTable hiveParquetForAlterTable;
     HiveTable hiveAvroTable;
     HiveTable hiveBinaryTable;
     HiveTable hiveCollectionTable;
@@ -392,6 +405,13 @@ public class HiveBaseTest extends BaseFeature {
         hiveParquetTable = prepareData(HIVE_PARQUET_TABLE, PARQUET);
     }
 
+    void prepareParquetForAlterData() throws Exception {
+
+        if (hiveParquetForAlterTable != null)
+            return;
+        hiveParquetForAlterTable = prepareData(HIVE_PARQUET_FOR_ALTER_TABLE, PARQUET);
+    }
+
     void prepareAvroData() throws Exception {
 
         if (hiveAvroTable != null)
@@ -502,27 +522,27 @@ public class HiveBaseTest extends BaseFeature {
         hiveRcTablePartition.setStoredAs(RCFILE);
         hive.createTableAndVerify(hiveRcTablePartition);
         hive.runQuery("INSERT INTO " + hiveRcTablePartition.getName() +
-                " SELECT CONCAT(s1, '_rc'), CONCAT(s2, '_1'), n1 + 100, d1 + 1000 FROM " + smallDataTableName);
+                " SELECT CONCAT(t1, '_rc'), CONCAT(t2, '_1'), num1 + 100, dub1 + 1000 FROM " + smallDataTableName);
 
         HiveTable hiveTxtTablePartition = TableFactory.getHiveByRowCommaTable(
                 "hive_txt_table_partition", HIVE_SMALLDATA_COLS);
         hive.createTableAndVerify(hiveTxtTablePartition);
         hive.runQuery("INSERT INTO " + hiveTxtTablePartition.getName() +
-                " SELECT CONCAT(s1, '_txt'), CONCAT(s2, '_2'), n1 + 200, d1 + 2000 FROM " + smallDataTableName);
+                " SELECT CONCAT(t1, '_txt'), CONCAT(t2, '_2'), num1 + 200, dub1 + 2000 FROM " + smallDataTableName);
 
         HiveTable hiveSeqTablePartition = TableFactory.getHiveByRowCommaTable(
                 "hive_seq_table_partition", HIVE_SMALLDATA_COLS);
         hiveSeqTablePartition.setStoredAs(SEQUENCEFILE);
         hive.createTableAndVerify(hiveSeqTablePartition);
         hive.runQuery("INSERT INTO " + hiveSeqTablePartition.getName() +
-                " SELECT CONCAT(s1, '_seq'), CONCAT(s2, '_3'), n1 + 300, d1 + 3000 FROM " + smallDataTableName);
+                " SELECT CONCAT(t1, '_seq'), CONCAT(t2, '_3'), num1 + 300, dub1 + 3000 FROM " + smallDataTableName);
 
         HiveTable hiveOrcTablePartition = TableFactory.getHiveByRowCommaTable(
                 "hive_orc_table_partition", HIVE_SMALLDATA_COLS);
         hiveOrcTablePartition.setStoredAs(ORC);
         hive.createTableAndVerify(hiveOrcTablePartition);
         hive.runQuery("INSERT INTO " + hiveOrcTablePartition.getName() +
-                " SELECT CONCAT(s1, '_orc'), CONCAT(s2, '_4'), n1 + 400, d1 + 4000 FROM " + smallDataTableName);
+                " SELECT CONCAT(t1, '_orc'), CONCAT(t2, '_4'), num1 + 400, dub1 + 4000 FROM " + smallDataTableName);
 
         hive.runQuery("ALTER TABLE " + tableName + " ADD PARTITION (fmt = 'txt') LOCATION 'hdfs:"
                 + hdfsBaseDir + hiveTxtTablePartition.getName() + "'");

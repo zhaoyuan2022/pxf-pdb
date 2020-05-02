@@ -1,9 +1,8 @@
-from mpp.models import SQLConcurrencyTestCase
 from mpp.models import SQLTestCase
+from mpp.models import SQLConcurrencyTestCase
 
-class PxfColumnDataTypeMisMatch(SQLConcurrencyTestCase):
+class PxfHiveSmallData(SQLConcurrencyTestCase):
     """
-    @product_version  gpdb: [1.3.1-]
     @db_name pxfautomation
     @concurrency 1
     @gpdiff True
