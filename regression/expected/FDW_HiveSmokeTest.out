@@ -28,11 +28,11 @@ Connected to: Apache Hive
 Driver: Hive JDBC
 Transaction isolation: TRANSACTION_REPEATABLE_READ
 jdbc:hive2> CREATE TABLE hive_small_data_table_{{ FULL_TESTNAME }} (
-jdbc:hive2> s1 string,
-jdbc:hive2> n1 int,
-jdbc:hive2> d1 double,
-jdbc:hive2> bg bigint,
-jdbc:hive2> b boolean
+jdbc:hive2> name string,
+jdbc:hive2> num int,
+jdbc:hive2> dub double,
+jdbc:hive2> longNum bigint,
+jdbc:hive2> bool boolean
 jdbc:hive2> )
 jdbc:hive2> ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
 jdbc:hive2> STORED AS textfile;

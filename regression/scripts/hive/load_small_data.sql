@@ -1,9 +1,9 @@
 CREATE TABLE hive_small_data_table_{{ FULL_TESTNAME }} (
-		s1 string,
-		n1 int,
-		d1 double,
-		bg bigint,
-		b boolean
+		name string,
+		num int,
+		dub double,
+		longNum bigint,
+		bool boolean
 	)
 	ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
 	STORED AS textfile;
