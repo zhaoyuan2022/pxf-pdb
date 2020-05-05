@@ -56,7 +56,7 @@ create_versions_file:
 	echo single_cluster-$(BUILDVER) >> $(VERSIONSFILE)
 
 .PHONY: extract_products
-extract_products: $(EXTRACTEDTARS) extract_stack_$(STACK) rename_tomcat
+extract_products: $(EXTRACTEDTARS) extract_stack_$(STACK)
 	for X in $(BUILDROOT)/*-[0-9]*; do \
 		mv $$X `echo $$X | sed -e 's/^\($(BUILDROOT)\/[A-Za-z0-9]*\).*$$/\1/'`; \
 	done;
@@ -91,10 +91,6 @@ extract_stack_hdp:
 	find $(BUILDROOT) -maxdepth 1 -type d | \
 		grep "\(hadoop\|hbase\|zookeeper\|hive\|tez\)" | \
 		xargs -n1 basename >> $(VERSIONSFILE)
-
-.PHONY: rename_tomcat
-rename_tomcat:
-	mv `echo $(BUILDROOT)/apache-tomcat-*` $(BUILDROOT)/tomcat
 
 .PHONY: copy_templates
 copy_templates: $(TEMPLATES)

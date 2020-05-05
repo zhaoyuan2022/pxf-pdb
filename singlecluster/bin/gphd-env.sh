@@ -29,7 +29,6 @@ export HADOOP_ROOT=${GPHD_ROOT}/hadoop
 export HBASE_ROOT=${GPHD_ROOT}/hbase
 export ZOOKEEPER_ROOT=${GPHD_ROOT}/zookeeper
 export HIVE_ROOT=${GPHD_ROOT}/hive
-export TOMCAT_ROOT=${GPHD_ROOT}/tomcat
 export TEZ_ROOT=${GPHD_ROOT}/tez
 export RANGER_ROOT=${GPHD_ROOT}/ranger
 

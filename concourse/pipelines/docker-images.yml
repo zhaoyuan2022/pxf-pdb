@@ -117,15 +117,6 @@ resources:
       region_name: {{aws-region}}
       versioned_file: jdbc/postgresql-jdbc-8.4.704.jar
 
-  - name: tomcat
-    type: s3
-    source:
-      access_key_id: {{bucket-access-key-id}}
-      secret_access_key: {{bucket-secret-access-key}}
-      bucket: {{pxf-aws-bucket-name}}
-      region_name: {{aws-region}}
-      versioned_file: tomcat/apache-tomcat-7.0.100.tar.gz
-
   - name: singlecluster-HDP2
     type: s3
     source:
@@ -643,7 +634,6 @@ jobs:
       - get: cdh_tars_tarball
         trigger: true
       - get: jdbc
-      - get: tomcat
       - get: gpdb-dev-centos6-image
         passed: [docker-gpdb-dev-centos6]
       - get: pxf_src
@@ -667,7 +657,6 @@ jobs:
         resource: hdp2_tars_tarball
         trigger: true
       - get: jdbc
-      - get: tomcat
       - get: gpdb-dev-centos6-image
         passed: [docker-gpdb-dev-centos6]
       - get: pxf_src
@@ -691,7 +680,6 @@ jobs:
         resource: hdp3_tars_tarball
         trigger: true
       - get: jdbc
-      - get: tomcat
       - get: gpdb-dev-centos7-image
         passed: [docker-gpdb-dev-centos7]
       - get: pxf_src

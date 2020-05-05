@@ -4,7 +4,6 @@ platform: linux
 inputs:
   - name: pxf_src
   - name: cdh_tars_tarball
-  - name: tomcat
   - name: jdbc
 
 outputs:
