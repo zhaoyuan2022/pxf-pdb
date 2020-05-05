@@ -44,7 +44,8 @@ resources:
 - name: gpdb6-centos7-build
   type: docker-image
   source:
-    repository: pivotaldata/gpdb6-centos7-build
+    repository: pivotaldata/gpdb7-centos7-build
+    tag: latest
 
 - name: gpdb-pxf-dev-centos7-hdp2-server
   type: docker-image
@@ -59,13 +60,6 @@ resources:
     bucket: ((gcs-bucket))
     json_key: ((concourse-gcs-resources-service-account-key))
     regexp: gp-internal-artifacts/centos7/libquicklz-(\d.*)\.el7\.x86_64\.rpm
-
-- name: python-centos7
-  type: gcs
-  source:
-    bucket: ((gcs-bucket))
-    json_key: ((concourse-gcs-resources-service-account-key))
-    regexp: gp-internal-artifacts/centos7/python-2.7.12.build.(\d+).tar.gz
 
 - name: libquicklz-devel-centos7
   type: gcs
@@ -125,8 +119,6 @@ jobs:
     - get: gpdb6-centos7-build
     - get: libquicklz-installer
       resource: libquicklz-centos7
-    - get: python-tarball
-      resource: python-centos7
     - get: libquicklz-devel-installer
       resource: libquicklz-devel-centos7
     - get: libsigar-installer
