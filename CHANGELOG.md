@@ -1,5 +1,26 @@
 # Changelog
 
+## 5.12.0 (05/05/2020)
+
+### Enhancements:
+
+- [#336](https://github.com/greenplum-db/pxf/pull/336) Add User Option to allow invalid input paths
+- [#333](https://github.com/greenplum-db/pxf/pull/333) Hive: Support column projection on Hive Profiles
+
+### Bug Fixes:
+
+- [#324](https://github.com/greenplum-db/pxf/pull/324) Parquet: Right trim char types during insert
+
+### Dependency updates:
+
+- [#348](https://github.com/greenplum-db/pxf/pull/348) CVE-2020-10672: Upgrade jackson-databind to version 2.9.10.4
+- [#343](https://github.com/greenplum-db/pxf/pull/343) Upgrade hive 2.3.7 and support Java 11 for Hive Profiles
+- [#332](https://github.com/greenplum-db/pxf/pull/332) Hive: Add missing transitive dependency when reading parquet files
+- [#331](https://github.com/greenplum-db/pxf/pull/331) pxf-cli: Update gp-common-go-libs to latest
+- [#315](https://github.com/greenplum-db/pxf/pull/315) Bump greenplum-db/gp-common-go-libs to latest
+
+---
+
 ## 5.11.2 (03/20/2020)
 
 #### Minor enhancements:
@@ -12,12 +33,16 @@
 - [#316](https://github.com/greenplum-db/pxf/pull/316) Tomcat: Address CVE-2020-1938
 - [#313](https://github.com/greenplum-db/pxf/pull/313) Update jackson-databind
 
+---
+
 ## 5.11.1 (03/02/2020)
 
 ### Bug Fixes:
 
 - [#308](https://github.com/greenplum-db/pxf/pull/308) Fix ESCAPE 'OFF' is not processed correctly on PXF side error
 - [#306](https://github.com/greenplum-db/pxf/pull/306) Fix JAVA_HOME from $PXF_CONF/conf/pxf-env.sh being overridden
+
+---
 
 ## 5.11.0 (02/25/2020)
 
