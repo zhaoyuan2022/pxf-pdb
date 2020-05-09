@@ -1,0 +1,39 @@
+# In this directory, run the following command to build this builder.
+# $ gcloud builds submit . --config=cloudbuild.yaml
+
+# Increase timeout to 20 minutes
+timeout: 1200s
+
+steps:
+# Write the PXF commit SHA-1 to a file
+- name: 'gcr.io/cloud-builders/docker'
+  entrypoint: 'bash'
+  args:
+    - '-c'
+    - |
+      echo "${COMMIT_SHA}" > pxf_commit_sha
+
+# Build the docker image
+- name: 'gcr.io/cloud-builders/docker'
+  id: pxf-build-dependencies
+  args:
+  - 'build'
+  - '--tag=pxf-build-dev'
+  - '-f'
+  - 'concourse/docker/pxf-build-base/Dockerfile'
+  - '.'
+
+# Copy the pxf-build-dependencies.tar.gz to the host
+- name: 'gcr.io/cloud-builders/docker'
+  id: pxf-build-dependencies-copy
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    mkdir /workspace/build
+    docker run --rm -v /workspace/build:/tmp/build/ pxf-build-dev /bin/bash -c "cp /tmp/pxf-build-dependencies.tar.gz /tmp/build/"
+
+# Push the pxf-build-dependencies.tar.gz tarball to Google Cloud Storage
+- name: 'gcr.io/cloud-builders/gsutil'
+  id: pxf-build-dependencies-tarball
+  args: ['cp', '/workspace/build/pxf-build-dependencies.tar.gz', 'gs://${_PXF_BUILD_BUCKET}/build-dependencies/pxf-build-dependencies.tar.gz']

@@ -18,6 +18,17 @@ fly -t ud set-pipeline \
     -v pxf-git-branch=master -p gpdb_pxf_docker-images
 ```
 
+# Deploy cloudbuild pipeline
+
+```shell script
+fly -t ud set-pipeline \
+    -c /Users/fguerrero/workspace/pxf/concourse/pipelines/cloudbuild_pipeline.yml \
+    -l ~/workspace/gp-continuous-integration/secrets/gp-image-baking-dockerfiles.prod.yml \
+    -l ~/workspace/gp-continuous-integration/secrets/gpdb_common-ci-secrets.yml \
+    -l ~/workspace/gp-continuous-integration/secrets/ccp_ci_secrets_ud.yml \
+    -v pxf-git-branch=master -p cloudbuild
+```
+
 # Deploy production PXF pipelines
 The following commands would create three PXF pipelines - **gpdb_master**, **6X_STABLE** and **5X_STABLE**
 ```

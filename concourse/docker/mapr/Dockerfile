@@ -1,6 +1,6 @@
-ARG BASE_IMAGE=gpdb-pxf-dev:centos6
+ARG BASE_IMAGE=pivotaldata/gpdb-pxf-dev:centos6
 
-FROM pivotaldata/${BASE_IMAGE} as scratch
+FROM ${BASE_IMAGE} as scratch
 
 RUN rpm --import http://package.mapr.com/releases/pub/maprgpg.key && \
   groupadd -g 5000 mapr ; useradd -g 5000 -u 5000 mapr && echo -e "mapr\nmapr" | passwd mapr && \
