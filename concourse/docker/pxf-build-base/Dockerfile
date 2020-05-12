@@ -37,6 +37,6 @@ RUN export BUILD_PARAMS=-Dorg.gradle.daemon=false && \
     mv /tmp/pxf_src/server/tomcat/build/apache-tomcat-*.tar.gz /tmp/output/.tomcat/ && \
     mv /tmp/pxf_src/cli/go/pkg/dep/sources /tmp/output/.go-dep-cached-sources && \
     mv /root/.gradle /tmp/output && mv /root/.m2 /tmp/automation && \
-    cd /tmp/output/ && tar -czf /tmp/pxf-build-dependencies.tar.gz . && \
-    cd /tmp/automation && tar -czf /tmp/pxf-automation-dependencies.tar.gz . && \
+    tar -czf /tmp/pxf-build-dependencies.tar.gz -C /tmp/output . && \
+    tar -czf /tmp/pxf-automation-dependencies.tar.gz -C /tmp/automation . && \
     rm -rf /tmp/output /tmp/pxf_src /root/.gradle /root/.m2 /tmp/automation /root/pxf
