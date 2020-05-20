@@ -1,9 +1,10 @@
-# How to build the pxf-dev-mapr docker image locally?
+# How to build the pxf-dev-mapr docker image locally
 
-Build the docker images on your local system. Run the following command to
-build the image:
+Build the docker images on your local system.
 
 ### CentOS 7
+
+#### Greenplum 5
 
 ```
 docker build \
@@ -11,6 +12,8 @@ docker build \
   --tag=gpdb5-centos7-test-pxf-mapr \
   -f ~/workspace/pxf/concourse/docker/mapr/Dockerfile .
 ```
+
+#### Greenplum 6
 
 ```
 docker build \
