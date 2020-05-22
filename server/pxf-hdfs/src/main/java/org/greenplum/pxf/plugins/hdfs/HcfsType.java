@@ -21,9 +21,7 @@ public enum HcfsType {
         @Override
         public String getDataUri(Configuration configuration, RequestContext context) {
             String profileScheme = StringUtils.isBlank(context.getProfileScheme()) ? "" : context.getProfileScheme() + "://";
-            String uri = getDataUriForPrefix(configuration, context, profileScheme);
-            disableSecureTokenRenewal(uri, configuration);
-            return uri;
+            return getDataUriForPrefix(configuration, context, profileScheme);
         }
     },
     FILE {
@@ -85,8 +83,7 @@ public enum HcfsType {
         // now we have scheme, resolve to enum
         HcfsType type = HcfsType.fromString(scheme.toUpperCase());
         // disableSecureTokenRenewal for this configuration if non-secure
-        String uri = type.getDataUriForPrefix(configuration, "/", scheme);
-        type.disableSecureTokenRenewal(uri, configuration);
+        type.getDataUriForPrefix(configuration, "/", scheme);
         return type;
     }
 
@@ -183,9 +180,7 @@ public enum HcfsType {
      * @return an absolute data path
      */
     public String getDataUri(Configuration configuration, RequestContext context) {
-        String uri = getDataUriForPrefix(configuration, context, this.prefix);
-        disableSecureTokenRenewal(uri, configuration);
-        return uri;
+        return getDataUriForPrefix(configuration, context, this.prefix);
     }
 
     /**
@@ -195,9 +190,7 @@ public enum HcfsType {
      * @return an absolute data path
      */
     public String getDataUri(Configuration configuration, String path) {
-        String uri = getDataUriForPrefix(configuration, path, this.prefix);
-        disableSecureTokenRenewal(uri, configuration);
-        return uri;
+        return getDataUriForPrefix(configuration, path, this.prefix);
     }
 
     /**
@@ -211,7 +204,6 @@ public enum HcfsType {
     }
 
     protected String getDataUriForPrefix(Configuration configuration, RequestContext context, String scheme) {
-
         return getDataUriForPrefix(configuration, context.getDataSource(), scheme);
     }
 
@@ -219,13 +211,19 @@ public enum HcfsType {
 
         URI defaultFS = FileSystem.getDefaultUri(configuration);
 
+        String uri;
+        String normalizedDataSource = normalizeDataSource(dataSource);
+
         if (FILE_SCHEME.equals(defaultFS.getScheme())) {
             // if the defaultFS is file://, but enum is not FILE, use enum scheme only
-            return scheme + normalizeDataSource(dataSource);
+            uri = StringUtils.removeEnd(scheme, "://") + "://" + normalizedDataSource;
         } else {
             // if the defaultFS is not file://, use it, instead of enum scheme and append user's path
-            return StringUtils.removeEnd(defaultFS.toString(), "/") + "/" + StringUtils.removeStart(dataSource, "/");
+            uri = StringUtils.removeEnd(defaultFS.toString(), "/") + "/" + normalizedDataSource;
         }
+
+        disableSecureTokenRenewal(uri, configuration);
+        return uri;
     }
 
     /**
@@ -235,15 +233,14 @@ public enum HcfsType {
      * @param configuration configuration used for HCFS operations
      */
     protected void disableSecureTokenRenewal(String uri, Configuration configuration) {
-        if (Utilities.isSecurityEnabled(configuration))
+        if (Utilities.isSecurityEnabled(configuration) || StringUtils.isBlank(uri))
             return;
 
         // find the "host" that TokenCache will check against the exclusion list, for cloud file systems (like S3)
         // it might actually be a bucket in the full resource path
-        String host = URI.create(StringUtils.replace(uri, " ", "%20")).getHost();
-        // String host = URI.create(uri).getHost();
-        LOG.debug("Disabling token renewal for host {} for path {}", host, uri);
+        String host = Utilities.getHost(uri);
         if (host != null) {
+            LOG.debug("Disabling token renewal for host {} for path {}", host, uri);
             // disable token renewal for the "host" in the path
             configuration.set(MRJobConfig.JOB_NAMENODES_TOKEN_RENEWAL_EXCLUDE, host);
         }
