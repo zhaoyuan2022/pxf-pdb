@@ -109,10 +109,10 @@ public class HcfsGlobbingTest extends BaseFeature {
     }
 
     private void prepareTestScenario(String path, String testName, String data1, String data2, String data3, String data4, String glob) throws Exception {
-        prepareTableData(path, testName, data1);
-        prepareTableData(path, testName, data2);
-        prepareTableData(path, testName, data3);
-        prepareTableData(path, testName, data4);
+        prepareTableData(path, data1, "1a");
+        prepareTableData(path, data2, "2b");
+        prepareTableData(path, data3, "3c");
+        prepareTableData(path, data4, "4d");
 
         // Create GPDB external table directed to the HDFS file
         exTable = TableFactory.getPxfReadableTextTable(
@@ -124,10 +124,10 @@ public class HcfsGlobbingTest extends BaseFeature {
         gpdb.createTableAndVerify(exTable);
     }
 
-    private void prepareTableData(String path, String testName, String name) throws Exception {
+    private void prepareTableData(String path, String name, String prefix) throws Exception {
         if (name == null) return;
 
-        Table dataTable = getSmallData(name, 20);
+        Table dataTable = getSmallData(prefix + " " + name, 20);
         hdfs.writeTableToFile(hdfs.getWorkingDirectory() + "/" + path + "/" + name, dataTable, ",");
     }
 }
