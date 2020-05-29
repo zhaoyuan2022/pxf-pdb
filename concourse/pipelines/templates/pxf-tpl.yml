@@ -384,7 +384,7 @@ resources:
 - name: component_pxf
   type: gcs
   source:
-    bucket: ((gcs-bucket))
+    bucket: ((gcs-bucket-resources-prod))
     json_key: ((concourse-gcs-resources-service-account-key))
     regexp: pxf/published/gpdb6/pxf-(.*).tar.gz
 {% endif %}
@@ -437,28 +437,28 @@ resources:
 - name: libquicklz-centos6
   type: gcs
   source:
-    bucket: ((gcs-bucket))
+    bucket: ((gcs-bucket-resources-prod))
     json_key: ((concourse-gcs-resources-service-account-key))
     regexp: gp-internal-artifacts/centos6/libquicklz-(1\.5\.0-.*)-1.el6.x86_64.rpm
 
 - name: libsigar-centos6
   type: gcs
   source:
-    bucket: ((gcs-bucket))
+    bucket: ((gcs-bucket-resources-prod))
     json_key: ((concourse-gcs-resources-service-account-key))
     regexp: gp-internal-artifacts/centos6/sigar-rhel6_x86_64-(1\.6\.5-.*).targz
 
 - name: libquicklz-devel-centos6
   type: gcs
   source:
-    bucket: ((gcs-bucket))
+    bucket: ((gcs-bucket-resources-prod))
     json_key: ((concourse-gcs-resources-service-account-key))
     regexp: gp-internal-artifacts/centos6/libquicklz-devel-(1\.5\.0-.*)-1.el6.x86_64.rpm
 
 - name: python-centos6
   type: gcs
   source:
-    bucket: ((gcs-bucket))
+    bucket: ((gcs-bucket-resources-prod))
     json_key: ((concourse-gcs-resources-service-account-key))
     regexp: gp-internal-artifacts/centos6/python-(2\.7\.12-.*).tar.gz
 
