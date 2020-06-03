@@ -14,7 +14,8 @@ import (
 type envVar string
 
 const (
-	gphome   envVar = "GPHOME"
+	gpHome   envVar = "GPHOME"
+	pxfHome  envVar = "PXF_HOME"
 	pxfConf  envVar = "PXF_CONF"
 	javaHome envVar = "JAVA_HOME"
 )
@@ -69,13 +70,16 @@ func (cmd *command) GetFunctionToExecute() (func(string) string, error) {
 		}, nil
 	default:
 		pxfCommand := ""
+		if inputs[gpHome] != "" {
+			pxfCommand += "GPHOME=" + inputs[gpHome] + " "
+		}
 		if inputs[pxfConf] != "" {
 			pxfCommand += "PXF_CONF=" + inputs[pxfConf] + " "
 		}
 		if inputs[javaHome] != "" {
 			pxfCommand += "JAVA_HOME=" + inputs[javaHome] + " "
 		}
-		pxfCommand += inputs[gphome] + "/pxf/bin/pxf" + " " + string(cmd.name)
+		pxfCommand += inputs[pxfHome] + "/bin/pxf" + " " + string(cmd.name)
 		if cmd.name == reset {
 			pxfCommand += " --force" // there is a prompt for local reset as well
 		}
@@ -100,6 +104,7 @@ const (
 	sync     = "sync"
 	statuses = "status"
 	reset    = "reset"
+	register = "register"
 	restart  = "restart"
 )
 
@@ -114,7 +119,7 @@ var (
 			err:     "PXF failed to initialize on %d out of %d host%s\n",
 		},
 		warn:       false,
-		envVars:    []envVar{gphome, pxfConf, javaHome},
+		envVars:    []envVar{gpHome, pxfHome, pxfConf, javaHome},
 		whereToRun: cluster.ON_REMOTE | cluster.ON_HOSTS | cluster.INCLUDE_MASTER | cluster.INCLUDE_MIRRORS,
 	}
 	StartCommand = command{
@@ -125,7 +130,7 @@ var (
 			err:     "PXF failed to start on %d out of %d host%s\n",
 		},
 		warn:       false,
-		envVars:    []envVar{gphome},
+		envVars:    []envVar{pxfHome},
 		whereToRun: cluster.ON_REMOTE | cluster.ON_HOSTS | cluster.EXCLUDE_MASTER | cluster.EXCLUDE_MIRRORS,
 	}
 	StopCommand = command{
@@ -136,7 +141,7 @@ var (
 			err:     "PXF failed to stop on %d out of %d host%s\n",
 		},
 		warn:       false,
-		envVars:    []envVar{gphome},
+		envVars:    []envVar{pxfHome},
 		whereToRun: cluster.ON_REMOTE | cluster.ON_HOSTS | cluster.EXCLUDE_MASTER | cluster.EXCLUDE_MIRRORS,
 	}
 	SyncCommand = command{
@@ -161,8 +166,20 @@ var (
 			err:     "PXF is not running on %d out of %d host%s\n",
 		},
 		warn:       false,
-		envVars:    []envVar{gphome},
+		envVars:    []envVar{pxfHome},
 		whereToRun: cluster.ON_REMOTE | cluster.ON_HOSTS | cluster.EXCLUDE_MASTER | cluster.EXCLUDE_MIRRORS,
+	}
+	RegisterCommand = command{
+		name: register,
+		messages: map[messageType]string{
+			success: "PXF extension has been installed on %d out of %d host%s\n",
+			status:  "Installing PXF extension on master host%s and %d segment host%s...\n",
+			standby: ", standby master host,",
+			err:     "Failed to install PXF extension on %d out of %d host%s\n",
+		},
+		warn:       false,
+		envVars:    []envVar{gpHome, pxfHome},
+		whereToRun: cluster.ON_REMOTE | cluster.ON_HOSTS | cluster.INCLUDE_MASTER | cluster.INCLUDE_MIRRORS,
 	}
 	ResetCommand = command{
 		name: reset,
@@ -175,7 +192,7 @@ var (
 				"This is a destructive action. Press y to continue:\n",
 		},
 		warn:       true,
-		envVars:    []envVar{gphome},
+		envVars:    []envVar{pxfHome},
 		whereToRun: cluster.ON_REMOTE | cluster.ON_HOSTS | cluster.INCLUDE_MASTER | cluster.INCLUDE_MIRRORS,
 	}
 	RestartCommand = command{
@@ -186,7 +203,7 @@ var (
 			err:     "PXF failed to restart on %d out of %d host%s\n",
 		},
 		warn:       false,
-		envVars:    []envVar{gphome},
+		envVars:    []envVar{pxfHome},
 		whereToRun: cluster.ON_REMOTE | cluster.ON_HOSTS | cluster.EXCLUDE_MASTER | cluster.EXCLUDE_MIRRORS,
 	}
 )

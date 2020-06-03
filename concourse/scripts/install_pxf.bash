@@ -3,7 +3,16 @@
 set -euxo pipefail
 
 SCRIPT_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
 GPHOME=/usr/local/greenplum-db-devel
+# whether PXF is being installed from a new component-based packaging
+PXF_COMPONENT=${PXF_COMPONENT:=false}
+if [[ ${PXF_COMPONENT} == "true" ]]; then
+    PXF_HOME=/usr/local/pxf-gp${GP_VER}
+else
+    PXF_HOME=${GPHOME}/pxf
+fi
+
 # we need word boundary in case of standby master (smdw)
 MASTER_HOSTNAME=$(grep < cluster_env_files/etc_hostfile '\bmdw' | awk '{print $2}')
 REALM=${REALM:-}
@@ -48,8 +57,8 @@ function create_pxf_installer_scripts() {
 
 		set -euxo pipefail
 
-		GPHOME=/usr/local/greenplum-db-devel
-		PXF_HOME=\${GPHOME}/pxf
+		GPHOME=${GPHOME}
+		PXF_HOME=${PXF_HOME}
 		PXF_CONF=${PXF_CONF_DIR}
 
 		function setup_pxf_env() {
@@ -58,10 +67,8 @@ function create_pxf_installer_scripts() {
 
 		  if [[ $IMPERSONATION == false ]]; then
 		    echo 'Impersonation is disabled, updating pxf-env.sh property'
-		    su gpadmin -c "
-		      sed -ie 's|^[[:blank:]]*export PXF_USER_IMPERSONATION=.*$|export PXF_USER_IMPERSONATION=false|g' \
-		        "\${PXF_CONF}/conf/pxf-env.sh"
-		    "
+		    # sed -ie 's|^[[:blank:]]*export PXF_USER_IMPERSONATION=.*$|export PXF_USER_IMPERSONATION=false|g' "\${PXF_CONF}/conf/pxf-env.sh"
+		    echo 'PXF_USER_IMPERSONATION=false' >> "\${PXF_CONF}/conf/pxf-env.sh"
 		  fi
 
 		  if [[ -n "${PXF_JVM_OPTS}" ]]; then
@@ -115,8 +122,8 @@ function create_pxf_installer_scripts() {
 
 		set -euxo pipefail
 
-		GPHOME=/usr/local/greenplum-db-devel
-		PXF_HOME=\${GPHOME}/pxf
+		GPHOME=${GPHOME}
+		PXF_HOME=${PXF_HOME}
 		PXF_CONF=${PXF_CONF_DIR}
 		export HADOOP_VER=2.6.5.0-292
 
@@ -161,6 +168,7 @@ function run_pxf_installer_scripts() {
 		source ${GPHOME}/greenplum_path.sh &&
 		export JAVA_HOME=/usr/lib/jvm/jre &&
 		export MASTER_DATA_DIRECTORY=/data/gpdata/master/gpseg-1/ &&
+		export PXF_COMPONENT=${PXF_COMPONENT} &&
 		if [[ $INSTALL_GPHDFS == true ]]; then
 			gpconfig -c gp_hadoop_home -v '/usr/hdp/2.6.5.0-292'
 			gpconfig -c gp_hadoop_target_version -v hdp
@@ -169,16 +177,23 @@ function run_pxf_installer_scripts() {
 		sed -i '/edw/d' hostfile_all &&
 		gpscp -f ~gpadmin/hostfile_all -v -u centos ~gpadmin/install_pxf_dependencies.sh centos@=: &&
 		gpssh -f ~gpadmin/hostfile_all -v -u centos -s -e 'sudo ~centos/install_pxf_dependencies.sh' &&
-		gpscp -f ~gpadmin/hostfile_all -v -u gpadmin -r ~/pxf_tarball gpadmin@=: &&
-		gpssh -f ~gpadmin/hostfile_all -v -u gpadmin -s -e 'tar -xzf ~/pxf_tarball/pxf.tar.gz -C ${GPHOME}' &&
-		PXF_CONF=${PXF_CONF_DIR} ${GPHOME}/pxf/bin/pxf cluster init &&
+		if [[ ${PXF_COMPONENT} == true ]]; then
+			gpscp -f ~gpadmin/hostfile_all -v -u centos -r ~/pxf_tarball centos@=: &&
+			gpssh -f ~gpadmin/hostfile_all -v -u centos -s -e 'tar -xzf ~centos/pxf_tarball/pxf-*.tar.gz -C /tmp'
+			gpssh -f ~gpadmin/hostfile_all -v -u centos -s -e 'sudo GPHOME=${GPHOME} /tmp/pxf*/install_component'
+			gpssh -f ~gpadmin/hostfile_all -v -u centos -s -e 'sudo chown -R gpadmin:gpadmin ${PXF_HOME}'
+		else
+			gpscp -f ~gpadmin/hostfile_all -v -u gpadmin -r ~/pxf_tarball gpadmin@=: &&
+			gpssh -f ~gpadmin/hostfile_all -v -u gpadmin -s -e 'tar -xzf ~/pxf_tarball/pxf.tar.gz -C ${GPHOME}'
+		fi &&
+		GPHOME=${GPHOME} PXF_CONF=${PXF_CONF_DIR} ${PXF_HOME}/bin/pxf cluster init &&
 		if [[ -d ~/dataproc_env_files ]]; then
 			gpscp -f ~gpadmin/hostfile_init -v -r -u gpadmin ~/dataproc_env_files =:
 		fi &&
 		~gpadmin/configure_pxf.sh &&
 		gpssh -f ~gpadmin/hostfile_all -v -u centos -s -e \"sudo sed -i -e 's/edw0/edw0 hadoop/' /etc/hosts\" &&
-		${GPHOME}/pxf/bin/pxf cluster sync &&
-		${GPHOME}/pxf/bin/pxf cluster start &&
+		${PXF_HOME}/bin/pxf cluster sync &&
+		${PXF_HOME}/bin/pxf cluster start &&
 		if [[ $INSTALL_GPHDFS == true ]]; then
 			gpssh -f ~gpadmin/hostfile_all -v -u centos -s -e '
 				sudo cp ${PXF_CONF_DIR}/servers/default/{core,hdfs}-site.xml /etc/hadoop/conf

@@ -18,9 +18,6 @@ ifneq "$(GROUP)" ""
 	MAVEN_TEST_OPTS+= -Dgroups=$(GROUP)
 endif
 
-ifeq "$(PXF_HOME)" ""
-	PXF_HOME=$(GPHOME)/pxf
-endif
 MAVEN_TEST_OPTS+= "-Djava.awt.headless=true"
 
 ifneq "$(OFFLINE)" "true"
@@ -87,13 +84,16 @@ MVN=mvn
 
 all: test
 
-symlink_pxf_jars:
+check-env:
+	@if [ -z "$(PXF_HOME)" ]; then echo 'ERROR: PXF_HOME must be set'; exit 1; fi
+
+symlink_pxf_jars: check-env
 	@if [ -d "$(PXF_HOME)/lib" ]; then \
 		rm -rf $(PXF_TMP_LIB) && \
 		mkdir -p $(PXF_TMP_LIB) && \
 		for jar in $(PXF_HOME)/lib/pxf-*.jar; do \
 			jar_name="$${jar##*/}"; \
-			if [[ $${jar_name} =~ ^pxf-[A-Za-z0-9]+(-[0-9.]+)\.jar$$ ]]; then \
+			if [[ $${jar_name} =~ ^pxf-[A-Za-z0-9]+(-[0-9.]+.*).jar$$ ]]; then \
 				link=$(PXF_TMP_LIB)/$${jar_name/$${BASH_REMATCH[1]}/}; \
 				echo "creating link $${link} -> $${jar}"; \
 				ln -sf "$${jar}" "$${link}"; \
@@ -102,7 +102,7 @@ symlink_pxf_jars:
 		touch $(PXF_TMP_LIB)/pxf-extras.jar; \
 	fi
 
-test: clean-logs symlink_pxf_jars sync_cloud_configs sync_jdbc_config
+test: check-env clean-logs symlink_pxf_jars sync_cloud_configs sync_jdbc_config
 	$(MVN) $(MAVEN_TEST_OPTS) ${MAVEN_DEBUG_OPTS} test
 
 clean: clean-logs

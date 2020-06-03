@@ -23,9 +23,9 @@
 parent_script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 
 # establish PXF_HOME and global vars used by all commands
-if [[ -z $PXF_HOME ]]; then
-    export PXF_HOME=$parent_script_dir
-fi
+# do not allow overrides of PXF_HOME so that his script only manages this given installation
+export PXF_HOME=$parent_script_dir
+
 default_env_script=${PXF_HOME}/conf/pxf-env-default.sh
 tomcat_root=${PXF_HOME}/apache-tomcat
 tomcat_templates=${PXF_HOME}/templates/tomcat
@@ -149,7 +149,7 @@ function createInstance()
 function deployWebapp()
 {
     cp "${PXF_HOME}/lib/pxf.war" "${instance}/webapps" || return 1
-    cp "$PXF_HOME"/lib/pxf-service-*[0-9].jar "${instance}/lib" || return 1
+    cp "$PXF_HOME"/lib/pxf-service-*[0-9]*.jar "${instance}/lib" || return 1
 
     return 0
 }
@@ -311,13 +311,14 @@ doHelp() {
     cat <<-EOF
 
 	${bold}List of commands${normal}:
-	  init                initialize the local PXF server instance
+	  init                initialize the local PXF server instance, install PXF extension under \$GPHOME
 	  start               start the local PXF server instance
 	  stop                stop the local PXF server instance
 	  restart             restart the local PXF server instance (not supported for cluster)
 	  status              show the status of the local PXF server instance
 	  version             show the version of PXF server
 	  reset               undo the local PXF initialization
+	  register            install PXF extension under \$GPHOME (useful after upgrades of Greenplum server)
 	  cluster <command>   perform <command> on all the segment hosts in the cluster; try ${bold}pxf cluster help$normal
 
 	  sync <hostname>     synchronize \$PXF_CONF/{conf,lib,servers} directories onto <hostname>. Use --delete to delete extraneous remote files
@@ -365,6 +366,20 @@ function doReset()
     echo "Finished cleaning PXF instance directories"
 }
 
+function installExternalTableExtension()
+{
+    if [[ -d ${parent_script_dir}/gpextable ]]; then
+        if [[ -z "${GPHOME}" ]]; then
+            echo 'WARNING: environment variable GPHOME is not set, skipping install of Greenplum External Table PXF Extension'
+        elif [[ ! -f ${GPHOME}/greenplum_path.sh ]]; then
+            echo "WARNING: environment variable GPHOME (${GPHOME}) must be set to a valid Greenplum installation, skipping install of Greenplum External Table PXF Extension'"
+        else
+            echo "Installing Greenplum External Table PXF Extension into ${GPHOME}"
+            cp -av ${parent_script_dir}/gpextable/* ${GPHOME}
+        fi
+    fi
+}
+
 # doInit handles the init command
 function doInit()
 {
@@ -384,6 +399,7 @@ function doInit()
     deployWebapp || return 1
     createLogsDir || return 1
     createRunDir  || return 1
+    installExternalTableExtension || return 1
 }
 
 function editPxfEnvSh()
@@ -460,7 +476,7 @@ function doCluster()
     # Go CLI handles unset PXF_CONF when appropriate
     [[ $PXF_CONF == NOT_INITIALIZED ]] && unset PXF_CONF
     [[ ${is_init} == false ]] && warnUserEnvScript
-    GPHOME=${GPHOME:-"${PXF_HOME}/.."} "${parent_script_dir}/bin/pxf-cli" "$@"
+    "${parent_script_dir}/bin/pxf-cli" "$@"
 }
 
 function warnUserEnvScript()
@@ -493,6 +509,9 @@ case $pxf_script_command in
         fi
         doInit
         ;;
+    'register')
+        installExternalTableExtension
+	;;
     'start')
         doStart
         ;;

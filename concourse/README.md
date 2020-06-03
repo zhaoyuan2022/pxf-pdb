@@ -9,18 +9,25 @@ engine for Python. This allows the generation of portions of the
 pipeline from common blocks of pipeline code. Logic (Python code) can
 be embedded to further manipulate the generated pipeline.
 
-# Deploy pxf-docker-images pipeline
+# Deploy the `pxf-build` (release) pipeline
+
+To deploy the build pipeline for PXF, make sure PXF master branch is currently checked-out and run this command:
+
+```shell
+make -C "${HOME}/workspace/pxf/concourse" build
 ```
-fly -t ud set-pipeline \
-    -c ~/workspace/pxf/concourse/pipelines/docker-images.yml \
-    -l ~/workspace/gp-continuous-integration/secrets/gpdb-release-secrets.dev.yml \
-    -l ~/workspace/gp-continuous-integration/secrets/gpdb_common-ci-secrets.yml \
-    -v pxf-git-branch=master -p gpdb_pxf_docker-images
+
+# Deploy the `pxf-certification` (release) pipeline
+
+To deploy the certifcation pipeline (forward compatibility) for PXF, make sure PXF master branch is currently checked-out and run this command:
+
+```shell
+make -C "${HOME}/workspace/pxf/concourse" certification
 ```
 
 # Deploy cloudbuild pipeline
 
-```shell script
+```shell
 fly -t ud set-pipeline \
     -c /Users/fguerrero/workspace/pxf/concourse/pipelines/cloudbuild_pipeline.yml \
     -l ~/workspace/gp-continuous-integration/secrets/gp-image-baking-dockerfiles.prod.yml \
@@ -29,42 +36,17 @@ fly -t ud set-pipeline \
     -v pxf-git-branch=master -p cloudbuild
 ```
 
-# Deploy production PXF pipelines
-The following commands would create three PXF pipelines - **gpdb_master**, **6X_STABLE** and **5X_STABLE**
-```
-pushd ~/workspace/gp-continuous-integration && git pull && popd
-./deploy prod 6x
-./deploy prod 5x
-```
-
-The following commands will expose these pipelines:
-```
-fly -t ud expose-pipeline -p pxf_6X_STABLE
-fly -t ud expose-pipeline -p pxf_5X_STABLE
-```
-
 # Deploy the pull-request pipeline
 
-```
-fly -t ud set-pipeline \
-    -c ~/workspace/pxf/concourse/pipelines/pxf_pr_pipeline.yml \
-    -l ~/workspace/gp-continuous-integration/secrets/gpdb-release-secrets.dev.yml \
-    -p pxf_pr
-```
-
-# Deploy the release pipeline
-
-https://github.com/pivotal/gp-continuous-integration/blob/master/README.md#pxf_release
-```
-./deploy prod 5x -p release
-./deploy prod 6x -p release
+```shell
+make -C "${HOME}/workspace/pxf/concourse" pr
 ```
 
 # Deploy the performance pipelines
 
 10G Performance pipeline:
 
-```
+```shell
 fly -t ud set-pipeline \
     -c ~/workspace/pxf/concourse/pipelines/perf_pipeline.yml \
     -l ~/workspace/gp-continuous-integration/secrets/gpdb_common-ci-secrets.yml \
@@ -80,7 +62,7 @@ the name of your development pipeline (i.e. `-p dev:<YOUR-PIPELINE>`).
 
 50G Performance pipeline:
 
-```
+```shell
 fly -t ud set-pipeline \
     -c ~/workspace/pxf/concourse/pipelines/perf_pipeline.yml \
     -l ~/workspace/gp-continuous-integration/secrets/gpdb_common-ci-secrets.yml \
@@ -92,7 +74,7 @@ fly -t ud set-pipeline \
 
 500G Performance pipeline:
 
-```
+```shell
 fly -t ud set-pipeline \
     -c ~/workspace/pxf/concourse/pipelines/perf_pipeline.yml \
     -l ~/workspace/gp-continuous-integration/secrets/gpdb_common-ci-secrets.yml \
@@ -104,40 +86,29 @@ fly -t ud set-pipeline \
 
 # Deploy a PXF acceptance pipeline
 Acceptance pipelines can be deployed for feature testing purposes.
-```
+```shell
 ./deploy dev master -a -n acceptance
 ```
 For 5x:
-```
+```shell
 ./deploy dev 5x -a -n acceptance
 ```
 After acceptance, the pipeline can be cleaned up as follows:
-```
+```shell
 fly -t ud dp -p acceptance
 ```
 
 # Deploy development PXF pipelines
-Dev pipelines can be deployed with an optional feature name
-```
-./deploy dev master
+
+The dev pipeline is an abbreviated version of the `pxf-build` pipeline.
+
+To deploy dev pipeline against gpdb 5X_STABLE and 6X_STABLE branches, use:
+
+```shell
+make -C "${HOME}/workspace/pxf/concourse" dev
 ```
 
-```
-./deploy dev master feature-foo
-```
-To deploy dev pipeline against gpdb 5X_STABLE branch, use:
-```
-./deploy dev 5x
-```
-```
-./deploy dev 5x feature-foo
-```
-
-The master and 5X pipelines are exposed. Here are the commands to expose the pipelines, similar to the GPDB pipelines. The pipelines are currently located at https://ud.ci.gpdb.pivotal.io/
-```
-fly -t ud expose-pipeline -p pxf_master
-fly -t ud expose-pipeline -p pxf_5X_STABLE
-```
+This command will automatically point the pipeline at your currently checked-out branch of PXF.
 
 # Deploy Longevity Testing PXF pipeline
 The longevity testing pipeline is designed to work off a PXF tag that needs to be provided as a parameter when
@@ -145,7 +116,7 @@ creating the pipeline. The generated pipeline compiles PXF, creates a Greenplum 
 and runs a multi-cluster security test every 15 minutes. CCP cluster is set with expiration time of more than 6 months, so
 it needs to be cleaned manually and so do the dataproc clusters.
 
-```
+```shell
 fly -t ud set-pipeline \
     -c ~/workspace/pxf/concourse/pipelines/longevity_pipeline.yml \
     -l ~/workspace/gp-continuous-integration/secrets/gpdb_common-ci-secrets.yml \
@@ -167,7 +138,7 @@ It uses both external and foreign tables.
 You can adjust the `folder-prefix`, `gpdb-git-branch`, `gpdb-git-remote`, `pxf-git-branch`, and `pxf-git-remote`.
 For example, you may want to work off of a development branch for PXF or Greenplum.
 
-```
+```shell
 fly -t ud set-pipeline -p pg_regress \
     -c ~/workspace/pxf/concourse/pipelines/pg_regress_pipeline.yml \
     -l ~/workspace/gp-continuous-integration/secrets/gpdb6-integration-testing.dev.yml \
@@ -180,13 +151,13 @@ fly -t ud set-pipeline -p pg_regress \
 
 Expose the `pg_regress` pipeline:
 
-```
+```shell
 fly -t ud expose-pipeline -p pg_regress
 ```
 
 # Deploy the PXF CLI pipeline
 
-```
+```shell
 fly -t ud set-pipeline \
     -c ~/workspace/pxf/concourse/pipelines/pxf_cli_pipeline.yml \
     -l ~/workspace/gp-continuous-integration/secrets/gpdb_common-ci-secrets.yml \
