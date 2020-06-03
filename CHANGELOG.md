@@ -1,5 +1,17 @@
 # Changelog
 
+## 5.12.1 (06/03/2020)
+
+### Enhancements:
+
+- [#360](https://github.com/greenplum-db/pxf/pull/360) Add additional information regarding the pxf.service.user.name property
+
+### Bug Fixes:
+
+- [#358](https://github.com/greenplum-db/pxf/pull/358) Fix Glob Patterns for Hadoop-Compatible FileSystems
+
+---
+
 ## 5.12.0 (05/05/2020)
 
 ### Enhancements:
@@ -283,7 +295,7 @@
   PXF no longer expects the path to contain
   transaction and segment IDs during write. PXF will
   now construct the write path for Hadoop-Compatible
-  FileSystems to include transaction and segment IDs. 
+  FileSystems to include transaction and segment IDs.
 
 ---
 
@@ -296,7 +308,7 @@
 - Adds more visibility to external contributors by exposing
   Pull Request pipelines. It allows external contributors
   to debug issues when submitting Pull Requests.
-  
+
 #### Bug Fixes:
 
 - [#126](https://github.com/greenplum-db/pxf/pull/126) PXF Port Fix. Fixes issue in PXF when setting
