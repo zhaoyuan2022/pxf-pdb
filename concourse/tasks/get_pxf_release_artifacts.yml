@@ -5,6 +5,10 @@ image_resource:
 
 inputs:
 - name: pxf_src
+- name: pxf_open_source_license_file
+
+outputs:
+- name: pxf_artifacts
 
 params:
   GCS_OSL_PATH:
@@ -15,4 +19,4 @@ params:
   RELENG_RELEASES_PATH:
 
 run:
-  path: pxf_src/concourse/scripts/publish_release_to_releng.bash
+  path: pxf_src/concourse/scripts/get_pxf_release_artifacts.bash

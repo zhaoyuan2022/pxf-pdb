@@ -278,6 +278,40 @@ resources:
     branch: ((ccp-git-branch))
     private_key: ((ccp-git-key))
     uri: ((ccp-git-remote))
+
+- name: pxf_gp5_rhel6_release_to_releng
+  type: s3
+  source:
+    access_key_id: ((bucket-access-key-id))
+    bucket: gpdb-stable-concourse-builds
+    region_name: ((aws-region))
+    secret_access_key: ((bucket-secret-access-key))
+    regexp: components/pxf/pxf-gp5-(.*)-1.el6.x86_64.rpm
+
+- name: pxf_gp5_rhel7_release_to_releng
+  type: s3
+  source:
+    access_key_id: ((bucket-access-key-id))
+    bucket: gpdb-stable-concourse-builds
+    region_name: ((aws-region))
+    secret_access_key: ((bucket-secret-access-key))
+    regexp: components/pxf/pxf-gp5-(.*)-1.el7.x86_64.rpm
+
+- name: pxf_gp6_rhel7_release_to_releng
+  type: gcs
+  source:
+    bucket: pivotal-gpdb-concourse-resources-prod
+    json_key: ((concourse-gcs-resources-service-account-key))
+    regexp: pxf/published/gpdb6/pxf-gp6-(.*)-1.el7.x86_64.rpm
+
+{% if build_deb == True %}
+- name: pxf_gp6_ubuntu18_release_to_releng
+  type: gcs
+  source:
+    bucket: pivotal-gpdb-concourse-resources-prod
+    json_key: ((concourse-gcs-resources-service-account-key))
+    regexp: pxf/published/gpdb6/pxf-gp6-(.*)-ubuntu18.04-amd64.deb
+{% endif %}
 {% endif %}
 
 ## ---------- Docker Images ----------
@@ -451,7 +485,7 @@ resources:
   source:
     bucket: data-gpdb-ud-pxf-releases
     json_key: ((pxf-storage-service-account-key))
-    regexp: prod/OSL/pxf-(.*).txt
+    regexp: prod/OSL/pxf-(.*)-OSL.txt
 {% endif %}
 
 {% if dev_pipeline != True and pr_pipeline != True %}
@@ -1676,29 +1710,27 @@ jobs:
     - get: pxf_open_source_license_file
       trigger: true
     - get: google-cloud-sdk-slim-image
-  - task: Publish PXF-GP5 Artifacts to GP-RelEng
-    config:
-      platform: linux
-      image_resource:
-        type: registry-image
-        source: { repository: busybox }
-      run:
-        path: echo 'Will update soon!'
-{% if slack_notification != False %}
-    <<: *slack_alert
-{% endif %}
-  - task: Publish PXF-GP6 Artifacts to GP-RelEng
+  - task: Get PXF-GP5 and PXF-GP6 Artifacts from Releases Directory
     image: google-cloud-sdk-slim-image
-    file: pxf_src/concourse/tasks/publish_release_to_releng.yml
+    file: pxf_src/concourse/tasks/get_pxf_release_artifacts.yml
     params:
-      GCS_OSL_PATH: prod/OSL
       GCS_RELEASES_BUCKET: data-gpdb-ud-pxf-releases
       GCS_RELEASES_PATH: prod/releases
       GOOGLE_CREDENTIALS: ((pxf-storage-service-account-key))
-      RELENG_RELEASES_BUCKET: ((releng-release-bucket))
-      RELENG_RELEASES_PATH: pxf/published/gpdb6
-{% if slack_notification != False %}
-    <<: *slack_alert
+  - in_parallel:
+    - put: pxf_gp5_rhel6_release_to_releng
+      params:
+        file: pxf_artifacts/pxf-gp5-*el6*rpm
+    - put: pxf_gp5_rhel7_release_to_releng
+      params:
+        file: pxf_artifacts/pxf-gp5-*el7*rpm
+    - put: pxf_gp6_rhel7_release_to_releng
+      params:
+        file: pxf_artifacts/pxf-gp6-*el7*rpm
+{% if build_deb == True %}
+    - put: pxf_gp6_ubuntu18_release_to_releng
+      params:
+        file: pxf_artifacts/pxf-gp6-*ubuntu18*deb
 {% endif %}
 {% endif %} {# if dev_pipeline == True #}
 {% endif %} {# if pr_pipeline == True #}
