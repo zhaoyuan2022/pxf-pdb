@@ -47,6 +47,7 @@ RUN ssh-keygen -t rsa -N "" -f /root/.ssh/id_rsa \
     && echo >> /etc/security/limits.d/gpadmin-limits.conf 'gpadmin soft nproc 131072' \
     && echo >> /etc/security/limits.d/gpadmin-limits.conf 'gpadmin soft nofile 65536' \
     # create .pxfrc
+    && echo >> ~gpadmin/.pxfrc 'export LANG=en_US.UTF-8' \
     && echo >> ~gpadmin/.pxfrc 'export PGPORT=5432' \
     && echo >> ~gpadmin/.pxfrc 'export GOPATH=/opt/go' \
     && echo >> ~gpadmin/.pxfrc 'export GPHOME=$(find /usr/local/ -name greenplum-db* -type d | head -n1)' \
