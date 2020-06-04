@@ -134,7 +134,7 @@ set-pivnet-pipeline:
 		--config "$${PIPELINE_FILE}" \
 		--load-vars-from=$(SECRETS_FILE) \
 		--load-vars-from=$(HOME)/workspace/gp-continuous-integration/secrets/gpdb_common-ci-secrets.yml \
-		--var pxf-git-branch=external-table \
+		--var pxf-git-branch=$(BRANCH) \
 		--var pxf-git-remote=https://github.com/greenplum-db/pxf \
 		--pipeline pivnet_artifacts \
 		${FLY_OPTION_NON-INTERACTIVE} || echo "Generated yaml has errors: check $${PIPELINE_FILE}"
