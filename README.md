@@ -289,7 +289,7 @@ popd
 If you see any HBase failures, try copying `pxf-hbase-*.jar` to the HBase classpath, and restart HBase:
 
 ```
-cp ${PXF_HOME}/lib/pxf-hbase-*.jar ~/workspace/singlecluster/hbase/lib
+cp ${PXF_HOME}/lib/pxf-hbase-*.jar ~/workspace/singlecluster/hbase/lib/pxf-hbase.jar
 ~/workspace/singlecluster/bin/stop-hbase.sh
 ~/workspace/singlecluster/bin/start-hbase.sh
 ```
