@@ -18,6 +18,19 @@ TEMPLATE_CMD                 = ./template_tool
 FLY_OPTION_NON-INTERACTIVE   =
 SECRETS_FILE                 = $(HOME)/workspace/gp-continuous-integration/secrets/pxf-secrets.yml
 SLACK                       ?= true
+# below are dev-build specific vars
+MULTINODE                   ?= false
+MULTINODE_NO_IMPERSONATION  ?= false
+JDK11                       ?= false
+CDH                         ?= false
+HDP2                        ?= false
+HDP3                        ?= false
+MAPR                        ?= false
+AMBARI                      ?= false
+S3                          ?= false
+ADL                         ?= false
+GS                          ?= false
+MINIO                       ?= false
 
 .PHONY: build certification dev pr
 build: set-build-pipeline
@@ -56,9 +69,21 @@ set-build-pipeline:
 .PHONY: set-dev-build-pipeline
 set-dev-build-pipeline:
 	@PIPELINE_FILE=$$(mktemp) && \
-	$(TEMPLATE_CMD) --template build_pipeline-tpl.yml --vars \
+	$(TEMPLATE_CMD) --template dev_build_pipeline-tpl.yml --vars \
 		build_deb=$(BUILD_DEB) \
 		slack_notification=$(SLACK) \
+		multinode=$(MULTINODE) \
+		multinode_no_impersonation=$(MULTINODE_NO_IMPERSONATION) \
+		jdk11=$(JDK11) \
+		cdh=$(CDH) \
+		hdp2=$(HDP2) \
+		hdp3=$(HDP3) \
+		mapr=$(MAPR) \
+		ambari=$(AMBARI) \
+		s3=$(S3) \
+		adl=$(ADL) \
+		gs=$(GS) \
+		minio=$(MINIO) \
 		dev_pipeline=true \
 		user=$(USER) \
 		branch=$(BRANCH) \
@@ -71,6 +96,9 @@ set-dev-build-pipeline:
 		--config "$${PIPELINE_FILE}" \
 		--load-vars-from=$(SECRETS_FILE) \
 		--load-vars-from=$(HOME)/workspace/gp-continuous-integration/secrets/gpdb_common-ci-secrets.yml \
+		--load-vars-from=$(HOME)/workspace/pxf/concourse/settings/pxf-multinode-params.yml \
+		--load-vars-from=$(HOME)/workspace/gp-continuous-integration/secrets/ccp_ci_secrets_ud.yml \
+		--load-vars-from=$(HOME)/workspace/gp-continuous-integration/secrets/ccp_ci_secrets_ud_kerberos.yml \
 		--var=pxf-git-branch=${BRANCH} \
 		--var=folder-prefix=prod/gpdb_branch \
 		--var=slack-integration-webhook-url=$${SLACK_INTEGRATION_WEBHOOK_URL} \
@@ -82,7 +110,7 @@ set-dev-build-pipeline:
 .PHONY: set-pr-build-pipeline
 set-pr-build-pipeline:
 	@PIPELINE_FILE=$$(mktemp) && \
-	$(TEMPLATE_CMD) --template build_pipeline-tpl.yml --vars \
+	$(TEMPLATE_CMD) --template pr_pipeline-tpl.yml --vars \
 		build_deb=$(BUILD_DEB) \
 		slack_notification=false \
 		pr_pipeline=true \

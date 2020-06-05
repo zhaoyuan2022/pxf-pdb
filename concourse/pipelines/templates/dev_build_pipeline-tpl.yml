@@ -1,111 +1,4 @@
 ---
-{# change num_gpdb5_versions & num_gpdb6_versions in Makefile to download/test more Greenplum versions #}
-{# number of backwards compatibility tasks that can run at once #}
-{% set max_concurrent_bc_tasks = 3 %}
-## ======================================================================
-## GROUPS
-## ======================================================================
-groups:
-- name: All
-  jobs:
-  - Testing Gate for PXF-GP
-{% set gp_ver = 5 %}
-  - Build PXF-GP[[gp_ver]] on RHEL6
-  - Test PXF-GP[[gp_ver]]-HDP2 on RHEL6
-{% set gp_ver = None %}
-{% for gp_ver in range(5, 7) %}
-  - Build PXF-GP[[gp_ver]] on RHEL7
-  - Test PXF-GP[[gp_ver]]-HDP2 on RHEL7
-{% endfor %}
-{% if build_deb %}
-{% set gp_ver = 6 %}
-  - Test PXF-GP[[gp_ver]]-HDP2 on Ubuntu18
-  - Build PXF-GP[[gp_ver]] on Ubuntu18
-{% set gp_ver = None %}
-{% endif %}
-{% set gp_ver = 5 %}
-  - Test PXF-GP[[gp_ver]] Backward Compatibility on RHEL6
-{% set gp_ver = None %}
-{% for gp_ver in range(5, 7) %}
-  - Test PXF-GP[[gp_ver]] Backward Compatibility on RHEL7
-{% endfor %}
-{% set gp_ver = 6 %}
-{% if build_deb %}
-  - Test PXF-GP[[gp_ver]] Backward Compatibility on Ubuntu18
-{% endif %}
-  - Test PXF-GP[[gp_ver]]-HDP2-NO-IMPERS on RHEL7
-  - Test PXF-GP[[gp_ver]]-MAPR on RHEL7
-  - Test PXF-GP[[gp_ver]]-HDP3 on RHEL7
-  - Test PXF-GP[[gp_ver]]-HDP3-SECURE AMBARI (MANUAL) on RHEL7
-  - Test PXF-GP[[gp_ver]]-HDP2-JDK11 on RHEL7
-  - Test PXF-GP[[gp_ver]]-CDH on RHEL7
-  - Test PXF-GP[[gp_ver]]-S3 on RHEL7
-  - Test PXF-GP[[gp_ver]]-S3-NO-IMPERS on RHEL7
-  - Test PXF-GP[[gp_ver]]-ADL-NO-IMPERS on RHEL7
-  - Test PXF-GP[[gp_ver]]-GS-NO-IMPERS on RHEL7
-  - Test PXF-GP[[gp_ver]]-MINIO-NO-IMPERS on RHEL7
-  - Test PXF-GP[[gp_ver]]-HDP2-SECURE-MULTI-IMPERS on RHEL7
-  - Test PXF-GP[[gp_ver]]-HDP2-SECURE-MULTI-NO-IMPERS on RHEL7
-{% set gp_ver = None %}
-  - Compatibility Gate for PXF-GP
-  - Promote PXF-GP5 and PXF-GP6 Artifacts
-  - Publish PXF-GP5 and PXF-GP6 Artifacts to GP-RelEng
-
-{% set gp_ver = 5 %}
-- name: GP[[gp_ver]] on RHEL6
-  jobs:
-  - Build PXF-GP[[gp_ver]] on RHEL6
-  - Test PXF-GP[[gp_ver]]-HDP2 on RHEL6
-{% set gp_ver = None %}
-{% for gp_ver in range(5, 7) %}
-- name: GP[[gp_ver]] on RHEL7
-  jobs:
-  - Build PXF-GP[[gp_ver]] on RHEL7
-  - Test PXF-GP[[gp_ver]]-HDP2 on RHEL7
-{% endfor %}
-{% if build_deb %}
-{% set gp_ver = 6 %}
-- name: GP[[gp_ver]] on Ubuntu18
-  jobs:
-  - Test PXF-GP[[gp_ver]]-HDP2 on Ubuntu18
-  - Build PXF-GP[[gp_ver]] on Ubuntu18
-{% set gp_ver = None %}
-{% endif %}
-{% set gp_ver = 6 %}
-- name: PXF Tests - GP[[gp_ver]] on RHEL7
-  jobs:
-  - Test PXF-GP[[gp_ver]]-HDP2-NO-IMPERS on RHEL7
-  - Test PXF-GP[[gp_ver]]-MAPR on RHEL7
-  - Test PXF-GP[[gp_ver]]-HDP3 on RHEL7
-  - Test PXF-GP[[gp_ver]]-HDP3-SECURE AMBARI (MANUAL) on RHEL7
-  - Test PXF-GP[[gp_ver]]-HDP2-JDK11 on RHEL7
-  - Test PXF-GP[[gp_ver]]-CDH on RHEL7
-  - Test PXF-GP[[gp_ver]]-S3 on RHEL7
-  - Test PXF-GP[[gp_ver]]-S3-NO-IMPERS on RHEL7
-  - Test PXF-GP[[gp_ver]]-ADL-NO-IMPERS on RHEL7
-  - Test PXF-GP[[gp_ver]]-GS-NO-IMPERS on RHEL7
-  - Test PXF-GP[[gp_ver]]-MINIO-NO-IMPERS on RHEL7
-  - Test PXF-GP[[gp_ver]]-HDP2-SECURE-MULTI-IMPERS on RHEL7
-  - Test PXF-GP[[gp_ver]]-HDP2-SECURE-MULTI-NO-IMPERS on RHEL7
-{% set gp_ver = None %}
-- name: Backwards Compatibility
-  jobs:
-{% set gp_ver = 5 %}
-  - Test PXF-GP[[gp_ver]] Backward Compatibility on RHEL6
-{% set gp_ver = None %}
-{% for gp_ver in range(5, 7) %}
-  - Test PXF-GP[[gp_ver]] Backward Compatibility on RHEL7
-{% endfor %}
-{% if build_deb %}
-{% set gp_ver = 6 %}
-  - Test PXF-GP[[gp_ver]] Backward Compatibility on Ubuntu18
-{% set gp_ver = None %}
-{% endif %}
-- name: Promote and Publish
-  jobs:
-  - Promote PXF-GP5 and PXF-GP6 Artifacts
-  - Publish PXF-GP5 and PXF-GP6 Artifacts to GP-RelEng
-
 ## ======================================================================
 ## ANCHORS
 ## ======================================================================
@@ -169,11 +62,13 @@ anchors:
 ## ======================================================================
 resource_types:
 
+{% if multinode or multinode_no_impersonation %}
 - name: terraform
   type: registry-image
   source:
     repository: ljfranklin/terraform-resource
     tag: 0.11.14
+{% endif %}
 
 - name: gcs
   type: registry-image
@@ -217,6 +112,7 @@ resources:
     json_key: ((pxf-storage-service-account-key))
     versioned_file: singlecluster/HDP2/singlecluster-HDP2.tar.gz
 
+{% if cdh %}
 - name: singlecluster-cdh
   type: gcs
   icon: google-drive
@@ -224,7 +120,9 @@ resources:
     bucket: data-gpdb-ud-pxf-build-resources
     json_key: ((pxf-storage-service-account-key))
     versioned_file: singlecluster/CDH/singlecluster-CDH.tar.gz
+{% endif %}
 
+{% if hdp3 or ambari %}
 - name: singlecluster-hdp3
   type: gcs
   icon: google-drive
@@ -232,6 +130,7 @@ resources:
     bucket: data-gpdb-ud-pxf-build-resources
     json_key: ((pxf-storage-service-account-key))
     versioned_file: singlecluster/HDP3/singlecluster-HDP3.tar.gz
+{% endif %}
 
 ## ---------- Github Repos ----------
 - name: pxf_src
@@ -241,45 +140,13 @@ resources:
     branch: ((pxf-git-branch))
     uri: ((pxf-git-remote))
 
+{% if multinode or multinode_no_impersonation %}
 - name: ccp_src
   type: git
   source:
     branch: ((ccp-git-branch))
     private_key: ((ccp-git-key))
     uri: ((ccp-git-remote))
-
-- name: pxf_gp5_rhel6_release_to_releng
-  type: s3
-  source:
-    access_key_id: ((bucket-access-key-id))
-    bucket: gpdb-stable-concourse-builds
-    region_name: ((aws-region))
-    secret_access_key: ((bucket-secret-access-key))
-    regexp: components/pxf/pxf-gp5-(.*)-1.el6.x86_64.rpm
-
-- name: pxf_gp5_rhel7_release_to_releng
-  type: s3
-  source:
-    access_key_id: ((bucket-access-key-id))
-    bucket: gpdb-stable-concourse-builds
-    region_name: ((aws-region))
-    secret_access_key: ((bucket-secret-access-key))
-    regexp: components/pxf/pxf-gp5-(.*)-1.el7.x86_64.rpm
-
-- name: pxf_gp6_rhel7_release_to_releng
-  type: gcs
-  source:
-    bucket: pivotal-gpdb-concourse-resources-prod
-    json_key: ((concourse-gcs-resources-service-account-key))
-    regexp: pxf/published/gpdb6/pxf-gp6-(.*)-1.el7.x86_64.rpm
-
-{% if build_deb %}
-- name: pxf_gp6_ubuntu18_release_to_releng
-  type: gcs
-  source:
-    bucket: pivotal-gpdb-concourse-resources-prod
-    json_key: ((concourse-gcs-resources-service-account-key))
-    regexp: pxf/published/gpdb6/pxf-gp6-(.*)-ubuntu18.04-amd64.deb
 {% endif %}
 
 ## ---------- Docker Images ----------
@@ -317,6 +184,7 @@ resources:
     password: ((pxf-cloudbuild-service-account-key))
 {% endif %}
 
+{% if mapr %}
 - name: gpdb[[gp_ver]]-pxf-dev-centos7-mapr-server-image
   type: registry-image
   icon: docker
@@ -325,70 +193,62 @@ resources:
     tag: latest
     username: _json_key
     password: ((pxf-cloudbuild-service-account-key))
+{% endif %}
 {% set gp_ver = None %}
 
+{% if multinode or multinode_no_impersonation or ambari %}
 - name: ccp-7-image
   type: registry-image
   icon: docker
   source:
     repository: pivotaldata/ccp
     tag: 7
-
-- name: google-cloud-sdk-slim-image
-  type: registry-image
-  icon: docker
-  source:
-    repository: google/cloud-sdk
-    tag: slim
+{% endif %}
 
 {% if slack_notification %}
 - name: slack-alert
   type: slack-notification
   source:
-    url: ((ud-dev-slack-integration-webhook))
+    url: (([[user]]-slack-integration-webhook))
 {% endif %}
 
 ## ---------- Product Packages ----------
 {% set gp_ver = 5 %}
-{% for i in range(num_gpdb5_versions) %}
-- name: gpdb[[gp_ver]]_rhel6_rpm_latest-[[i]]
+- name: gpdb[[gp_ver]]_rhel6_rpm_latest-0
   type: gcs
   icon: google-drive
   source:
     bucket: data-gpdb-ud-pivnet-artifacts
     json_key: ((pxf-storage-service-account-key))
-    regexp: latest-[[i]]_gpdb[[gp_ver]]/greenplum-db-(.*)-rhel6-x86_64.rpm
+    regexp: latest-0_gpdb[[gp_ver]]/greenplum-db-(.*)-rhel6-x86_64.rpm
 
-- name: gpdb[[gp_ver]]_rhel7_rpm_latest-[[i]]
+- name: gpdb[[gp_ver]]_rhel7_rpm_latest-0
   type: gcs
   icon: google-drive
   source:
     bucket: data-gpdb-ud-pivnet-artifacts
     json_key: ((pxf-storage-service-account-key))
-    regexp: latest-[[i]]_gpdb[[gp_ver]]/greenplum-db-(.*)-rhel7-x86_64.rpm
-{% endfor %} {# range(num_gpdb5_versions) #}
+    regexp: latest-0_gpdb[[gp_ver]]/greenplum-db-(.*)-rhel7-x86_64.rpm
 {% set gp_ver = None %}
 
 {% set gp_ver = 6 %}
-{% for i in range(num_gpdb6_versions) %}
-- name: gpdb[[gp_ver]]_rhel7_rpm_latest-[[i]]
+- name: gpdb[[gp_ver]]_rhel7_rpm_latest-0
   type: gcs
   icon: google-drive
   source:
     bucket: data-gpdb-ud-pivnet-artifacts
     json_key: ((pxf-storage-service-account-key))
-    regexp: latest-[[i]]_gpdb[[gp_ver]]/greenplum-db-(.*)-rhel7-x86_64.rpm
+    regexp: latest-0_gpdb[[gp_ver]]/greenplum-db-(.*)-rhel7-x86_64.rpm
 
 {% if build_deb %}
-- name: gpdb[[gp_ver]]_ubuntu18_deb_latest-[[i]]
+- name: gpdb[[gp_ver]]_ubuntu18_deb_latest-0
   type: gcs
   icon: google-drive
   source:
     bucket: data-gpdb-ud-pivnet-artifacts
     json_key: ((pxf-storage-service-account-key))
-    regexp: latest-[[i]]_gpdb[[gp_ver]]/greenplum-db-(.*)-ubuntu18.04-amd64.deb
+    regexp: latest-0_gpdb[[gp_ver]]/greenplum-db-(.*)-ubuntu18.04-amd64.deb
 {% endif %}
-{% endfor %} {# range(num_gpdb6_versions) #}
 {% set gp_ver = None %}
 
 ## ---------- PXF Build Artifacts ----------
@@ -399,7 +259,7 @@ resources:
   source:
     bucket: data-gpdb-ud-pxf-build
     json_key: ((pxf-storage-service-account-key))
-    versioned_file: prod/snapshots/pxf-gp[[gp_ver]].el6.tar.gz
+    versioned_file: dev/[[user]]-[[branch]]/snapshots/pxf-gp[[gp_ver]].el6.tar.gz
 {% set gp_ver = None %}
 
 {% for gp_ver in range(5, 7) %}
@@ -409,7 +269,7 @@ resources:
   source:
     bucket: data-gpdb-ud-pxf-build
     json_key: ((pxf-storage-service-account-key))
-    versioned_file: prod/snapshots/pxf-gp[[gp_ver]].el7.tar.gz
+    versioned_file: dev/[[user]]-[[branch]]/snapshots/pxf-gp[[gp_ver]].el7.tar.gz
 {% endfor %}
 
 {% if build_deb %}
@@ -420,19 +280,12 @@ resources:
   source:
     bucket: data-gpdb-ud-pxf-build
     json_key: ((pxf-storage-service-account-key))
-    versioned_file: prod/snapshots/pxf-gp[[gp_ver]].ubuntu18.04.tar.gz
+    versioned_file: dev/[[user]]-[[branch]]/snapshots/pxf-gp[[gp_ver]].ubuntu18.04.tar.gz
 {% set gp_ver = None %}
 {% endif %}
 
-- name: pxf_open_source_license_file
-  type: gcs
-  icon: google-drive
-  source:
-    bucket: data-gpdb-ud-pxf-releases
-    json_key: ((pxf-storage-service-account-key))
-    regexp: prod/OSL/pxf-(.*)-OSL.txt
-
 ## ---------- Auxiliary Resources ----------
+{% if multinode or multinode_no_impersonation %}
 - name: terraform
   type: terraform
   source:
@@ -448,6 +301,7 @@ resources:
       region_name: ((aws-region))
       bucket: ((tf-bucket-name))
       bucket_path: ((tf-bucket-path))
+{% endif %}
 
 ## ======================================================================
 ## JOBS
@@ -503,6 +357,9 @@ jobs:
       SECRET_ACCESS_KEY: ((tf-machine-secret-access-key))
       TARGET_OS: centos
       TARGET_OS_VERSION: 6
+{% if slack_notification %}
+    <<: *slack_alert
+{% endif %}
 {% set gp_ver = None %}
 
 ## ---------- Centos 7 Swimlane ----------
@@ -554,7 +411,10 @@ jobs:
       SECRET_ACCESS_KEY: ((tf-machine-secret-access-key))
       TARGET_OS: centos
       TARGET_OS_VERSION: 7
-{% endfor %} {# gp_ver 5 and 6 #}
+{% if slack_notification %}
+    <<: *slack_alert
+{% endif %}
+{% endfor %}
 
 ## ---------- Ubuntu 18 Swimlane ----------
 {% if build_deb %}
@@ -606,57 +466,15 @@ jobs:
       SECRET_ACCESS_KEY: ((tf-machine-secret-access-key))
       TARGET_OS: ubuntu
       TARGET_OS_VERSION: 18
-{% set gp_ver = None %}
-{% endif %} {# if build_deb #}
-
-## ---------- Testing Gate ----------
-- name: Testing Gate for PXF-GP
-  plan:
-  - in_parallel:
-    - get: pxf_src
-      trigger: true
-      passed:
-{% set gp_ver = 5 %}
-      - Test PXF-GP[[gp_ver]]-HDP2 on RHEL6
-{% for gp_ver in range(5, 7) %}
-      - Test PXF-GP[[gp_ver]]-HDP2 on RHEL7
-{% endfor %}
-{% set gp_ver = None %}
-{% set gp_ver = 6 %}
-{% if build_deb %}
-      - Test PXF-GP[[gp_ver]]-HDP2 on Ubuntu18
+{% if slack_notification %}
+    <<: *slack_alert
 {% endif %}
 {% set gp_ver = None %}
-{% set gp_ver = 6 %}
-{% if build_deb %}
-    - get: pxf_gp[[gp_ver]]_tarball_ubuntu18
-      passed: [Test PXF-GP[[gp_ver]]-HDP2 on Ubuntu18]
 {% endif %}
-{% set gp_ver = 5 %}
-    - get: pxf_gp[[gp_ver]]_tarball_rhel6
-      passed:
-      - Test PXF-GP[[gp_ver]]-HDP2 on RHEL6
-{% set gp_ver = None %}
-{% for gp_ver in range(5, 7) %}
-    - get: pxf_gp[[gp_ver]]_tarball_rhel7
-      passed: [Test PXF-GP[[gp_ver]]-HDP2 on RHEL7]
-{% endfor %}
-{% set gp_ver = 5 %}
-    - get: gpdb[[gp_ver]]_rhel6_rpm_latest-0
-      passed: [Test PXF-GP[[gp_ver]]-HDP2 on RHEL6]
-{% set gp_ver = 6 %}
-{% if build_deb %}
-    - get: gpdb[[gp_ver]]_ubuntu18_deb_latest-0
-      passed: [Test PXF-GP[[gp_ver]]-HDP2 on Ubuntu18]
-{% endif %}
-{% set gp_ver = None %}
-{% for gp_ver in range(5, 7) %}
-    - get: gpdb[[gp_ver]]_rhel7_rpm_latest-0
-      passed: [Test PXF-GP[[gp_ver]]-HDP2 on RHEL7]
-{% endfor %}
 
 ## ---------- Extended Tests ----------
 {% set gp_ver = 6 %}
+{% if hdp2 %}
 - name: Test PXF-GP[[gp_ver]]-HDP2-NO-IMPERS on RHEL7
   plan:
   - in_parallel:
@@ -665,10 +483,10 @@ jobs:
       trigger: true
     - get: pxf_tarball
       resource: pxf_gp[[gp_ver]]_tarball_rhel7
-      passed: [Testing Gate for PXF-GP]
+      passed: Build PXF-GP[[gp_ver]] on RHEL7
     - get: gpdb_package
       resource: gpdb[[gp_ver]]_rhel7_rpm_latest-0
-      passed: [Testing Gate for PXF-GP]
+      passed: Build PXF-GP[[gp_ver]] on RHEL7
     - get: gpdb[[gp_ver]]-pxf-dev-centos7-image
     - get: pxf-automation-dependencies
     - get: singlecluster
@@ -681,19 +499,24 @@ jobs:
       IMPERSONATION: false
       TARGET_OS: centos
       TARGET_OS_VERSION: 7
+{% if slack_notification %}
+    <<: *slack_alert
+{% endif %}
+{% endif %}
 
+{% if mapr %}
 - name: Test PXF-GP[[gp_ver]]-MAPR on RHEL7
   plan:
   - in_parallel:
     - get: pxf_src
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
       trigger: true
     - get: pxf_tarball
       resource: pxf_gp[[gp_ver]]_tarball_rhel7
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
     - get: gpdb_package
       resource: gpdb[[gp_ver]]_rhel7_rpm_latest-0
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
     - get: gpdb[[gp_ver]]-pxf-dev-centos7-mapr-server-image
     - get: pxf-automation-dependencies
   - task: Test PXF-GP[[gp_ver]]-MAPR on RHEL7
@@ -706,19 +529,24 @@ jobs:
       HADOOP_CLIENT: MAPR
       TARGET_OS: centos
       TARGET_OS_VERSION: 7
+{% if slack_notification %}
+    <<: *slack_alert
+{% endif %}
+{% endif %}
 
+{% if hdp3 %}
 - name: Test PXF-GP[[gp_ver]]-HDP3 on RHEL7
   plan:
   - in_parallel:
     - get: pxf_src
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
       trigger: true
     - get: pxf_tarball
       resource: pxf_gp[[gp_ver]]_tarball_rhel7
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
     - get: gpdb_package
       resource: gpdb[[gp_ver]]_rhel7_rpm_latest-0
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
     - get: gpdb[[gp_ver]]-pxf-dev-centos7-image
     - get: pxf-automation-dependencies
     - get: singlecluster
@@ -733,18 +561,23 @@ jobs:
       SECRET_ACCESS_KEY: ((tf-machine-secret-access-key))
       TARGET_OS: centos
       TARGET_OS_VERSION: 7
+{% if slack_notification %}
+    <<: *slack_alert
+{% endif %}
+{% endif %}
 
+{% if ambari %}
 - name: Test PXF-GP[[gp_ver]]-HDP3-SECURE AMBARI (MANUAL) on RHEL7
   plan:
   - in_parallel:
     - get: pxf_src
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
     - get: pxf_tarball
       resource: pxf_gp[[gp_ver]]_tarball_rhel7
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
     - get: gpdb_package
       resource: gpdb[[gp_ver]]_rhel7_rpm_latest-0
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
     - get: gpdb[[gp_ver]]-pxf-dev-centos7-image
     - get: ccp-7-image
     - get: pxf-automation-dependencies
@@ -767,19 +600,24 @@ jobs:
       HADOOP_CLIENT: HDP_KERBEROS
       SECRET_ACCESS_KEY: ((tf-machine-secret-access-key))
       TARGET_OS: centos
+{% if slack_notification %}
+    <<: *slack_alert
+{% endif %}
+{% endif %}
 
+{% if jdk11 %}
 - name: Test PXF-GP[[gp_ver]]-HDP2-JDK11 on RHEL7
   plan:
   - in_parallel:
     - get: pxf_src
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
       trigger: true
     - get: pxf_tarball
       resource: pxf_gp[[gp_ver]]_tarball_rhel7
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
     - get: gpdb_package
       resource: gpdb[[gp_ver]]_rhel7_rpm_latest-0
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
     - get: gpdb[[gp_ver]]-pxf-dev-centos7-image
     - get: pxf-automation-dependencies
     - get: singlecluster
@@ -795,19 +633,24 @@ jobs:
       SECRET_ACCESS_KEY: ((tf-machine-secret-access-key))
       TARGET_OS: centos
       TARGET_OS_VERSION: 7
+{% if slack_notification %}
+    <<: *slack_alert
+{% endif %}
+{% endif %}
 
+{% if cdh %}
 - name: Test PXF-GP[[gp_ver]]-CDH on RHEL7
   plan:
   - in_parallel:
     - get: pxf_src
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
       trigger: true
     - get: pxf_tarball
       resource: pxf_gp[[gp_ver]]_tarball_rhel7
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
     - get: gpdb_package
       resource: gpdb[[gp_ver]]_rhel7_rpm_latest-0
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
     - get: gpdb[[gp_ver]]-pxf-dev-centos7-image
     - get: pxf-automation-dependencies
     - get: singlecluster
@@ -825,21 +668,26 @@ jobs:
       SECRET_ACCESS_KEY: ((tf-machine-secret-access-key))
       TARGET_OS: centos
       TARGET_OS_VERSION: 7
+{% if slack_notification %}
+    <<: *slack_alert
+{% endif %}
+{% endif %}
 
 ## ---------- HCFS Cloud tests ----------
 
+{% if s3 %}
 - name: Test PXF-GP[[gp_ver]]-S3 on RHEL7
   plan:
   - in_parallel:
     - get: pxf_src
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
       trigger: true
     - get: pxf_tarball
       resource: pxf_gp[[gp_ver]]_tarball_rhel7
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
     - get: gpdb_package
       resource: gpdb[[gp_ver]]_rhel7_rpm_latest-0
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
     - get: gpdb[[gp_ver]]-pxf-dev-centos7-image
     - get: pxf-automation-dependencies
     - get: singlecluster
@@ -855,19 +703,24 @@ jobs:
       SECRET_ACCESS_KEY: ((tf-machine-secret-access-key))
       TARGET_OS: centos
       TARGET_OS_VERSION: 7
+{% if slack_notification %}
+    <<: *slack_alert
+{% endif %}
+{% endif %}
 
+{% if s3 %}
 - name: Test PXF-GP[[gp_ver]]-S3-NO-IMPERS on RHEL7
   plan:
   - in_parallel:
     - get: pxf_src
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
       trigger: true
     - get: pxf_tarball
       resource: pxf_gp[[gp_ver]]_tarball_rhel7
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
     - get: gpdb_package
       resource: gpdb[[gp_ver]]_rhel7_rpm_latest-0
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
     - get: gpdb[[gp_ver]]-pxf-dev-centos7-image
     - get: pxf-automation-dependencies
     - get: singlecluster
@@ -884,19 +737,24 @@ jobs:
       SECRET_ACCESS_KEY: ((tf-machine-secret-access-key))
       TARGET_OS: centos
       TARGET_OS_VERSION: 7
+{% if slack_notification %}
+    <<: *slack_alert
+{% endif %}
+{% endif %}
 
+{% if adl %}
 - name: Test PXF-GP[[gp_ver]]-ADL-NO-IMPERS on RHEL7
   plan:
   - in_parallel:
     - get: pxf_src
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
       trigger: true
     - get: pxf_tarball
       resource: pxf_gp[[gp_ver]]_tarball_rhel7
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
     - get: gpdb_package
       resource: gpdb[[gp_ver]]_rhel7_rpm_latest-0
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
     - get: gpdb[[gp_ver]]-pxf-dev-centos7-image
     - get: pxf-automation-dependencies
     - get: singlecluster
@@ -914,19 +772,24 @@ jobs:
       IMPERSONATION: false
       PROTOCOL: adl
       TARGET_OS: centos
+{% if slack_notification %}
+    <<: *slack_alert
+{% endif %}
+{% endif %}
 
+{% if gs %}
 - name: Test PXF-GP[[gp_ver]]-GS-NO-IMPERS on RHEL7
   plan:
   - in_parallel:
     - get: pxf_src
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
       trigger: true
     - get: pxf_tarball
       resource: pxf_gp[[gp_ver]]_tarball_rhel7
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
     - get: gpdb_package
       resource: gpdb[[gp_ver]]_rhel7_rpm_latest-0
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
     - get: gpdb[[gp_ver]]-pxf-dev-centos7-image
     - get: pxf-automation-dependencies
     - get: singlecluster
@@ -941,19 +804,24 @@ jobs:
       IMPERSONATION: false
       PROTOCOL: gs
       TARGET_OS: centos
+{% if slack_notification %}
+    <<: *slack_alert
+{% endif %}
+{% endif %}
 
+{% if minio %}
 - name: Test PXF-GP[[gp_ver]]-MINIO-NO-IMPERS on RHEL7
   plan:
   - in_parallel:
     - get: pxf_src
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
       trigger: true
     - get: pxf_tarball
       resource: pxf_gp[[gp_ver]]_tarball_rhel7
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
     - get: gpdb_package
       resource: gpdb[[gp_ver]]_rhel7_rpm_latest-0
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
     - get: gpdb[[gp_ver]]-pxf-dev-centos7-image
     - get: pxf-automation-dependencies
     - get: singlecluster
@@ -967,22 +835,26 @@ jobs:
       IMPERSONATION: false
       PROTOCOL: minio
       TARGET_OS: centos
+{% if slack_notification %}
+    <<: *slack_alert
+{% endif %}
+{% endif %}
 
 ## ---------- Multi-node tests ----------
-
+{% if multinode %}
 - name: Test PXF-GP[[gp_ver]]-HDP2-SECURE-MULTI-IMPERS on RHEL7
   max_in_flight: 2
   plan:
   - in_parallel:
     - get: pxf_src
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
       trigger: true
     - get: pxf_tarball
       resource: pxf_gp[[gp_ver]]_tarball_rhel7
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
     - get: gpdb_package
       resource: gpdb[[gp_ver]]_rhel7_rpm_latest-0
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
     - get: gpdb[[gp_ver]]-pxf-dev-centos7-image
     - get: ccp_src
     - get: ccp-7-image
@@ -1089,20 +961,25 @@ jobs:
       GROUP: security,proxySecurity,multiClusterSecurity
       PXF_JVM_OPTS: ((pxf-jvm-opts))
       TARGET_OS: centos
+{% if slack_notification %}
+    <<: *slack_alert
+{% endif %}
+{% endif %}
 
+{% if multinode_no_impersonation %}
 - name: Test PXF-GP[[gp_ver]]-HDP2-SECURE-MULTI-NO-IMPERS on RHEL7
   max_in_flight: 2
   plan:
   - in_parallel:
     - get: pxf_src
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
       trigger: true
     - get: pxf_tarball
       resource: pxf_gp[[gp_ver]]_tarball_rhel7
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
     - get: gpdb_package
       resource: gpdb[[gp_ver]]_rhel7_rpm_latest-0
-      passed: [Testing Gate for PXF-GP]
+      passed: [Build PXF-GP[[gp_ver]] on RHEL7]
     - get: gpdb[[gp_ver]]-pxf-dev-centos7-image
     - get: ccp_src
     - get: ccp-7-image
@@ -1209,275 +1086,7 @@ jobs:
       GROUP: security,multiClusterSecurity
       PXF_JVM_OPTS: ((pxf-jvm-opts))
       TARGET_OS: centos
-
-## ---------- Compatibility Gate ----------
-- name: Compatibility Gate for PXF-GP
-  plan:
-  - in_parallel:
-    - get: pxf_src
-      passed:
-      - Test PXF-GP[[gp_ver]]-HDP2-NO-IMPERS on RHEL7
-      - Test PXF-GP[[gp_ver]]-MAPR on RHEL7
-      - Test PXF-GP[[gp_ver]]-HDP3 on RHEL7
-      - Test PXF-GP[[gp_ver]]-HDP2-JDK11 on RHEL7
-      - Test PXF-GP[[gp_ver]]-CDH on RHEL7
-      - Test PXF-GP[[gp_ver]]-S3 on RHEL7
-      - Test PXF-GP[[gp_ver]]-S3-NO-IMPERS on RHEL7
-      - Test PXF-GP[[gp_ver]]-ADL-NO-IMPERS on RHEL7
-      - Test PXF-GP[[gp_ver]]-GS-NO-IMPERS on RHEL7
-      - Test PXF-GP[[gp_ver]]-MINIO-NO-IMPERS on RHEL7
-      - Test PXF-GP[[gp_ver]]-HDP2-SECURE-MULTI-IMPERS on RHEL7
-      - Test PXF-GP[[gp_ver]]-HDP2-SECURE-MULTI-NO-IMPERS on RHEL7
-      trigger: true
-{% set gp_ver = 5 %}
-    - get: pxf_gp[[gp_ver]]_tarball_rhel6
-      passed:
-      - Testing Gate for PXF-GP
-    - get: pxf_gp[[gp_ver]]_tarball_rhel7
-      passed:
-      - Testing Gate for PXF-GP
-{% set gp_ver = 6 %}
-{% if build_deb %}
-    - get: pxf_gp[[gp_ver]]_tarball_ubuntu18
-      passed:
-      - Testing Gate for PXF-GP
-{% endif %}
-    - get: pxf_gp[[gp_ver]]_tarball_rhel7
-      passed:
-      - Test PXF-GP[[gp_ver]]-HDP2-NO-IMPERS on RHEL7
-      - Test PXF-GP[[gp_ver]]-MAPR on RHEL7
-      - Test PXF-GP[[gp_ver]]-HDP3 on RHEL7
-      - Test PXF-GP[[gp_ver]]-HDP2-JDK11 on RHEL7
-      - Test PXF-GP[[gp_ver]]-CDH on RHEL7
-      - Test PXF-GP[[gp_ver]]-S3 on RHEL7
-      - Test PXF-GP[[gp_ver]]-S3-NO-IMPERS on RHEL7
-      - Test PXF-GP[[gp_ver]]-ADL-NO-IMPERS on RHEL7
-      - Test PXF-GP[[gp_ver]]-GS-NO-IMPERS on RHEL7
-      - Test PXF-GP[[gp_ver]]-MINIO-NO-IMPERS on RHEL7
-      - Test PXF-GP[[gp_ver]]-HDP2-SECURE-MULTI-IMPERS on RHEL7
-      - Test PXF-GP[[gp_ver]]-HDP2-SECURE-MULTI-NO-IMPERS on RHEL7
-
-## ---------- Compatibility Testing ----------
-{% set gp_ver = 5 %}
-- name: Test PXF-GP[[gp_ver]] Backward Compatibility on RHEL6
-  plan:
-  - in_parallel:
-    - get: pxf_src
-      passed: [Compatibility Gate for PXF-GP]
-      trigger: true
-    - get: pxf_tarball
-      resource: pxf_gp[[gp_ver]]_tarball_rhel6
-      passed: [Compatibility Gate for PXF-GP]
-    - get: gpdb[[gp_ver]]-pxf-dev-centos6-image
-    - get: singlecluster
-      resource: singlecluster-hdp2
-{% for i in range(1, num_gpdb5_versions) %}
-    - get: gpdb_package_latest-[[i]]
-      resource: gpdb[[gp_ver]]_rhel6_rpm_latest-[[i]]
-{% endfor %}
-  - in_parallel:
-      limit: [[max_concurrent_bc_tasks]]
-      fail_fast: false
-      steps:
-{% for i in range(1, num_gpdb5_versions) %}
-      - task: Test Against Greenplum Latest - [[i]] RHEL6
-        image: gpdb[[gp_ver]]-pxf-dev-centos6-image
-        config:
-          platform: linux
-          inputs:
-          - name: gpdb_package_latest-[[i]]
-          - name: pxf_src
-          - name: pxf_tarball
-          - name: singlecluster
-          params:
-            GPDB_PKG_DIR: gpdb_package_latest-[[i]]
-            GROUP: HdfsSmokeTest,WritableSmokeTest
-            HADOOP_CLIENT: hdp
-            IMPERSONATION: true
-            PGPORT: 5432
-            PG_REGRESS: true
-            GP_VER: [[gp_ver]]
-          run:
-            path: pxf_src/concourse/scripts/test.bash
-{% endfor %}
-
-{% for gp_ver in range(5, 7) %}
-{% set num_versions = num_gpdb5_versions %}
-{% if gp_ver == 6 %}
-  {% set num_versions = num_gpdb6_versions %}
-{% endif %}
-- name: Test PXF-GP[[gp_ver]] Backward Compatibility on RHEL7
-  plan:
-  - in_parallel:
-    - get: pxf_src
-      passed: [Compatibility Gate for PXF-GP]
-      trigger: true
-    - get: pxf_tarball
-      passed: [Compatibility Gate for PXF-GP]
-      resource: pxf_gp[[gp_ver]]_tarball_rhel7
-    - get: gpdb[[gp_ver]]-pxf-dev-centos7-image
-    - get: singlecluster
-      resource: singlecluster-hdp2
-{% for i in range(1, num_versions) %}
-    - get: gpdb_package_latest-[[i]]
-      resource: gpdb[[gp_ver]]_rhel7_rpm_latest-[[i]]
-{% endfor %}
-  - in_parallel:
-      limit: [[max_concurrent_bc_tasks]]
-      fail_fast: false
-      steps:
-{% for i in range(1, num_versions) %}
-      - task: Test Against Greenplum Latest - [[i]] RHEL7
-        image: gpdb[[gp_ver]]-pxf-dev-centos7-image
-        config:
-          platform: linux
-          inputs:
-          - name: gpdb_package_latest-[[i]]
-          - name: pxf_src
-          - name: pxf_tarball
-          - name: singlecluster
-          params:
-            GPDB_PKG_DIR: gpdb_package_latest-[[i]]
-            GROUP: HdfsSmokeTest,WritableSmokeTest
-            HADOOP_CLIENT: hdp
-            IMPERSONATION: true
-            PGPORT: 5432
-            PG_REGRESS: true
-            GP_VER: [[gp_ver]]
-          run:
-            path: pxf_src/concourse/scripts/test.bash
-{% endfor %}
-{% set num_versions = None %}
-{% endfor %} {# both gp5 and gp6 #}
-
-{% if build_deb %}
-{% set gp_ver = 6 %}
-- name: Test PXF-GP[[gp_ver]] Backward Compatibility on Ubuntu18
-  plan:
-  - in_parallel:
-    - get: pxf_src
-      passed: [Compatibility Gate for PXF-GP]
-      trigger: true
-    - get: pxf_tarball
-      passed: [Compatibility Gate for PXF-GP]
-      resource: pxf_gp[[gp_ver]]_tarball_ubuntu18
-    - get: gpdb[[gp_ver]]-pxf-dev-ubuntu18-image
-    - get: singlecluster
-      resource: singlecluster-hdp2
-{% for i in range(1, num_gpdb6_versions) %}
-    - get: gpdb_package_latest-[[i]]
-      resource: gpdb[[gp_ver]]_ubuntu18_deb_latest-[[i]]
-{% endfor %}
-  - in_parallel:
-      limit: [[max_concurrent_bc_tasks]]
-      fail_fast: false
-      steps:
-{% for i in range(1, num_gpdb6_versions) %}
-      - task: Test Against Greenplum Latest - [[i]] Ubuntu18
-        image: gpdb[[gp_ver]]-pxf-dev-ubuntu18-image
-        config:
-          platform: linux
-          inputs:
-          - name: gpdb_package_latest-[[i]]
-          - name: pxf_src
-          - name: pxf_tarball
-          - name: singlecluster
-          params:
-            GPDB_PKG_DIR: gpdb_package_latest-[[i]]
-            GROUP: HdfsSmokeTest,WritableSmokeTest
-            HADOOP_CLIENT: hdp
-            IMPERSONATION: true
-            PGPORT: 5432
-            PG_REGRESS: true
-            GP_VER: [[gp_ver]]
-          run:
-            path: pxf_src/concourse/scripts/test.bash
-{% endfor %}
-{% set gp_ver = None %}
-{% endif %}
-
-## ---------- Artifact Promotion Gate ----------
-- name: Promote PXF-GP5 and PXF-GP6 Artifacts
-  plan:
-  - in_parallel:
-    - get: pxf_src
-      passed:
-{% set gp_ver = 5 %}
-      - Test PXF-GP[[gp_ver]] Backward Compatibility on RHEL6
-{% for gp_ver in range(5, 7) %}
-      - Test PXF-GP[[gp_ver]] Backward Compatibility on RHEL7
-{% endfor %}
-{% set gp_ver = None %}
-{% if build_deb %}
-{% set gp_ver = 6 %}
-      - Test PXF-GP[[gp_ver]] Backward Compatibility on Ubuntu18
-{% set gp_ver = None %}
-{% endif %}
-{% set gp_ver = 5 %}
-    - get: pxf_gp[[gp_ver]]_tarball_rhel6
-      trigger: true
-      passed:
-      - Test PXF-GP[[gp_ver]] Backward Compatibility on RHEL6
-{% for gp_ver in range(5, 7) %}
-    - get: pxf_gp[[gp_ver]]_tarball_rhel7
-      trigger: true
-      passed:
-      - Test PXF-GP[[gp_ver]] Backward Compatibility on RHEL7
-{% endfor %}
-{% set gp_ver = None %}
-{% if build_deb %}
-{% set gp_ver = 6 %}
-    - get: pxf_gp[[gp_ver]]_tarball_ubuntu18
-      trigger: true
-      passed:
-      - Test PXF-GP[[gp_ver]] Backward Compatibility on Ubuntu18
-{% set gp_ver = None %}
-{% endif %}
-    - get: google-cloud-sdk-slim-image
-  - task: Promote PXF-GP5 and PXF-GP6 Artifacts
-    image: google-cloud-sdk-slim-image
-    file: pxf_src/concourse/tasks/promote_pxf_artifacts.yml
-    params:
-      GCS_RELEASES_BUCKET: data-gpdb-ud-pxf-releases
-      GCS_RELEASES_PATH: prod/releases
-      GIT_BRANCH: [[git_branch]]
-      GIT_EMAIL: ((pxf-git-deploy-email))
-      GIT_REMOTE_URL: ((pxf-git-remote-ssh-url))
-      GIT_SSH_KEY: ((pxf-git-deploy-key))
-      GIT_USERNAME: ((pxf-git-deploy-username))
-      GOOGLE_CREDENTIALS: ((pxf-storage-service-account-key))
 {% if slack_notification %}
     <<: *slack_alert
 {% endif %}
-
-- name: Publish PXF-GP5 and PXF-GP6 Artifacts to GP-RelEng
-  plan:
-  - in_parallel:
-    - get: pxf_src
-      passed:
-      - Promote PXF-GP5 and PXF-GP6 Artifacts
-    - get: pxf_open_source_license_file
-      trigger: true
-    - get: google-cloud-sdk-slim-image
-  - task: Get PXF-GP5 and PXF-GP6 Artifacts from Releases Directory
-    image: google-cloud-sdk-slim-image
-    file: pxf_src/concourse/tasks/get_pxf_release_artifacts.yml
-    params:
-      GCS_RELEASES_BUCKET: data-gpdb-ud-pxf-releases
-      GCS_RELEASES_PATH: prod/releases
-      GOOGLE_CREDENTIALS: ((pxf-storage-service-account-key))
-  - in_parallel:
-    - put: pxf_gp5_rhel6_release_to_releng
-      params:
-        file: pxf_artifacts/pxf-gp5-*el6*rpm
-    - put: pxf_gp5_rhel7_release_to_releng
-      params:
-        file: pxf_artifacts/pxf-gp5-*el7*rpm
-    - put: pxf_gp6_rhel7_release_to_releng
-      params:
-        file: pxf_artifacts/pxf-gp6-*el7*rpm
-{% if build_deb %}
-    - put: pxf_gp6_ubuntu18_release_to_releng
-      params:
-        file: pxf_artifacts/pxf-gp6-*ubuntu18*deb
 {% endif %}
