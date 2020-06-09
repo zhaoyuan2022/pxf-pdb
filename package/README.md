@@ -11,8 +11,7 @@ The PXF build system can create an RPM package on CentOs platform and a DEB pack
 respectively. PXF compiles against and generates a different package for every major Greenplum version.
 
 For example, `pxf-gp5-1.2.3-1.el7.x86_64.rpm` represents an RPM package of PXF version 1.2.3 intended to work with
-Greenplum 5 on Centos / Redhat 7 operating systems.  
-
+Greenplum 5 on Centos / Redhat 7 operating systems.
 
 ## PXF RPM specification
 On Centos platforms PXF product is packaged as an RPM. The specification on how to build the RPM is provided by the
@@ -31,10 +30,11 @@ On Centos platforms PXF product is packaged as an RPM. The specification on how 
 ## PXF RPM build process
 
 To build an RPM, follow these steps:
-1. Install Greenplum database
-2. Run `source $GPHOME/greenplum_path.sh` to configure your `PATH` to be able to find `pg_config` program
-3. Run `make clean rpm` from the top-level directory to build artifacts and assemble the RPM
-4. The RPM will be available in `build/rpmbuild/RPMS` directory
+1. Install the `rpm-build` package: `sudo yum install rpm-build`
+2. Install Greenplum database
+3. Run `source $GPHOME/greenplum_path.sh` to configure your `PATH` to be able to find `pg_config` program
+4. Run `make clean rpm` from the top-level directory to build artifacts and assemble the RPM
+5. The RPM will be available in `build/rpmbuild/RPMS` directory
 
 
 ## PXF RPM installation process
