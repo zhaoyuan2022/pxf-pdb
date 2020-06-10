@@ -1,5 +1,13 @@
 # Changelog
 
+## 5.13.0 (06/10/2020)
+
+### Enhancements:
+
+- [#341](https://github.com/greenplum-db/pxf/pull/341) Create external-table directory and PXF RPM
+
+---
+
 ## 5.12.1 (06/03/2020)
 
 ### Enhancements:
