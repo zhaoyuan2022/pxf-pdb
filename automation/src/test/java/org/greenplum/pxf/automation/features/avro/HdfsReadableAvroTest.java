@@ -26,15 +26,15 @@ public class HdfsReadableAvroTest extends BaseFeature {
 
     private final String SUFFIX_AVRO = ".avro";
 
-    private String avroSimpleFileName = "simple";
-    private String avroTypesFileName = "supported_primitive_types";
-    private String avroArrayFileName = "array";
-    private String avroComplexFileName = "complex";
-    private String avroComplexNullFileName = "complex_null";
-    private String avroInSequenceArraysFileName = "avro_in_sequence_arrays.tbl";
-    private String avroInSequenceArraysSchemaFile = "PXFCustomAvro.avsc";
-    private String avroInSequenceArraysSchemaFileWithSpaces = "PXF Custom Avro1.avsc";
-    private String complexAvroFile = "complex.avro";
+    private final String avroSimpleFileName = "simple";
+    private final String avroTypesFileName = "supported_primitive_types";
+    private final String avroArrayFileName = "array";
+    private final String avroComplexFileName = "complex";
+    private final String avroComplexNullFileName = "complex_null";
+    private final String avroInSequenceArraysFileName = "avro_in_sequence_arrays.tbl";
+    private final String avroInSequenceArraysSchemaFile = "PXFCustomAvro.avsc";
+    private final String avroInSequenceArraysSchemaFileWithSpaces = "PXF Custom Avro1.avsc";
+    private final String complexAvroFile = "complex.avro";
     private ProtocolEnum protocol;
     private String remotePublicStage;
 

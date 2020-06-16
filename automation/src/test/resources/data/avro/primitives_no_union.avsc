@@ -8,6 +8,10 @@
     "type":"int",
     "doc":"int type"
   },{
+    "name":"type_smallint",
+    "type":"int",
+    "doc":"int type"
+  },{
     "name":"type_long",
     "type":"long",
     "doc":"long type"

@@ -13,6 +13,7 @@ import java.io.StringWriter;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -333,10 +334,7 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
                 + ", json data file " + jsonFileName + ")");
 
         Tool tool = new DataFileWriteTool();
-        List<String> args = new ArrayList<>();
-        args.add("--schema-file");
-        args.add(schemaName);
-        args.add(jsonFileName);
+        List<String> args = Arrays.asList("--schema-file", schemaName, jsonFileName);
         if (codecName != null) {
             args.add("--codec");
             args.add(codecName);

@@ -36,7 +36,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class BridgeInputBuilder {
-    private RequestContext protocolData;
+    private final RequestContext protocolData;
     private static final Log LOG = LogFactory.getLog(BridgeInputBuilder.class);
 
     public BridgeInputBuilder(RequestContext protocolData) {

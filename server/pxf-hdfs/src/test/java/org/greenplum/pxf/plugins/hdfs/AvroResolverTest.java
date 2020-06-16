@@ -67,7 +67,7 @@ public class AvroResolverTest {
         assertEquals(false, genericRecord.get(0));
         assertEquals(ByteBuffer.wrap(new byte[]{(byte) 49}), genericRecord.get(1));
         assertEquals(23456789L, genericRecord.get(2));
-        assertEquals((short) 1, genericRecord.get(3));
+        assertEquals(1, genericRecord.get(3));
         assertEquals((float) 7.7, genericRecord.get(4));
         assertEquals(6.0, genericRecord.get(5));
         assertEquals("row1", genericRecord.get(6));

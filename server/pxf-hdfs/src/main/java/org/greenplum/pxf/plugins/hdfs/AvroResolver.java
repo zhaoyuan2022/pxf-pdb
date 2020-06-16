@@ -57,12 +57,11 @@ public class AvroResolver extends BasePlugin implements Resolver {
     // member kept to enable reuse, and thus avoid repeated allocation
     private BinaryDecoder decoder = null;
     private List<Schema.Field> fields = null;
-    private RecordkeyAdapter recordkeyAdapter = new RecordkeyAdapter();
+    private final RecordkeyAdapter recordkeyAdapter = new RecordkeyAdapter();
     private String collectionDelim;
     private String mapkeyDelim;
     private String recordkeyDelim;
-    private HcfsType hcfsType;
-    private AvroUtilities avroUtilities;
+    private final AvroUtilities avroUtilities;
 
     /**
      * Constructs a new instance of the AvroFileAccessor
@@ -84,7 +83,7 @@ public class AvroResolver extends BasePlugin implements Resolver {
     public void initialize(RequestContext requestContext) {
         super.initialize(requestContext);
 
-        hcfsType = HcfsType.getHcfsType(configuration, context);
+        HcfsType hcfsType = HcfsType.getHcfsType(configuration, context);
         Schema schema = avroUtilities.obtainSchema(context, configuration, hcfsType);
 
         reader = new GenericDatumReader<>(schema);
@@ -141,9 +140,12 @@ public class AvroResolver extends BasePlugin implements Resolver {
         GenericRecord genericRecord = new GenericData.Record((Schema) context.getMetadata());
         int cnt = 0;
         for (OneField field : record) {
-            // Avro does not seem to understand regular byte arrays
-            if (field.val instanceof byte[]) {
+            if (field.type == DataType.BYTEA.getOID()) {
+                // Avro does not seem to understand regular byte arrays
                 field.val = ByteBuffer.wrap((byte[]) field.val);
+            } else if (field.type == DataType.SMALLINT.getOID()) {
+                // Avro doesn't have a short, just an int type
+                field.val = (int) (short) field.val;
             }
             genericRecord.put(cnt++, field.val);
         }
@@ -344,8 +346,8 @@ public class AvroResolver extends BasePlugin implements Resolver {
         Schema typeSchema = arraySchema.getElementType();
         GenericData.Array<?> array = (GenericData.Array<?>) fieldValue;
         int length = array.size();
-        for (int i = 0; i < length; i++) {
-            populateRecord(record, array.get(i), typeSchema);
+        for (Object o : array) {
+            populateRecord(record, o, typeSchema);
         }
         return length;
     }
