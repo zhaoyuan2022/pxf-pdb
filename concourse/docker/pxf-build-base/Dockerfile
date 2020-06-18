@@ -22,12 +22,13 @@ ADD . /tmp/pxf_src
 
 # build pxf server and pxf automation
 RUN export BUILD_PARAMS=-Dorg.gradle.daemon=false && \
-    GOPATH=/opt/go PATH=/opt/go/bin:/usr/local/go/bin:$PATH make -C /tmp/pxf_src tar && \
+    GOPATH=/opt/go PATH=/opt/go/bin:/usr/local/go/bin:$PATH make -C /tmp/pxf_src/cli/go/src/pxf-cli build && \
+    make -C /tmp/pxf_src/server test stage && \
     mkdir -p /root/automation_tmp_lib/ &&  \
     for X in /tmp/pxf_src/server/build/stage/lib/pxf-*-[0-9]*.jar; do \
       ln -sf $X /root/automation_tmp_lib/`echo \`basename $X\` | sed -e 's/-[a-zA-Z0-9.]*.jar/.jar/'`; \
     done && touch /root/automation_tmp_lib/pxf-extras.jar && \
-    make -C /tmp/pxf_src/automation dev && \
+    PXF_HOME=/tmp/pxf make -C /tmp/pxf_src/automation dev && \
     mkdir -p /root/pxf/servers/database/ && cp /tmp/pxf_src/server/pxf-service/src/templates/user/templates/jdbc-site.xml /root/pxf/servers/database/ && \
     mkdir -p /root/pxf/servers/db-session-params/ && cp /tmp/pxf_src/server/pxf-service/src/templates/user/templates/jdbc-site.xml /root/pxf/servers/db-session-params/ && \
     mkdir -p /root/pxf/servers/db-hive/ && cp /tmp/pxf_src/server/pxf-service/src/templates/user/templates/jdbc-site.xml /root/pxf/servers/db-hive/ && \
