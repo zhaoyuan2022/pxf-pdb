@@ -139,7 +139,7 @@ public class RequestContext {
     // ----- Additional Configuration Properties to be added to configuration for the request
     private Map<String, String> additionalConfigProps;
     // ----- USER-DEFINED OPTIONS other than NAMED PROPERTIES -----
-    private Map<String, String> options = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    private final Map<String, String> options = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     private PluginConf pluginConf;
 
     /**

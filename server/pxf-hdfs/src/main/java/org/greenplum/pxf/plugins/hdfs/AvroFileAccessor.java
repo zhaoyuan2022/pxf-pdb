@@ -21,6 +21,7 @@ package org.greenplum.pxf.plugins.hdfs;
 
 
 import org.apache.avro.Schema;
+import org.apache.avro.file.CodecFactory;
 import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
@@ -46,6 +47,12 @@ import java.io.IOException;
  */
 public class AvroFileAccessor extends HdfsSplittableDataAccessor {
 
+    private static final String COMPRESSION_CODEC_OPTION = "COMPRESSION_CODEC";
+    private static final String CODEC_COMPRESSION_LEVEL_OPTION = "CODEC_LEVEL";
+    private static final int DEFAULT_CODEC_COMPRESSION_LEVEL = 6;
+    private static final String DEFLATE_CODEC = "deflate";
+    private static final String NO_CODEC = "uncompressed";
+    private static final String SNAPPY_CODEC = "snappy";
     private AvroWrapper<GenericRecord> avroWrapper;
     private DataFileWriter<GenericRecord> writer;
     private long rowsWritten, rowsRead;
@@ -137,6 +144,22 @@ public class AvroFileAccessor extends HdfsSplittableDataAccessor {
     public boolean openForWrite() throws Exception {
         // make writer
         writer = new DataFileWriter<>(new GenericDatumWriter<>(schema));
+        String codec = context.getOption(COMPRESSION_CODEC_OPTION, DEFLATE_CODEC).toLowerCase();
+        int codecCompressionLevel = context.getOption(CODEC_COMPRESSION_LEVEL_OPTION, DEFAULT_CODEC_COMPRESSION_LEVEL);
+        switch (codec) {
+            case DEFLATE_CODEC:
+                writer.setCodec(CodecFactory.deflateCodec(codecCompressionLevel));
+                break;
+            case SNAPPY_CODEC:
+                writer.setCodec(CodecFactory.snappyCodec());
+                break;
+            case NO_CODEC:
+                writer.setCodec(CodecFactory.nullCodec());
+                break;
+            default:
+                throw new RuntimeException(String.format("Avro Compression codec %s not supported", codec));
+        }
+
         Path file = new Path(hcfsType.getUriForWrite(configuration, context, true) + ".avro");
         FileSystem fs = file.getFileSystem(jobConf);
         FSDataOutputStream avroOut = null;

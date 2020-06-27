@@ -37,54 +37,6 @@ import static org.junit.Assert.assertEquals;
 
 public class HdfsUtilitiesTest {
 
-    private CodecFactory codecFactory;
-    private Configuration conf;
-
-    @Before
-    public void setup() {
-        conf = new Configuration();
-        codecFactory = CodecFactory.getInstance();
-    }
-
-    @Test
-    public void isThreadSafe() {
-
-        testIsThreadSafe(
-                "readable compression, no compression - thread safe",
-                "/some/path/without.compression",
-                null,
-                true);
-
-        testIsThreadSafe(
-                "readable compression, gzip compression - thread safe",
-                "/some/compressed/path.gz",
-                null,
-                true);
-
-        testIsThreadSafe(
-                "readable compression, bzip2 compression - not thread safe",
-                "/some/path/with/bzip2.bz2",
-                null,
-                false);
-
-        testIsThreadSafe(
-                "writable compression, no compression codec - thread safe",
-                "/some/path",
-                null,
-                true);
-
-        testIsThreadSafe(
-                "writable compression, compression codec bzip2 - not thread safe",
-                "/some/path",
-                "org.apache.hadoop.io.compress.BZip2Codec",
-                false);
-    }
-
-    private void testIsThreadSafe(String testDescription, String path, String codecStr, boolean expectedResult) {
-        boolean result = HdfsUtilities.isThreadSafe(conf, path, codecStr);
-        assertEquals(testDescription, expectedResult, result);
-    }
-
     @Test
     public void testToString() {
         List<OneField> oneFields = Arrays.asList(new OneField(1, "uno"), new OneField(2, "dos"), new OneField(3, "tres"));

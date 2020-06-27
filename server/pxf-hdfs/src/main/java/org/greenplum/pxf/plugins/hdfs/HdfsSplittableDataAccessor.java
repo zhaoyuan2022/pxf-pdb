@@ -42,7 +42,7 @@ import java.util.ListIterator;
  * <p>
  * Accessors that require such base functionality should extend this class.
  */
-public abstract class HdfsSplittableDataAccessor extends BasePlugin implements Accessor {
+public abstract class HdfsSplittableDataAccessor extends HcfsBaseAccessor {
     protected RecordReader<Object, Object> reader;
     protected InputFormat<?, ?> inputFormat;
     protected JobConf jobConf;
@@ -158,11 +158,4 @@ public abstract class HdfsSplittableDataAccessor extends BasePlugin implements A
         }
     }
 
-    @Override
-    public boolean isThreadSafe() {
-        return HdfsUtilities.isThreadSafe(
-                configuration,
-                context.getDataSource(),
-                context.getOption("COMPRESSION_CODEC"));
-    }
 }

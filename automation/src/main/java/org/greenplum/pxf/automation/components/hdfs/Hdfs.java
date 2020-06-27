@@ -1,29 +1,12 @@
 package org.greenplum.pxf.automation.components.hdfs;
 
-import java.io.BufferedWriter;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintStream;
-import java.io.StringWriter;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
-
 import org.apache.avro.Schema;
-import org.apache.avro.data.Json;
 import org.apache.avro.file.CodecFactory;
 import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumWriter;
+import org.apache.avro.tool.DataFileGetMetaTool;
 import org.apache.avro.tool.DataFileReadTool;
 import org.apache.avro.tool.DataFileWriteTool;
 import org.apache.avro.tool.Tool;
@@ -40,13 +23,30 @@ import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.SequenceFile;
-
 import org.greenplum.pxf.automation.components.common.BaseSystemObject;
 import org.greenplum.pxf.automation.fileformats.IAvroSchema;
 import org.greenplum.pxf.automation.structures.tables.basic.Table;
 import org.greenplum.pxf.automation.utils.jsystem.report.ReportUtils;
 import org.greenplum.pxf.automation.utils.system.ProtocolEnum;
 import org.greenplum.pxf.automation.utils.system.ProtocolUtils;
+
+import java.io.BufferedWriter;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintStream;
+import java.io.StringWriter;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * Represents HDFS, holds HdfsFunctionality interface as a member, the
@@ -355,10 +355,19 @@ public class Hdfs extends BaseSystemObject implements IFSFunctionality {
     public void writeJsonFileFromAvro(String pathToFile, String pathToJson)
             throws Exception {
         Tool tool = new DataFileReadTool();
-        List<String> args = new ArrayList<>();
-        args.add(pathToFile);
+        List<String> args = Collections.singletonList(pathToFile);
 
         try (PrintStream printStream = new PrintStream(new FileOutputStream(new File(pathToJson)))) {
+            tool.run(null, printStream, System.err, args);
+        }
+    }
+
+    public void writeAvroMetadata(String pathToFile, String pathToMetadata)
+            throws Exception {
+        Tool tool = new DataFileGetMetaTool();
+        List<String> args = Collections.singletonList(pathToFile);
+
+        try (PrintStream printStream = new PrintStream(new FileOutputStream(new File(pathToMetadata)))) {
             tool.run(null, printStream, System.err, args);
         }
     }

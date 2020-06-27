@@ -47,31 +47,6 @@ import java.util.List;
 public class HdfsUtilities {
 
     private static Logger LOG = LoggerFactory.getLogger(HdfsUtilities.class);
-    private static CodecFactory codecFactory = CodecFactory.getInstance();
-
-    /**
-     * Checks if requests should be handled in a single thread or not.
-     *
-     * @param config    the configuration parameters object
-     * @param dataDir   hdfs path to the data source
-     * @param compCodec the fully qualified name of the compression codec
-     * @return if the request can be run in multi-threaded mode.
-     */
-    public static boolean isThreadSafe(Configuration config, String dataDir, String compCodec) {
-        Class<? extends CompressionCodec> codecClass = null;
-        if (compCodec != null) {
-            CompressionCodecName compressionCodecName = null;
-            try {
-                //noinspection ConstantConditions
-                compressionCodecName = codecFactory.getCodec(compCodec, compressionCodecName);
-                return !BZip2Codec.class.isAssignableFrom(compressionCodecName.getHadoopCompressionCodecClass());
-            } catch (IllegalArgumentException | CompressionCodecNotSupportedException e) {
-                codecClass = codecFactory.getCodecClass(compCodec, config);
-            }
-        } else codecClass = codecFactory.getCodecClassByPath(config, dataDir);
-        /* bzip2 codec is not thread safe */
-        return (codecClass == null || !BZip2Codec.class.isAssignableFrom(codecClass));
-    }
 
     /**
      * Prepares byte serialization of a file split information (start, length,
