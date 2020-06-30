@@ -2,7 +2,7 @@ on:
   push:
     # Sequence of patterns matched against refs/tags
     tags:
-      - '*' # match on any tag
+      - 'release-*' # match on release tags
 
 name: Create Release
 

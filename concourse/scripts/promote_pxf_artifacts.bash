@@ -77,9 +77,10 @@ git -C pxf_src remote set-url origin "${GIT_REMOTE_URL}"
 # avoid detached HEAD state from Concourse checking out a SHA
 git -C pxf_src checkout "${GIT_BRANCH}"
 
-echo "Creating new tag ${pxf_version}..."
+TAG=release-${pxf_version}
+echo "Creating new tag ${TAG}..."
 # create annotated tag
-git -C pxf_src tag -am "PXF Version ${pxf_version}" "${pxf_version}"
+git -C pxf_src tag -am "PXF Version ${TAG}" "${TAG}"
 
 patch=${pxf_version##*.}
 # bump patch and add -SNAPSHOT
@@ -90,5 +91,5 @@ echo "${SNAPSHOT_VERSION}" > pxf_src/version
 git -C pxf_src add version
 git -C pxf_src commit -m "Bump version to ${SNAPSHOT_VERSION} [skip ci]"
 
-echo "Pushing new tag ${pxf_version} and new SNAPSHOT version ${SNAPSHOT_VERSION}"
+echo "Pushing new tag ${TAG} and new SNAPSHOT version ${SNAPSHOT_VERSION}"
 git -C pxf_src push --follow-tags
