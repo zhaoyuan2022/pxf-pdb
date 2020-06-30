@@ -1,5 +1,18 @@
 # Changelog
 
+## 5.14.0 (06/30/2020)
+
+### Enhancements:
+
+- [#389](https://github.com/greenplum-db/pxf/pull/389) Avro: add compression
+- [#391](https://github.com/greenplum-db/pxf/pull/391) Certify Oracle Enterprise Linux 7
+
+### Bug Fixes:
+
+- [#383](https://github.com/greenplum-db/pxf/pull/383) Avro: support writing SMALLINT to Avro
+
+---
+
 ## 5.13.0 (06/10/2020)
 
 ### Enhancements:
