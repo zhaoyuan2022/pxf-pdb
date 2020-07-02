@@ -53,6 +53,8 @@ public class AvroFileAccessor extends HdfsSplittableDataAccessor {
     private static final String DEFLATE_CODEC = "deflate";
     private static final String NO_CODEC = "uncompressed";
     private static final String SNAPPY_CODEC = "snappy";
+    private static final String BZIP2_CODEC = "bzip2";
+    private static final String XZ_CODEC = "xz";
     private AvroWrapper<GenericRecord> avroWrapper;
     private DataFileWriter<GenericRecord> writer;
     private long rowsWritten, rowsRead;
@@ -152,6 +154,12 @@ public class AvroFileAccessor extends HdfsSplittableDataAccessor {
                 break;
             case SNAPPY_CODEC:
                 writer.setCodec(CodecFactory.snappyCodec());
+                break;
+            case  BZIP2_CODEC:
+                writer.setCodec(CodecFactory.bzip2Codec());
+                break;
+            case XZ_CODEC:
+                writer.setCodec(CodecFactory.xzCodec(codecCompressionLevel));
                 break;
             case NO_CODEC:
                 writer.setCodec(CodecFactory.nullCodec());
