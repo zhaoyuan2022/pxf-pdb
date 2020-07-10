@@ -9,21 +9,8 @@ set -e
 : "${GPDB_VERSION:?GPDB_VERSION is required}"
 : "${PRODUCT_SLUG:?PRODUCT_SLUG is required}"
 
-pivnet_cli_repo=pivotal-cf/pivnet-cli
 PATH=${PIVNET_CLI_DIR}:${PATH}
-
-chmod_pivnet() {
-	chmod +x "${PIVNET_CLI_DIR}/pivnet"
-}
-
-latest_pivnet_cli_tag=$(curl --silent "https://api.github.com/repos/${pivnet_cli_repo}/releases/latest" | jq -r .tag_name)
-if chmod_pivnet && [[ ${latest_pivnet_cli_tag#v} == $(pivnet --version) ]]; then
-	echo "Already have version ${latest_pivnet_cli_tag} of pivnet-cli, skipping download..."
-else
-	echo "Downloading version ${latest_pivnet_cli_tag} of pivnet-cli..."
-	wget -q "https://github.com/${pivnet_cli_repo}/releases/download/${latest_pivnet_cli_tag}/pivnet-linux-amd64-${latest_pivnet_cli_tag#v}" -O "${PIVNET_CLI_DIR}/pivnet"
-	chmod_pivnet
-fi
+chmod +x "${PIVNET_CLI_DIR}/pivnet"
 
 # log in to pivnet
 pivnet login "--api-token=${PIVNET_API_TOKEN}"

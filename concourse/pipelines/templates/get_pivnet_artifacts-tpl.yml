@@ -73,7 +73,7 @@ resources:
 
 {% endfor %}
 jobs:
-- name: Get Greenplum Product Files GP5
+- name: Download Latest PivNet CLI
   plan:
   - in_parallel:
     - get: twice-a-day
@@ -81,6 +81,33 @@ jobs:
     - get: pxf_src
     - get: ubuntu18
     - get: pivnet_cli
+  - task: Get Latest PivNet CLI
+    attempts: [[attempts]]
+    image: ubuntu18
+    config:
+      platform: linux
+      inputs:
+        - name: pxf_src
+        - name: pivnet_cli
+      outputs:
+        - name: pivnet_cli
+      params:
+        PIVNET_CLI_DIR: pivnet_cli
+      run:
+        path: pxf_src/concourse/scripts/download_pivnet_cli.bash
+  - put: pivnet_cli
+    params:
+      file: pivnet_cli/pivnet
+
+- name: Get Greenplum Product Files GP5
+  plan:
+  - in_parallel:
+    - get: pxf_src
+      passed: [Download Latest PivNet CLI]
+    - get: ubuntu18
+    - get: pivnet_cli
+      passed: [Download Latest PivNet CLI]
+      trigger: true
 {% for i in range(num_gpdb5_versions) %}
     - get: gpdb5_rhel6_rpm_latest-[[i]]
     - get: gpdb5_rhel7_rpm_latest-[[i]]
@@ -103,10 +130,6 @@ jobs:
         - name: gpdb5_rhel7_rpm_latest-[[i - 1]]
         {% endif %}
       outputs:
-        {% if i == 0 %}
-        {# only update the cli once #}
-        - name: pivnet_cli
-        {% endif %}
         - name: gpdb5_rhel6_rpm_latest-[[i]]
         - name: gpdb5_rhel7_rpm_latest-[[i]]
       params:
@@ -119,12 +142,6 @@ jobs:
         VERSIONS_BEFORE_LATEST: [[i]]
       run:
         path: pxf_src/concourse/scripts/get_product_files.bash
-    {% if i == 0 %}
-    {# only update the cli once #}
-  - put: pivnet_cli
-    params:
-      file: pivnet_cli/pivnet
-    {% endif %}
   - put: gpdb5_rhel6_rpm_latest-[[i]]
     params:
       file: gpdb5_rhel6_rpm_latest-[[i]]/greenplum-db-5.*-rhel6-x86_64.rpm
@@ -137,11 +154,10 @@ jobs:
   plan:
   - in_parallel:
     - get: pxf_src
-      passed: [Get Greenplum Product Files GP5]
-      trigger: true
+      passed: [Download Latest PivNet CLI]
     - get: ubuntu18
     - get: pivnet_cli
-      passed: [Get Greenplum Product Files GP5]
+      passed: [Download Latest PivNet CLI]
       trigger: true
 {% for i in range(num_gpdb6_versions) %}
     - get: gpdb6_rhel7_rpm_latest-[[i]]
