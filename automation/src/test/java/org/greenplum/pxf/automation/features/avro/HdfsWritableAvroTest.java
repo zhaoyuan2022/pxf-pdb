@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.greenplum.pxf.automation.features.BaseFeature;
 import org.greenplum.pxf.automation.structures.tables.pxf.ReadableExternalTable;
 import org.greenplum.pxf.automation.structures.tables.pxf.WritableExternalTable;
+import org.greenplum.pxf.automation.utils.jsystem.report.ReportUtils;
 import org.greenplum.pxf.automation.utils.system.ProtocolEnum;
 import org.greenplum.pxf.automation.utils.system.ProtocolUtils;
 import org.testng.annotations.Test;
@@ -33,7 +34,9 @@ public class HdfsWritableAvroTest extends BaseFeature {
             "type_double float8",
             "type_string text",
             "type_bytes bytea",
-            "type_boolean bool"
+            "type_boolean bool",
+            "type_char character(20)",
+            "type_varchar varchar(32)"
     };
     // values that were written from a smallint column (see above type_smallint)
     // must be read back into integer columns
@@ -45,7 +48,9 @@ public class HdfsWritableAvroTest extends BaseFeature {
             "type_double float8",
             "type_string text",
             "type_bytes bytea",
-            "type_boolean bool"
+            "type_boolean bool",
+            "type_char character(20)",
+            "type_varchar varchar(32)"
     };
     private static final String[] AVRO_COMPLEX_TABLE_COLS_WRITABLE = new String[]{
             "type_int int",
@@ -53,7 +58,11 @@ public class HdfsWritableAvroTest extends BaseFeature {
             "type_enum_mood mood",
             "type_long_array BIGINT[]",
             "type_numeric_array NUMERIC(8,1)[]",
-            "type_string_array TEXT[]"
+            "type_string_array TEXT[]",
+            "type_date DATE",
+            "type_time TIME",
+            "type_timestamp TIMESTAMP",
+            "type_timestampz TIMESTAMP WITH TIME ZONE"
     };
     private static final String[] AVRO_COMPLEX_TABLE_COLS_READABLE = new String[]{
             "type_int int",
@@ -61,7 +70,11 @@ public class HdfsWritableAvroTest extends BaseFeature {
             "type_enum_mood TEXT",
             "type_long_array TEXT",
             "type_numeric_array TEXT",
-            "type_string_array TEXT"
+            "type_string_array TEXT",
+            "type_date TEXT",
+            "type_time TEXT",
+            "type_timestamp TEXT",
+            "type_timestampz TEXT"
     };
     private String gpdbTable;
     private String hdfsPath;
@@ -244,6 +257,12 @@ public class HdfsWritableAvroTest extends BaseFeature {
 
         // copy a schema file to PXF's classpath on cluster that has no UNION types, just the raw underlying types.
         // the Avro files should thus be different from those without user-provided schema
+        // this file is generated using Avro tools: http://avro.apache.org/releases.html
+        // get current schema:
+        // java -jar avro-tools-1.9.1.jar getschema automation/src/test/resources/data/avro/complex_no_union.avro > my_schema.avsc
+        // edit my_schema.avsc...
+        // we don't need any rows of data so /dev/null is fine, e.g.:
+        // java -jar avro-tools-1.9.1.jar fromjson --schema-file my_schema.avsc /dev/null > automation/src/test/resources/data/avro/complex_no_union.avro
         cluster.copyFileToNodes(new File(resourcePath + "complex_no_union.avro").getAbsolutePath(),
                 cluster.getPxfConfLocation(),
                 false, false);
@@ -299,7 +318,9 @@ public class HdfsWritableAvroTest extends BaseFeature {
             return;
         }
         for (File file : filesToDelete) {
-            file.delete();
+            if (!file.delete()) {
+                ReportUtils.startLevel(null, getClass(), String.format("Problem deleting file '%s'", file));
+            }
         }
         dropComplexTypes();
     }
@@ -324,30 +345,40 @@ public class HdfsWritableAvroTest extends BaseFeature {
                 "i*100000.0001, " +                                 // type_double
                 "'row_' || i::varchar(255), " +                     // type_string
                 "('bytes for ' || i::varchar(255))::bytea, " +      // type_bytes
-                "CASE WHEN (i%2) = 0 THEN TRUE ELSE FALSE END " +   // type_boolean
+                "CASE WHEN (i%2) = 0 THEN TRUE ELSE FALSE END, " +  // type_boolean
+                "'character row ' || i::char(3)," +                 // type_character
+                "'character varying row ' || i::varchar(3)" +       // type_varchar
                 "from generate_series(1, 100) s(i);");
     }
 
     private void insertComplex(String gpdbTable) throws Exception {
-        gpdb.runQuery("INSERT INTO " + gpdbTable + "_writable " + " SELECT " +
+        gpdb.runQuery("SET TIMEZONE=-7;" + "INSERT INTO " + gpdbTable + "_writable " + " SELECT " +
                 "i, " +
-                "('(' || CASE WHEN (i%2) = 0 THEN FALSE ELSE TRUE END || ',' || (i*2)::varchar(255) || ')')::struct, " +
+                "('(' || CASE WHEN (i%2) = 0 THEN FALSE ELSE TRUE END || ',' || (i*2)::VARCHAR(255) || ')')::struct, " +
                 "CASE WHEN (i%2) = 0 THEN 'sad' ELSE 'happy' END::mood," +
-                "('{' || i::varchar(255) || ',' || (i*10)::varchar(255) || ',' || (i*100)::varchar(255) || '}')::BIGINT[], " +
-                "('{' || (i*1.0001)::varchar(255) || ',' || ((i*10.00001)*10)::varchar(255) || ',' || ((i*100.000001)*100)::varchar(255) || '}')::NUMERIC(8,1)[], " +
-                "('{\"item ' || ((i-1)*10)::varchar(255) || '\",\"item ' || (i*10)::varchar(255) || '\",\"item ' || ((i+1)*10)::varchar(255) || '\"}')::TEXT[] " +
-                "from generate_series(1, 100) s(i);");
+                "('{' || i::VARCHAR(255) || ',' || (i*10)::VARCHAR(255) || ',' || (i*100)::VARCHAR(255) || '}')::BIGINT[], " +
+                "('{' || (i*1.0001)::VARCHAR(255) || ',' || ((i*10.00001)*10)::VARCHAR(255) || ',' || ((i*100.000001)*100)::VARCHAR(255) || '}')::NUMERIC(8,1)[], " +
+                "('{\"item ' || ((i-1)*10)::VARCHAR(255) || '\",\"item ' || (i*10)::VARCHAR(255) || '\",\"item ' || ((i+1)*10)::VARCHAR(255) || '\"}')::TEXT[], " +
+                "DATE '2001-09-28' + i, " +
+                "TIME '00:00:00' + (i::VARCHAR(255) || ' seconds')::interval, " +
+                "TIMESTAMP '2001-09-28 01:00' + (i::VARCHAR(255) || ' days')::interval + (i::VARCHAR(255) || ' hours')::interval, " +
+                "TIMESTAMP WITH TIME ZONE '2001-09-28 01:00-07' + (i::VARCHAR(255) || ' days')::interval + (i::VARCHAR(255) || ' hours')::interval " +
+                "FROM generate_series(1, 100) s(i);");
     }
 
     private void insertComplexWithNulls(String gpdbTable) throws Exception {
-        gpdb.runQuery("INSERT INTO " + gpdbTable + "_writable " + " SELECT " +
+        gpdb.runQuery("SET TIMEZONE=-7;" + "INSERT INTO " + gpdbTable + "_writable " + " SELECT " +
                 "i, " +
-                "('(' || CASE WHEN (i%2) = 0 THEN FALSE ELSE TRUE END || ', ' || (i*2)::varchar(255) || ')')::struct, " +
+                "('(' || CASE WHEN (i%2) = 0 THEN FALSE ELSE TRUE END || ', ' || (i*2)::VARCHAR(255) || ')')::struct, " +
                 "CASE WHEN (i%3) = 0 THEN 'sad' WHEN (i%2) = 0 THEN 'happy' ELSE NULL END::mood, " +
-                "('{' || i::varchar(255) || ',' || (i*10)::varchar(255) || ',' || (i*100)::varchar(255) || '}')::BIGINT[], " +
-                "('{' || (i*1.0001)::varchar(255) || ',' || ((i*10.00001)*10)::varchar(255) || ',' || ((i*100.000001)*100)::varchar(255) || '}')::NUMERIC(8,1)[], " +
-                "('{\"item ' || ((i-1)*10)::varchar(255) || '\",\"item ' || (i*10)::varchar(255) || '\",\"item ' || ((i+1)*10)::varchar(255) || '\"}')::TEXT[] " +
-                "from generate_series(1, 100) s(i);");
+                "('{' || i::VARCHAR(255) || ',' || (i*10)::VARCHAR(255) || ',' || (i*100)::VARCHAR(255) || '}')::BIGINT[], " +
+                "('{' || (i*1.0001)::VARCHAR(255) || ',' || ((i*10.00001)*10)::VARCHAR(255) || ',' || ((i*100.000001)*100)::VARCHAR(255) || '}')::NUMERIC(8,1)[], " +
+                "('{\"item ' || ((i-1)*10)::VARCHAR(255) || '\",\"item ' || (i*10)::VARCHAR(255) || '\",\"item ' || ((i+1)*10)::VARCHAR(255) || '\"}')::TEXT[], " +
+                "DATE '2001-09-28' + i, " +
+                "TIME '00:00:00' + (i::VARCHAR(255) || ' seconds')::interval, " +
+                "TIMESTAMP '2001-09-28 01:00' + (i::VARCHAR(255) || ' days')::interval + (i::VARCHAR(255) || ' hours')::interval, " +
+                "TIMESTAMP WITH TIME ZONE '2001-09-28 01:00-07' + (i::VARCHAR(255) || ' days')::interval + (i::VARCHAR(255) || ' hours')::interval " +
+                "FROM generate_series(1, 100) s(i);");
     }
 
     private void fetchAndVerifyAvroHcfsFiles(String compareFile, String codec) throws Exception {
