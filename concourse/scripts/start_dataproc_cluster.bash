@@ -43,7 +43,8 @@ PLAINTEXT_NAME=$(basename "$PLAINTEXT")
 
 # Initialize the dataproc service
 GCLOUD_COMMAND=(gcloud beta dataproc clusters
-  "--region=$REGION" create "$CLUSTER_NAME"
+  create "$CLUSTER_NAME"
+  "--region=$REGION"
   --initialization-actions "$INITIALIZATION_SCRIPT"
   --subnet "projects/${PROJECT}/regions/${REGION}/subnetworks/$SUBNETWORK"
   "--master-machine-type=$MACHINE_TYPE"
