@@ -1,12 +1,14 @@
 package org.greenplum.pxf.automation.features.hdfs;
 
-import java.io.File;
-import java.nio.charset.StandardCharsets;
-
 import org.greenplum.pxf.automation.components.cluster.PhdCluster;
+import org.greenplum.pxf.automation.datapreparer.CustomTextPreparer;
+import org.greenplum.pxf.automation.datapreparer.QuotedLineTextPreparer;
+import org.greenplum.pxf.automation.enums.EnumPxfDefaultProfiles;
+import org.greenplum.pxf.automation.features.BaseFeature;
 import org.greenplum.pxf.automation.structures.tables.basic.Table;
 import org.greenplum.pxf.automation.structures.tables.pxf.ErrorTable;
 import org.greenplum.pxf.automation.structures.tables.pxf.ReadableExternalTable;
+import org.greenplum.pxf.automation.utils.csv.CsvUtils;
 import org.greenplum.pxf.automation.utils.fileformats.FileFormatsUtils;
 import org.greenplum.pxf.automation.utils.jsystem.report.ReportUtils;
 import org.greenplum.pxf.automation.utils.system.ProtocolUtils;
@@ -14,11 +16,10 @@ import org.greenplum.pxf.automation.utils.tables.ComparisonUtils;
 import org.junit.Assert;
 import org.testng.annotations.Test;
 
-import org.greenplum.pxf.automation.enums.EnumPxfDefaultProfiles;
-import org.greenplum.pxf.automation.utils.csv.CsvUtils;
-import org.greenplum.pxf.automation.datapreparer.CustomTextPreparer;
-import org.greenplum.pxf.automation.datapreparer.QuotedLineTextPreparer;
-import org.greenplum.pxf.automation.features.BaseFeature;
+import java.io.File;
+import java.nio.charset.StandardCharsets;
+
+import static org.greenplum.pxf.automation.features.tpch.LineItem.LINEITEM_SCHEMA;
 
 /**
  * Collection of Test cases for PXF ability to read Text/CSV files from HDFS.
@@ -151,7 +152,7 @@ public class HdfsReadableTextTest extends BaseFeature {
     }
 
     /**
-     * Read quoted CSV file from HDFS using HdfsTextSimple profile and CSV
+     * Read quoted CSV file from HDFS using *:text profile and CSV
      * format.
      *
      * @throws Exception
@@ -170,6 +171,40 @@ public class HdfsReadableTextTest extends BaseFeature {
         hdfs.copyFromLocal(tempLocalDataPath, hdfsFilePath);
         // verify results
         runTincTest("pxf.features.hdfs.readable.text.small_data.runTest");
+
+        // create a new table with the SKIP_HEADER_COUNT parameter
+        exTable.setName("pxf_hdfs_small_data_with_skip");
+        exTable.setUserParameters(new String[]{"SKIP_HEADER_COUNT=10"});
+        // create external table
+        gpdb.createTableAndVerify(exTable);
+        // run the query skipping the first 10 lines of the text
+        runTincTest("pxf.features.hdfs.readable.text.small_data_with_skip.runTest");
+    }
+
+    /**
+     * Read multiple CSV files with headers from HCFS using *:text profile and
+     * CSV format.
+     *
+     * @throws Exception when the test fails
+     */
+    @Test(groups = {"features", "gpdb", "hcfs", "security"})
+    public void readCsvFilesWithHeader() throws Exception {
+        // set profile and format
+        exTable.setProfile(ProtocolUtils.getProtocol().value() + ":text");
+        exTable.setFormat("CSV");
+        exTable.setName("pxf_hcfs_csv_files_with_header");
+        exTable.setUserParameters(new String[]{"SKIP_HEADER_COUNT=1"});
+        exTable.setDelimiter("|");
+        exTable.setPath(hdfs.getWorkingDirectory() + "/csv_files_with_header");
+        exTable.setFields(LINEITEM_SCHEMA);
+        // create external table
+        gpdb.createTableAndVerify(exTable);
+        // copy local CSV to HCFS
+        hdfs.copyFromLocal(localDataResourcesFolder + "/csv/sample1.csv", hdfs.getWorkingDirectory() + "/csv_files_with_header/sample1.csv");
+        hdfs.copyFromLocal(localDataResourcesFolder + "/csv/sample2.csv", hdfs.getWorkingDirectory() + "/csv_files_with_header/sample2.csv");
+        hdfs.copyFromLocal(localDataResourcesFolder + "/csv/sample3.csv", hdfs.getWorkingDirectory() + "/csv_files_with_header/sample3.csv");
+        // verify results
+        runTincTest("pxf.features.hdfs.readable.text.csv_files_with_header.runTest");
     }
 
     /**
@@ -181,7 +216,7 @@ public class HdfsReadableTextTest extends BaseFeature {
     @Test(groups = {"features", "gpdb", "security"})
     public void readMultiBlockedMultiLinedCsv() throws Exception {
 
-        runMultiBlockedMultiLinedCsvTest(hdfsFilePath, false);
+        runMultiBlockedMultiLinedCsvTest(hdfsFilePath, hdfsFilePath, false);
     }
 
     /**
@@ -193,7 +228,7 @@ public class HdfsReadableTextTest extends BaseFeature {
     @Test(groups = {"features", "gpdb", "hcfs", "security"})
     public void readMultiBlockedMultiLinedCsvUsingProfile() throws Exception {
 
-        runMultiBlockedMultiLinedCsvTest(hdfsFilePath, true);
+        runMultiBlockedMultiLinedCsvTest(hdfsFilePath, hdfsFilePath, true);
     }
 
     /**
@@ -205,10 +240,10 @@ public class HdfsReadableTextTest extends BaseFeature {
     @Test(groups = {"features", "gpdb", "hcfs", "security"})
     public void readMultiBlockedMultiLinedCsvWildcardLocation() throws Exception {
 
-        runMultiBlockedMultiLinedCsvTest(hdfs.getWorkingDirectory() + "/*", true);
+        runMultiBlockedMultiLinedCsvTest(hdfs.getWorkingDirectory() + "/multiblocked_csv_data/*", hdfs.getWorkingDirectory() + "/multiblocked_csv_data/data", true);
     }
 
-    private void runMultiBlockedMultiLinedCsvTest(String locationPath, boolean useProfile) throws Exception {
+    private void runMultiBlockedMultiLinedCsvTest(String locationPath, String hdfsPath, boolean useProfile) throws Exception {
 
         // prepare local CSV file
         dataTable = new Table("dataTable", null);
@@ -219,7 +254,7 @@ public class HdfsReadableTextTest extends BaseFeature {
         // multiple it to file
         FileFormatsUtils.prepareDataFile(dataTable, 32, tempLocalDataPath);
         // copy local file to HDFS
-        hdfs.copyFromLocal(tempLocalDataPath, hdfsFilePath);
+        hdfs.copyFromLocal(tempLocalDataPath, hdfsPath);
         // define and create external table
         exTable = new ReadableExternalTable("pxf_multi_csv", new String[]{
                 "num1 int",
