@@ -420,9 +420,27 @@ public class HiveClientWrapper {
         }
 
         IMetaStoreClient initHiveClient(HiveConf hiveConf) throws MetaException {
-            return RetryingMetaStoreClient.getProxy(hiveConf, new Class[]{HiveConf.class, HiveMetaHookLoader.class, Boolean.class},
-                    new Object[]{hiveConf, null, true}, null, HiveMetaStoreClientCompatibility1xx.class.getName()
-            );
+            try {
+                return RetryingMetaStoreClient.getProxy(hiveConf, new Class[]{HiveConf.class, HiveMetaHookLoader.class, Boolean.class},
+                        new Object[]{hiveConf, null, true}, null, HiveMetaStoreClientCompatibility1xx.class.getName()
+                );
+            } catch (RuntimeException ex) {
+                // Report MetaException if found in the stack. A RuntimeException
+                // was thrown when the HiveMetaStoreClientCompatibility1xx
+                // failed to instantiate with a MetaException cause.
+                // java.lang.RuntimeException: Unable to instantiate org.apache.hadoop.hive.metastore.HiveMetaStoreClientCompatibility1xx
+                // and it reports an error message that is hard to interpret
+                // by the user/admin
+                Throwable e = ex;
+                while (e.getCause() != null) {
+                    if (e.getCause() instanceof MetaException) {
+                        LOG.warn("Original exception not re-thrown", ex);
+                        throw (MetaException) e.getCause();
+                    }
+                    e = e.getCause();
+                }
+                throw ex;
+            }
         }
     }
 }
