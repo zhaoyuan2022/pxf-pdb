@@ -160,6 +160,14 @@ resources:
       bucket: {{tf-bucket-name}}
       bucket_path: {{tf-bucket-path}}
 
+- name: pxf-build-dependencies
+  type: gcs
+  icon: google-drive
+  source:
+    bucket: data-gpdb-ud-pxf-build-resources
+    json_key: ((pxf-storage-service-account-key))
+    versioned_file: build-dependencies/pxf-build-dependencies.tar.gz
+
 - name: timed-trigger
   type: time
   icon: timer
@@ -180,6 +188,7 @@ jobs:
     - get: gpdb6-pxf-dev-centos7-image
     - get: gpdb_package
       resource: gpdb6_rhel7
+    - get: pxf-build-dependencies
   - task: Build PXF-GP6 on RHEL7
     image: gpdb6-pxf-dev-centos7-image
     file: pxf_src/concourse/tasks/build.yml
