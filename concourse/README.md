@@ -13,7 +13,7 @@ be embedded to further manipulate the generated pipeline.
 
 To deploy the build pipeline for PXF, make sure PXF master branch is currently checked-out and run this command:
 
-```shell
+```shell script
 make -C "${HOME}/workspace/pxf/concourse" build
 ```
 
@@ -21,11 +21,21 @@ make -C "${HOME}/workspace/pxf/concourse" build
 
 To deploy the certifcation pipeline (forward compatibility) for PXF, make sure PXF master branch is currently checked-out and run this command:
 
-```shell
+```shell script
 make -C "${HOME}/workspace/pxf/concourse" certification
 ```
 
-# Deploy cloudbuild pipeline
+# Deploy the singlecluster pipeline
+
+The singlecluster pipeline generates the singlecluster tarball for CDH, HDP2,
+and HDP3. The generated tarballs are then published to an S3 and GCS bucket.
+The produced tarballs can then be consumed in the pxf-build pipelines.
+
+```shell script
+make singlecluster
+```
+
+# Deploy the cloudbuild pipeline
 
 ```shell
 fly -t ud set-pipeline \
