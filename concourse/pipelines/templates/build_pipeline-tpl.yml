@@ -1602,17 +1602,17 @@ jobs:
   - in_parallel:
     - put: pxf_gp5_rhel6_release_to_releng
       params:
-        file: pxf_artifacts/pxf-gp5-*-2.el6.x86_64.rpm
+        file: pxf_artifacts/licensed/pxf-gp5-*-2.el6.x86_64.rpm
     - put: pxf_gp5_rhel7_release_to_releng
       params:
-        file: pxf_artifacts/pxf-gp5-*-2.el7.x86_64.rpm
+        file: pxf_artifacts/licensed/pxf-gp5-*-2.el7.x86_64.rpm
     - put: pxf_gp6_rhel7_release_to_releng
       params:
-        file: pxf_artifacts/pxf-gp6-*-2.el7.x86_64.rpm
+        file: pxf_artifacts/licensed/pxf-gp6-*-2.el7.x86_64.rpm
 {% if build_deb %}
     - put: pxf_gp6_ubuntu18_release_to_releng
       params:
-        file: pxf_artifacts/pxf-gp6-*ubuntu18*deb
+        file: pxf_artifacts/licensed/pxf-gp6-*ubuntu18*deb
 {% endif %}
     - put: pxf_odp_to_releng
       params:
