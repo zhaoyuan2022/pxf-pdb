@@ -313,7 +313,7 @@ resources:
     json_key: ((concourse-gcs-resources-service-account-key))
     regexp: ((pxf-releng-odp-drop-path))/((pxf-odp-file-prefix))-(.*)-ODP.tar.gz
 
-## ---------- PXF ShitIt resources ----------
+## ---------- PXF ShipIt resources ----------
 - name: pxf_shipit_file
   type: gcs
   icon: google-drive
