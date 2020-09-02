@@ -320,7 +320,7 @@ resources:
   source:
     bucket: data-gpdb-ud-pxf-releases
     json_key: ((pxf-storage-service-account-key))
-    regexp: prod/shipit/greenplum-pxf-(.*).txt
+    regexp: ((pxf-releases-bucket-prefix))/shipit/greenplum-pxf-(.*).txt
 
 - name: send-an-email
   type: email
@@ -477,7 +477,7 @@ resources:
   source:
     bucket: data-gpdb-ud-pxf-build
     json_key: ((pxf-storage-service-account-key))
-    versioned_file: prod/snapshots/pxf-gp[[gp_ver]].el6.tar.gz
+    versioned_file: ((pxf-build-bucket-prefix))/snapshots/pxf-gp[[gp_ver]].el6.tar.gz
 {% set gp_ver = None %}
 
 {% for gp_ver in range(5, 7) %}
@@ -487,7 +487,7 @@ resources:
   source:
     bucket: data-gpdb-ud-pxf-build
     json_key: ((pxf-storage-service-account-key))
-    versioned_file: prod/snapshots/pxf-gp[[gp_ver]].el7.tar.gz
+    versioned_file: ((pxf-build-bucket-prefix))/snapshots/pxf-gp[[gp_ver]].el7.tar.gz
 {% endfor %}
 
 {% if build_deb %}
@@ -498,7 +498,7 @@ resources:
   source:
     bucket: data-gpdb-ud-pxf-build
     json_key: ((pxf-storage-service-account-key))
-    versioned_file: prod/snapshots/pxf-gp[[gp_ver]].ubuntu18.04.tar.gz
+    versioned_file: ((pxf-build-bucket-prefix))/snapshots/pxf-gp[[gp_ver]].ubuntu18.04.tar.gz
 {% set gp_ver = None %}
 {% endif %}
 
@@ -1539,7 +1539,7 @@ jobs:
     file: pxf_src/concourse/tasks/promote_pxf_artifacts.yml
     params:
       GCS_RELEASES_BUCKET: data-gpdb-ud-pxf-releases
-      GCS_RELEASES_PATH: prod/releases
+      GCS_RELEASES_PATH: ((pxf-releases-bucket-prefix))/releases
       GIT_BRANCH: [[git_branch]]
       GIT_EMAIL: ((pxf-git-deploy-email))
       GIT_REMOTE_URL: ((pxf-git-remote-ssh-url))
@@ -1565,10 +1565,10 @@ jobs:
     image: google-cloud-sdk-slim-image
     file: pxf_src/concourse/tasks/get_pxf_release_artifacts.yml
     params:
-      GCS_ODP_PATH: prod/ODP
-      GCS_OSL_PATH: prod/OSL
+      GCS_ODP_PATH: ((pxf-releases-bucket-prefix))/ODP
+      GCS_OSL_PATH: ((pxf-releases-bucket-prefix))/OSL
       GCS_RELEASES_BUCKET: data-gpdb-ud-pxf-releases
-      GCS_RELEASES_PATH: prod/releases
+      GCS_RELEASES_PATH: ((pxf-releases-bucket-prefix))/releases
       GOOGLE_CREDENTIALS: ((pxf-storage-service-account-key))
   #  - in_parallel: does not work since all tasks modify pxf_artifacts
   - task: Add OSL file to PXF-GP5 RPM on RHEL6
