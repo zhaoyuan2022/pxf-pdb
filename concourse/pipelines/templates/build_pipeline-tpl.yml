@@ -185,10 +185,12 @@ resource_types:
   source:
     repository: frodenas/gcs-resource
 
+{% if email_notification %}
 - name: email
   type: docker-image
   source:
     repository: pcfseceng/email-resource
+{% endif %}
 
 {% if slack_notification %}
 - name: slack-notification
@@ -322,6 +324,7 @@ resources:
     json_key: ((pxf-storage-service-account-key))
     regexp: ((pxf-releases-bucket-prefix))/shipit/greenplum-pxf-(.*).txt
 
+{% if email_notification %}
 - name: send-an-email
   type: email
   source:
@@ -331,7 +334,7 @@ resources:
       username: ((pxf-smtp-username))
       password: ((pxf-smtp-password))
     from: ((pxf-email-sender))
-
+{% endif %}
 
 ## ---------- Docker Images ----------
 {% set gp_ver = 5 %}
@@ -1620,10 +1623,12 @@ jobs:
     - put: pxf_osl_to_releng
       params:
         file: pxf_artifacts/((pxf-osl-file-prefix))*.txt
+{% if email_notification %}
   - put: send-an-email
     params:
       subject: pxf_artifacts/email_subject.txt
       body: pxf_artifacts/email_body.txt
       attachment_globs: [pxf_artifacts/((pxf-osl-file-prefix))*.txt]
       to_text: "((pxf-releng-email)),((pxf-ud-email))"
+{% endif %}
 

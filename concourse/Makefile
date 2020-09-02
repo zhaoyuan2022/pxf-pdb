@@ -18,6 +18,7 @@ FLY_CMD                      = /usr/local/bin/fly
 TEMPLATE_CMD                 = ./template_tool
 FLY_OPTION_NON-INTERACTIVE   =
 SECRETS_HOME                 = $(HOME)/workspace/gp-continuous-integration/secrets
+EMAIL                       ?= true
 SLACK                       ?= true
 # below are dev-build specific vars
 MULTINODE                   ?= false
@@ -37,6 +38,7 @@ OEL7                        ?= false
 .PHONY: build certification dev pr
 build: set-build-pipeline
 certification: set-certification-pipeline
+dev-release: set-dev-release-pipeline
 dev: set-dev-build-pipeline
 pr: set-pr-build-pipeline
 
@@ -46,6 +48,7 @@ set-build-pipeline:
 	@PIPELINE_FILE=$$(mktemp) && \
 	$(TEMPLATE_CMD) --template build_pipeline-tpl.yml --vars \
 		build_deb=$(BUILD_DEB) \
+		email_notification=$(EMAIL) \
 		slack_notification=$(SLACK) \
 		git_branch=$(BRANCH) \
 		num_gpdb5_versions=$(NUM_GPDB5_VERSIONS) \
@@ -65,6 +68,34 @@ set-build-pipeline:
 
 	@echo using the following command to unpause the pipeline:
 	@echo -e "\t$(FLY_CMD) -t ${CONCOURSE} unpause-pipeline --pipeline ${BUILD_PIPELINE_NAME}"
+
+.PHONY: set-dev-release-pipeline
+set-dev-release-pipeline:
+	@PIPELINE_FILE=$$(mktemp) && \
+	$(TEMPLATE_CMD) --template build_pipeline-tpl.yml --vars \
+		build_deb=$(BUILD_DEB) \
+		email_notification=false \
+		slack_notification=false \
+		git_branch=$(BRANCH) \
+		num_gpdb5_versions=$(NUM_GPDB5_VERSIONS) \
+		num_gpdb6_versions=$(NUM_GPDB6_VERSIONS) >"$${PIPELINE_FILE}" && \
+	$(FLY_CMD) --target=$(CONCOURSE) \
+		set-pipeline \
+		--check-creds \
+		--pipeline=$(DEV_BUILD_PIPELINE_NAME) \
+		--config "$${PIPELINE_FILE}" \
+		--load-vars-from=$(HOME)/workspace/pxf/concourse/settings/pxf-multinode-params.yml \
+		--load-vars-from=$(SECRETS_HOME)/gpdb_common-ci-secrets.yml \
+		--load-vars-from=$(SECRETS_HOME)/pxf-secrets.yml \
+		--load-vars-from=$(SECRETS_HOME)/pxf-common.yml \
+		--load-vars-from=$(SECRETS_HOME)/pxf-dev.yml \
+		--load-vars-from=$(SECRETS_HOME)/pivotal-gp-pxf-dev-deploy-key.yml \
+		--var=pxf-git-branch=${BRANCH} \
+		--var=pxf-build-bucket-prefix=dev/$(USER)-$(BRANCH) \
+		${FLY_OPTION_NON-INTERACTIVE} || echo "Generated yaml has errors: check $${PIPELINE_FILE}"
+
+	@echo using the following command to unpause the pipeline:
+	@echo -e "\t$(FLY_CMD) -t ${CONCOURSE} unpause-pipeline --pipeline ${DEV_BUILD_PIPELINE_NAME}"
 
 .PHONY: set-dev-build-pipeline
 set-dev-build-pipeline:
