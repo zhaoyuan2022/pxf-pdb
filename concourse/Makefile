@@ -50,7 +50,6 @@ set-build-pipeline:
 		build_deb=$(BUILD_DEB) \
 		email_notification=$(EMAIL) \
 		slack_notification=$(SLACK) \
-		git_branch=$(BRANCH) \
 		num_gpdb5_versions=$(NUM_GPDB5_VERSIONS) \
 		num_gpdb6_versions=$(NUM_GPDB6_VERSIONS) >"$${PIPELINE_FILE}" && \
 	$(FLY_CMD) --target=$(CONCOURSE) \
@@ -63,7 +62,7 @@ set-build-pipeline:
 		--load-vars-from=$(SECRETS_HOME)/pxf-secrets.yml \
 		--load-vars-from=$(SECRETS_HOME)/pxf-common.yml \
 		--load-vars-from=$(SECRETS_HOME)/pxf-prod.yml \
-		--var=pxf-git-branch=${BRANCH} \
+		--var=pxf-git-branch=master \
 		${FLY_OPTION_NON-INTERACTIVE} || echo "Generated yaml has errors: check $${PIPELINE_FILE}"
 
 	@echo using the following command to unpause the pipeline:
