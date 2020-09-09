@@ -155,15 +155,15 @@ function install_gpdb_package() {
 		fi
 		python_dir=python${python_version}/site-packages
 		export_pythonpath+=:/usr/lib/${python_dir}:/usr/lib64/${python_dir}
-	elif command -v apt; then
-		# install GPDB DEB, apt wants an absolute path
+	elif command -v apt-get; then
+		# install GPDB DEB, apt-get wants an absolute path
 		pkg_file=$(find "${gpdb_package}" -name 'greenplum-db-*-ubuntu18.04-amd64.deb')
 		if [[ -z ${pkg_file} ]]; then
 			echo "Couldn't find DEB file in ${gpdb_package}. Skipping install..."
 			return 1
 		fi
 		echo "Installing ${pkg_file}..."
-		apt install -qq "${pkg_file}" >/dev/null
+		apt-get install -qq "${pkg_file}" >/dev/null
 
 		# Adjust GPHOME if the binary expects it to be /usr/local/gpdb
 		#gphome=$(grep ^GPHOME= /usr/local/greenplum-db-devel/greenplum_path.sh | cut -d= -f2)

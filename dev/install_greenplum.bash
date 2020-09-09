@@ -29,8 +29,8 @@ else
     fi
 
     echo "Installing GPDB from ${LATEST_DEB} ..."
-    # apt wants a full path
-	sudo apt install -qq "${PWD}/${LATEST_DEB}"
+    # apt-get wants a full path
+    sudo apt-get install -qq "${PWD}/${LATEST_DEB}"
 fi
 
 popd > /dev/null
