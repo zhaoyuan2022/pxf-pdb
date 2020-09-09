@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=pivotaldata/gpdb-dev:centos6
+ARG BASE_IMAGE=pivotaldata/gpdb6-ubuntu18.04-test:latest
 
 FROM ${BASE_IMAGE}
 
@@ -12,7 +12,6 @@ RUN mkdir -p /tmp/pxf_src/ && cd /tmp \
 # install dependencies that are missing on the base images
 # install a specific version of perl for tinc
 
-ARG PERL_VERSION=perl-5.22.1
 ARG MAVEN_VERSION=3.6.3
 ARG USER_HOME_DIR="/root"
 ARG BASE_URL=https://apache.osuosl.org/maven/maven-3/${MAVEN_VERSION}/binaries
@@ -25,13 +24,7 @@ RUN apt-get update -y \
     && curl -fsSL -o /tmp/apache-maven.tar.gz ${BASE_URL}/apache-maven-${MAVEN_VERSION}-bin.tar.gz \
     && tar -xzf /tmp/apache-maven.tar.gz -C /usr/share/maven --strip-components=1 \
     && rm -f /tmp/apache-maven.tar.gz \
-    && ln -s /usr/share/maven/bin/mvn /usr/bin/mvn \
-    && wget -q http://www.cpan.org/src/5.0/${PERL_VERSION}.tar.gz \
-    && tar -xzf ${PERL_VERSION}.tar.gz \
-    && cd $PERL_VERSION \
-      && ./Configure -des -Dprefix=/usr \
-      && make -j8 -s && make -j16 -s install \
-    && cd - && rm -rf ${PERL_VERSION}*
+    && ln -s /usr/share/maven/bin/mvn /usr/bin/mvn
 
 # create user gpadmin since GPDB cannot run under root
 RUN locale-gen en_US.UTF-8 \
