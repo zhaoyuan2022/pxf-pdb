@@ -880,14 +880,9 @@ sub format_explain
 
     {
         use IO::File;
-        use POSIX qw(tmpnam);
+        use File::Temp qw / tempfile /;
 
-        my ($tmpnam, $tmpfh);
-
-        for (;;) {
-            $tmpnam = tmpnam();
-            sysopen($tmpfh, $tmpnam, O_RDWR | O_CREAT | O_EXCL) && last;
-        }
+        my ($tmpfh, $tmpnam) = tempfile(EXLOCK=>1);
 
         if (scalar(@{$outarr}))
         {

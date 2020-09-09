@@ -11,6 +11,7 @@ use strict;
 use warnings;
 use POSIX;
 use File::Spec;
+use File::Temp qw / tempfile /;
 use Config;
 
 =head1 NAME
@@ -151,15 +152,7 @@ sub gpdiff_files
 
     for my $ii (1..2)
     {
-        my $tmpnam;
-
-        for (;;) 
-        {
-            my $tmpfh;
-        
-            $tmpnam = tmpnam();
-            sysopen($tmpfh, $tmpnam, O_RDWR | O_CREAT | O_EXCL) && last;
-        }
+        my ($tmpfh, $tmpnam) = tempfile(EXLOCK=>1);
 
         push @tmpfils, $tmpnam;
         
