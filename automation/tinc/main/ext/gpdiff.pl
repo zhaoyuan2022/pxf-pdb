@@ -6,7 +6,11 @@
 # Author: Jeffrey I Cohen
 #
 #
-use Pod::Usage;
+# Pod::Usage is loaded lazily when needed, if the --help or other such option
+# is actually used. Loading the module takes some time, which adds up when
+# running hundreds of regression tests, and gpdiff.pl calls this script twice
+# for every test. See lazy_pod2usage().
+#use Pod::Usage;
 use strict;
 use warnings;
 use POSIX;
@@ -116,6 +120,13 @@ Address bug reports and comments to: jcohen@greenplum.com
 
 
 =cut
+
+# Calls pod2usage, but loads the module first.
+sub lazy_pod2usage
+{
+    require Pod::Usage;
+    Pod::Usage::pod2usage(@_);
+}
 
 our $ATMSORT;
 our $ATMDIFF = "diff";
@@ -482,8 +493,8 @@ if (1)
         exit(1);
     }
 
-    pod2usage(-msg => $pmsg, -exitstatus => 1) if $help;
-    pod2usage(-msg => $pmsg, -exitstatus => 0, -verbose => 2) if $man;
+    lazy_pod2usage(-msg => $pmsg, -exitstatus => 1) if $help;
+    lazy_pod2usage(-msg => $pmsg, -exitstatus => 0, -verbose => 2) if $man;
 
     my $f2 = pop @ARGV;
     my $f1 = pop @ARGV;

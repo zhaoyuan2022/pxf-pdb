@@ -6,7 +6,13 @@
 # Author: Jeffrey I Cohen
 #
 #
-use Pod::Usage;
+
+# Pod::Usage is loaded lazily when needed, if the --help or other such option
+# is actually used. Loading the module takes some time, which adds up when
+# running hundreds of regression tests, and gpdiff.pl calls this script twice
+# for every test. See lazy_pod2usage().
+#use Pod::Usage;
+
 use Getopt::Long;
 use Data::Dumper;
 use strict;
@@ -354,6 +360,13 @@ Address bug reports and comments to: jcohen@greenplum.com
 
 =cut
 
+# Calls pod2usage, but loads the module first.
+sub lazy_pod2usage
+{
+    require Pod::Usage;
+    Pod::Usage::pod2usage(@_);
+}
+
 my $glob_id = "";
 
 # optional set of prefixes to identify sql statements, query output,
@@ -416,7 +429,7 @@ BEGIN {
 		        'order_warn|orderwarn' => \$orderwarn,
 		        'verbose' => \$verbose
                )
-        or pod2usage(2);
+        or lazy_pod2usage(2);
 
     if (defined($do_equiv))
     {
@@ -442,8 +455,8 @@ BEGIN {
 
     }
 
-    pod2usage(-msg => $glob_id, -exitstatus => 1) if $help;
-    pod2usage(-msg => $glob_id, -exitstatus => 0, -verbose => 2) if $man;
+    lazy_pod2usage(-msg => $glob_id, -exitstatus => 1) if $help;
+    lazy_pod2usage(-msg => $glob_id, -exitstatus => 0, -verbose => 2) if $man;
 
     $glob_compare_equiv       = $compare_equiv;
     $glob_make_equiv_expected = $make_equiv_expected;
