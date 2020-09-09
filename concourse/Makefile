@@ -8,7 +8,6 @@ SHELL                        = /bin/bash
 BUILD_PIPELINE_NAME         ?= pxf-build
 DEV_BUILD_PIPELINE_NAME     ?= dev:$(USER)-$(BRANCH)
 PR_BUILD_PIPELINE_NAME      ?= pxf_pr_pipeline
-BUILD_DEB                   ?= false
 CERTIFICATION_PIPELINE_NAME ?= pxf-certification
 PERF_PIPELINE_NAME          ?= pxf_perf-$(SCALE)g
 PIVNET_PIPELINE_NAME        ?= pivnet_artifacts
@@ -47,7 +46,6 @@ pr: set-pr-build-pipeline
 set-build-pipeline:
 	@PIPELINE_FILE=$$(mktemp) && \
 	$(TEMPLATE_CMD) --template build_pipeline-tpl.yml --vars \
-		build_deb=$(BUILD_DEB) \
 		email_notification=$(EMAIL) \
 		slack_notification=$(SLACK) \
 		num_gpdb5_versions=$(NUM_GPDB5_VERSIONS) \
@@ -72,7 +70,6 @@ set-build-pipeline:
 set-dev-release-pipeline:
 	@PIPELINE_FILE=$$(mktemp) && \
 	$(TEMPLATE_CMD) --template build_pipeline-tpl.yml --vars \
-		build_deb=$(BUILD_DEB) \
 		email_notification=false \
 		slack_notification=false \
 		git_branch=$(BRANCH) \
@@ -100,7 +97,6 @@ set-dev-release-pipeline:
 set-dev-build-pipeline:
 	@PIPELINE_FILE=$$(mktemp) && \
 	$(TEMPLATE_CMD) --template dev_build_pipeline-tpl.yml --vars \
-		build_deb=$(BUILD_DEB) \
 		slack_notification=$(SLACK) \
 		multinode=$(MULTINODE) \
 		multinode_no_impersonation=$(MULTINODE_NO_IMPERSONATION) \
@@ -141,7 +137,6 @@ set-dev-build-pipeline:
 set-pr-build-pipeline:
 	@PIPELINE_FILE=$$(mktemp) && \
 	$(TEMPLATE_CMD) --template pr_pipeline-tpl.yml --vars \
-		build_deb=$(BUILD_DEB) \
 		slack_notification=false \
 		pr_pipeline=true \
 		num_gpdb5_versions=1 \

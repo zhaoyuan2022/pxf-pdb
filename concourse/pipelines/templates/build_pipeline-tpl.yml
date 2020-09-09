@@ -18,12 +18,10 @@ groups:
   - Test PXF-GP[[gp_ver]]-HDP2 on RHEL7
 {% endfor %}
   - Test PXF-GP6-HDP2 on OEL7
-{% if build_deb %}
 {% set gp_ver = 6 %}
   - Test PXF-GP[[gp_ver]]-HDP2 on Ubuntu18
   - Build PXF-GP[[gp_ver]] on Ubuntu18
 {% set gp_ver = None %}
-{% endif %}
 {% set gp_ver = 5 %}
   - Test PXF-GP[[gp_ver]] Backward Compatibility on RHEL6
 {% set gp_ver = None %}
@@ -31,9 +29,7 @@ groups:
   - Test PXF-GP[[gp_ver]] Backward Compatibility on RHEL7
 {% endfor %}
 {% set gp_ver = 6 %}
-{% if build_deb %}
   - Test PXF-GP[[gp_ver]] Backward Compatibility on Ubuntu18
-{% endif %}
   - Test PXF-GP[[gp_ver]]-HDP2-NO-IMPERS on RHEL7
   - Test PXF-GP[[gp_ver]]-MAPR on RHEL7
   - Test PXF-GP[[gp_ver]]-HDP3 on RHEL7
@@ -68,14 +64,12 @@ groups:
   jobs:
   - Build PXF-GP6 on RHEL7
   - Test PXF-GP6-HDP2 on OEL7
-{% if build_deb %}
 {% set gp_ver = 6 %}
 - name: GP[[gp_ver]] on Ubuntu18
   jobs:
   - Test PXF-GP[[gp_ver]]-HDP2 on Ubuntu18
   - Build PXF-GP[[gp_ver]] on Ubuntu18
 {% set gp_ver = None %}
-{% endif %}
 {% set gp_ver = 6 %}
 - name: PXF Tests - GP[[gp_ver]] on RHEL7
   jobs:
@@ -101,11 +95,9 @@ groups:
 {% for gp_ver in range(5, 7) %}
   - Test PXF-GP[[gp_ver]] Backward Compatibility on RHEL7
 {% endfor %}
-{% if build_deb %}
 {% set gp_ver = 6 %}
   - Test PXF-GP[[gp_ver]] Backward Compatibility on Ubuntu18
 {% set gp_ver = None %}
-{% endif %}
 - name: Promote and Publish
   jobs:
   - Promote PXF-GP5 and PXF-GP6 Artifacts
@@ -292,14 +284,12 @@ resources:
     json_key: ((concourse-gcs-resources-service-account-key))
     regexp: ((pxf-releng-gp6-drop-path))/pxf-gp6-(.*)-2.el7.x86_64.rpm
 
-{% if build_deb %}
 - name: pxf_gp6_ubuntu18_release_to_releng
   type: gcs
   source:
     bucket: ((pxf-releng-gp6-drop-bucket))
     json_key: ((concourse-gcs-resources-service-account-key))
-    regexp: ((pxf-releng-gp6-drop-path))/pxf-gp6-(.*)-ubuntu18.04-amd64.deb
-{% endif %}
+    regexp: ((pxf-releng-gp6-drop-path))/pxf-gp6-(.*)-2-ubuntu18.04-amd64.deb
 
 - name: pxf_osl_to_releng
   type: gcs
@@ -369,7 +359,6 @@ resources:
     password: ((pxf-cloudbuild-service-account-key))
 
 {% set gp_ver = 6 %}
-{% if build_deb %}
 - name: gpdb[[gp_ver]]-pxf-dev-ubuntu18-image
   type: registry-image
   icon: docker
@@ -378,7 +367,6 @@ resources:
     tag: latest
     username: _json_key
     password: ((pxf-cloudbuild-service-account-key))
-{% endif %}
 
 - name: gpdb[[gp_ver]]-pxf-dev-centos7-mapr-server-image
   type: registry-image
@@ -460,7 +448,6 @@ resources:
     json_key: ((pxf-storage-service-account-key))
     regexp: latest-[[i]]_gpdb[[gp_ver]]/greenplum-db-(.*)-rhel7-x86_64.rpm
 
-{% if build_deb %}
 - name: gpdb[[gp_ver]]_ubuntu18_deb_latest-[[i]]
   type: gcs
   icon: google-drive
@@ -468,7 +455,6 @@ resources:
     bucket: data-gpdb-ud-pivnet-artifacts
     json_key: ((pxf-storage-service-account-key))
     regexp: latest-[[i]]_gpdb[[gp_ver]]/greenplum-db-(.*)-ubuntu18.04-amd64.deb
-{% endif %}
 {% endfor %} {# range(num_gpdb6_versions) #}
 {% set gp_ver = None %}
 
@@ -493,7 +479,6 @@ resources:
     versioned_file: ((pxf-build-bucket-prefix))/snapshots/pxf-gp[[gp_ver]].el7.tar.gz
 {% endfor %}
 
-{% if build_deb %}
 {% set gp_ver = 6 %}
 - name: pxf_gp[[gp_ver]]_tarball_ubuntu18
   type: gcs
@@ -501,9 +486,8 @@ resources:
   source:
     bucket: data-gpdb-ud-pxf-build
     json_key: ((pxf-storage-service-account-key))
-    versioned_file: ((pxf-build-bucket-prefix))/snapshots/pxf-gp[[gp_ver]].ubuntu18.04.tar.gz
+    versioned_file: ((pxf-build-bucket-prefix))/snapshots/pxf-gp[[gp_ver]]-ubuntu18.04.tar.gz
 {% set gp_ver = None %}
-{% endif %}
 
 ## ---------- Auxiliary Resources ----------
 - name: terraform
@@ -657,7 +641,6 @@ jobs:
       TARGET_OS_VERSION: 7
 
 ## ---------- Ubuntu 18 Swimlane ----------
-{% if build_deb %}
 {% set gp_ver = 6 %}
 - name: Build PXF-GP[[gp_ver]] on Ubuntu18
   plan:
@@ -674,10 +657,10 @@ jobs:
     params:
       LICENSE: ((pxf-rpm-license))
       TARGET_OS: ubuntu18.04
-      VENDOR: ((pxf-rpm-vendor))
+      VENDOR: ((pxf-deb-maintainer))
   - put: pxf_gp[[gp_ver]]_tarball_ubuntu18
     params:
-      file: dist/pxf-gp[[gp_ver]]-*.ubuntu18.04.tar.gz
+      file: dist/pxf-gp[[gp_ver]]-*-ubuntu18.04.tar.gz
 
 - name: Test PXF-GP[[gp_ver]]-HDP2 on Ubuntu18
   plan:
@@ -707,7 +690,6 @@ jobs:
       TARGET_OS: ubuntu
       TARGET_OS_VERSION: 18
 {% set gp_ver = None %}
-{% endif %} {# if build_deb #}
 
 ## ---------- Testing Gate ----------
 - name: Testing Gate for PXF-GP
@@ -724,14 +706,10 @@ jobs:
       - Test PXF-GP6-HDP2 on OEL7
 {% set gp_ver = None %}
 {% set gp_ver = 6 %}
-{% if build_deb %}
       - Test PXF-GP[[gp_ver]]-HDP2 on Ubuntu18
-{% endif %}
 {% set gp_ver = 6 %}
-{% if build_deb %}
     - get: pxf_gp[[gp_ver]]_tarball_ubuntu18
       passed: [Test PXF-GP[[gp_ver]]-HDP2 on Ubuntu18]
-{% endif %}
 {% set gp_ver = 5 %}
     - get: pxf_gp[[gp_ver]]_tarball_rhel6
       passed:
@@ -746,10 +724,8 @@ jobs:
     - get: gpdb[[gp_ver]]_rhel6_rpm_latest-0
       passed: [Test PXF-GP[[gp_ver]]-HDP2 on RHEL6]
 {% set gp_ver = 6 %}
-{% if build_deb %}
     - get: gpdb[[gp_ver]]_ubuntu18_deb_latest-0
       passed: [Test PXF-GP[[gp_ver]]-HDP2 on Ubuntu18]
-{% endif %}
 {% set gp_ver = None %}
     - get: gpdb5_rhel7_rpm_latest-0
       passed: [Test PXF-GP5-HDP2 on RHEL7]
@@ -1340,11 +1316,9 @@ jobs:
       passed:
       - Testing Gate for PXF-GP
 {% set gp_ver = 6 %}
-{% if build_deb %}
     - get: pxf_gp[[gp_ver]]_tarball_ubuntu18
       passed:
       - Testing Gate for PXF-GP
-{% endif %}
     - get: pxf_gp[[gp_ver]]_tarball_rhel7
       passed:
       - Test PXF-GP[[gp_ver]]-HDP2-NO-IMPERS on RHEL7
@@ -1453,7 +1427,6 @@ jobs:
 {% set num_versions = None %}
 {% endfor %} {# both gp5 and gp6 #}
 
-{% if build_deb %}
 {% set gp_ver = 6 %}
 - name: Test PXF-GP[[gp_ver]] Backward Compatibility on Ubuntu18
   plan:
@@ -1497,7 +1470,6 @@ jobs:
             path: pxf_src/concourse/scripts/test.bash
 {% endfor %}
 {% set gp_ver = None %}
-{% endif %}
 
 ## ---------- Artifact Promotion Gate ----------
 - name: Promote PXF-GP5 and PXF-GP6 Artifacts
@@ -1511,11 +1483,9 @@ jobs:
       - Test PXF-GP[[gp_ver]] Backward Compatibility on RHEL7
 {% endfor %}
 {% set gp_ver = None %}
-{% if build_deb %}
 {% set gp_ver = 6 %}
       - Test PXF-GP[[gp_ver]] Backward Compatibility on Ubuntu18
 {% set gp_ver = None %}
-{% endif %}
 {% set gp_ver = 5 %}
     - get: pxf_gp[[gp_ver]]_tarball_rhel6
       trigger: true
@@ -1528,14 +1498,12 @@ jobs:
       - Test PXF-GP[[gp_ver]] Backward Compatibility on RHEL7
 {% endfor %}
 {% set gp_ver = None %}
-{% if build_deb %}
 {% set gp_ver = 6 %}
     - get: pxf_gp[[gp_ver]]_tarball_ubuntu18
       trigger: true
       passed:
       - Test PXF-GP[[gp_ver]] Backward Compatibility on Ubuntu18
 {% set gp_ver = None %}
-{% endif %}
     - get: google-cloud-sdk-slim-image
   - task: Promote PXF-GP5 and PXF-GP6 Artifacts
     image: google-cloud-sdk-slim-image
@@ -1564,6 +1532,7 @@ jobs:
     - get: google-cloud-sdk-slim-image
     - get: rpmrebuild-centos6-image
     - get: rpmrebuild-centos7-image
+    - get: gpdb6-pxf-dev-ubuntu18-image
   - task: Get PXF-GP5 and PXF-GP6 Artifacts from Releases Directory
     image: google-cloud-sdk-slim-image
     file: pxf_src/concourse/tasks/get_pxf_release_artifacts.yml
@@ -1588,6 +1557,12 @@ jobs:
       GP_VER: [[gp_ver]]
       TARGET_OS_VERSION: 7
 {% endfor %}
+  - task: Add OSL file to PXF-GP6 DEB on Ubuntu 18.04
+    file: pxf_src/concourse/tasks/add_osl_deb.yml
+    image: gpdb6-pxf-dev-ubuntu18-image
+    params:
+      GP_VER: 6
+      TARGET_OS_VERSION: ubuntu18.04
   - task: Generate Releng Email
     image: google-cloud-sdk-slim-image
     file: pxf_src/concourse/tasks/generate_releng_email.yml
@@ -1612,11 +1587,9 @@ jobs:
     - put: pxf_gp6_rhel7_release_to_releng
       params:
         file: pxf_artifacts/licensed/pxf-gp6-*-2.el7.x86_64.rpm
-{% if build_deb %}
     - put: pxf_gp6_ubuntu18_release_to_releng
       params:
-        file: pxf_artifacts/licensed/pxf-gp6-*ubuntu18*deb
-{% endif %}
+        file: pxf_artifacts/licensed/pxf-gp6-*-2-ubuntu18.04-amd64.deb
     - put: pxf_odp_to_releng
       params:
         file: pxf_artifacts/((pxf-odp-file-prefix))*.tar.gz

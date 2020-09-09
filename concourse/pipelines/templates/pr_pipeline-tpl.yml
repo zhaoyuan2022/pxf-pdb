@@ -66,7 +66,6 @@ resources:
 {% endfor %} {# gp5 and gp6 #}
 
 {% set gp_ver = 6 %}
-{% if build_deb %}
 - name: gpdb[[gp_ver]]-pxf-dev-ubuntu18-image
   type: registry-image
   icon: docker
@@ -75,7 +74,6 @@ resources:
     tag: latest
     username: _json_key
     password: ((pxf-cloudbuild-service-account-key))
-{% endif %}
 {% set gp_ver = None %}
 
 ## ---------- Product Packages ----------
@@ -109,7 +107,6 @@ resources:
     json_key: ((pxf-storage-service-account-key))
     regexp: latest-[[i]]_gpdb[[gp_ver]]/greenplum-db-(.*)-rhel7-x86_64.rpm
 
-{% if build_deb %}
 - name: gpdb[[gp_ver]]_ubuntu18_deb_latest-[[i]]
   type: gcs
   icon: google-drive
@@ -117,7 +114,6 @@ resources:
     bucket: data-gpdb-ud-pivnet-artifacts
     json_key: ((pxf-storage-service-account-key))
     regexp: latest-[[i]]_gpdb[[gp_ver]]/greenplum-db-(.*)-ubuntu18.04-amd64.deb
-{% endif %}
 {% endfor %} {# range(num_gpdb6_versions) #}
 {% set gp_ver = None %}
 
@@ -237,7 +233,6 @@ jobs:
 {% endfor %} {# gp_ver 5 and 6 #}
 
 ## ---------- Ubuntu 18 Swimlane ----------
-{% if build_deb %}
 {% set gp_ver = 6 %}
 - name: Build and Test PXF-GP[[gp_ver]] on Ubuntu18
   public: true
@@ -289,4 +284,3 @@ jobs:
       run:
         path: pxf_src/concourse/scripts/test.bash
 {% set gp_ver = None %}
-{% endif %} {# if build_deb #}

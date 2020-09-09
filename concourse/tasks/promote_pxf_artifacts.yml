@@ -9,7 +9,6 @@ inputs:
 - name: pxf_gp5_tarball_rhel7
 - name: pxf_gp6_tarball_rhel7
 - name: pxf_gp6_tarball_ubuntu18
-  optional: true
 
 params:
   GCS_RELEASES_BUCKET:

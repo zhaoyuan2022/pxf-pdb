@@ -33,17 +33,36 @@ function compile_pxf() {
     if [[ ${TARGET_OS} == "rhel6" ]]; then
         source /opt/gcc_env.sh
     fi
+
+    case "${TARGET_OS}" in
+    rhel*) MAKE_TARGET="rpm-tar" ;;
+    ubuntu*) MAKE_TARGET="deb-tar" ;;
+    *)
+        echo "Unsupported operating system ${TARGET_OS}. Exiting..."
+        exit 1
+        ;;
+    esac
+
     bash -c "
         source ~/.pxfrc
-        VENDOR='${VENDOR}' LICENSE='${LICENSE}' make -C '${PWD}/pxf_src' rpm-tar
+        VENDOR='${VENDOR}' LICENSE='${LICENSE}' make -C '${PWD}/pxf_src' ${MAKE_TARGET}
     "
 }
 
 function package_pxf() {
     # verify contents
-    ls -al pxf_src/build/distrpm
-    tar -tvzf pxf_src/build/distrpm/pxf-*.tar.gz
-    cp pxf_src/build/distrpm/pxf-*.tar.gz dist
+    case "${TARGET_OS}" in
+    rhel*) DIST_DIR=distrpm ;;
+    ubuntu*) DIST_DIR=distdeb ;;
+    *)
+        echo "Unsupported operating system ${TARGET_OS}. Exiting..."
+        exit 1
+        ;;
+    esac
+
+    ls -al pxf_src/build/${DIST_DIR}
+    tar -tvzf pxf_src/build/${DIST_DIR}/pxf-*.tar.gz
+    cp pxf_src/build/${DIST_DIR}/pxf-*.tar.gz dist
 }
 
 install_gpdb

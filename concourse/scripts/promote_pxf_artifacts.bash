@@ -30,14 +30,14 @@ for tarball in "${tarballs[@]}"; do
 		((NOT_RELEASABLE+=1))
 		continue
 	fi
-	if [[ ${pkg_file##*/} =~ pxf-gp[0-9]+-([0-9.]+)-1\.(.*\.(deb|rpm)) ]]; then
+	if [[ ${pkg_file##*/} =~ pxf-gp[0-9]+-([0-9.]+)-1[\.-](.*\.(deb|rpm)) ]]; then
 		pxf_version=${BASH_REMATCH[1]}
 		suffix=${BASH_REMATCH[2]}
 		echo "Determined PXF version number to be '${pxf_version}' with suffix '${suffix}'..."
 		sources+=("${pkg_file}")
 		: "${pkg_file#pxf-gp}"
 		gp_ver=${_%%-*}
-		destinations+=("gs://${GCS_RELEASES_BUCKET}/${GCS_RELEASES_PATH}/gp${gp_ver}/pxf-gp${gp_ver}-${pxf_version}-1.${suffix}")
+		destinations+=("gs://${GCS_RELEASES_BUCKET}/${GCS_RELEASES_PATH}/gp${gp_ver}/${pkg_file##*/}")
 		echo "Expanding tarball '${tarball}'..."
 		tar zxf "${tarball}"
 	else

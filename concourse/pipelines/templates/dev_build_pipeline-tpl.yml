@@ -184,7 +184,6 @@ resources:
 {% endif %}
 
 {% set gp_ver = 6 %}
-{% if build_deb %}
 - name: gpdb[[gp_ver]]-pxf-dev-ubuntu18-image
   type: registry-image
   icon: docker
@@ -193,7 +192,6 @@ resources:
     tag: latest
     username: _json_key
     password: ((pxf-cloudbuild-service-account-key))
-{% endif %}
 
 {% if mapr %}
 - name: gpdb[[gp_ver]]-pxf-dev-centos7-mapr-server-image
@@ -251,7 +249,6 @@ resources:
     json_key: ((pxf-storage-service-account-key))
     regexp: latest-0_gpdb[[gp_ver]]/greenplum-db-(.*)-rhel7-x86_64.rpm
 
-{% if build_deb %}
 - name: gpdb[[gp_ver]]_ubuntu18_deb_latest-0
   type: gcs
   icon: google-drive
@@ -259,7 +256,6 @@ resources:
     bucket: data-gpdb-ud-pivnet-artifacts
     json_key: ((pxf-storage-service-account-key))
     regexp: latest-0_gpdb[[gp_ver]]/greenplum-db-(.*)-ubuntu18.04-amd64.deb
-{% endif %}
 {% set gp_ver = None %}
 
 ## ---------- PXF Build Artifacts ----------
@@ -283,7 +279,6 @@ resources:
     versioned_file: dev/[[user]]-[[branch]]/snapshots/pxf-gp[[gp_ver]].el7.tar.gz
 {% endfor %}
 
-{% if build_deb %}
 {% set gp_ver = 6 %}
 - name: pxf_gp[[gp_ver]]_tarball_ubuntu18
   type: gcs
@@ -293,7 +288,6 @@ resources:
     json_key: ((pxf-storage-service-account-key))
     versioned_file: dev/[[user]]-[[branch]]/snapshots/pxf-gp[[gp_ver]].ubuntu18.04.tar.gz
 {% set gp_ver = None %}
-{% endif %}
 
 ## ---------- Auxiliary Resources ----------
 {% if multinode or multinode_no_impersonation %}
@@ -460,7 +454,6 @@ jobs:
 {% endif %}
 
 ## ---------- Ubuntu 18 Swimlane ----------
-{% if build_deb %}
 {% set gp_ver = 6 %}
 - name: Build PXF-GP[[gp_ver]] on Ubuntu18
   plan:
@@ -513,7 +506,6 @@ jobs:
     <<: *slack_alert
 {% endif %}
 {% set gp_ver = None %}
-{% endif %}
 
 ## ---------- Extended Tests ----------
 {% set gp_ver = 6 %}
