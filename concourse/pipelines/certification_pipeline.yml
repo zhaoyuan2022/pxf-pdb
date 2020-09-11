@@ -138,7 +138,7 @@ resources:
   icon: google-drive
   source:
     bucket: pivotal-gpdb-concourse-resources-prod
-    json_key: ((data-gpdb-ud-google-json-key))
+    json_key: {{concourse-gcs-resources-service-account-key}}
     regexp: server/published/gpdb6/server-rc-(.*)-ubuntu18.04_x86_64.tar.gz
 
 ## ---------- PXF Released RPM Artifacts ----------
@@ -170,7 +170,7 @@ resources:
   type: gcs
   icon: google-drive
   source:
-    bucket: data-gpdb-ud-pxf-build
+    bucket: data-gpdb-ud-pxf-releases
     json_key: ((pxf-storage-service-account-key))
     regexp: prod/releases/gp6/pxf-gp6-(.*)-1-ubuntu18.04-amd64.deb
 
