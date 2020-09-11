@@ -305,7 +305,7 @@ function install_pxf_tarball() {
 
 function install_pxf_package() {
 	if [[ ${TARGET_OS} == centos ]]; then
-		# install GPDB RPM
+		# install PXF RPM
 		pkg_file=$(find pxf_package -name 'pxf-gp*.x86_64.rpm')
 		if [[ -z ${pkg_file} ]]; then
 			echo "Couldn't find PXF RPM file in pxf_package. Skipping install..."
@@ -313,7 +313,17 @@ function install_pxf_package() {
 		fi
 		echo "Installing ${pkg_file}..."
 		rpm --quiet -ivh "${pkg_file}" >/dev/null
+	elif [[ ${TARGET_OS} == ubuntu ]]; then
+		# install PXF DEB
+		pkg_file=$(find pxf_package -name 'pxf-gp*amd64.deb')
+		if [[ -z ${pkg_file} ]]; then
+			echo "Couldn't find PXF DEB file in pxf_package. Skipping install..."
+			return 1
+		fi
+		echo "Installing ${pkg_file}..."
+		dpkg --install "${pkg_file}" >/dev/null
 	fi
+
 	chown -R gpadmin:gpadmin "${PXF_HOME}"
 }
 
