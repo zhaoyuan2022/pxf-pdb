@@ -254,7 +254,7 @@ function setup_pxf_kerberos_on_cluster() {
 		mkdir -p ${PXF_CONF_DIR}/servers/hdfs-non-secure &&
 		cp ${PXF_CONF_DIR}/templates/{hdfs,mapred,yarn,core,hbase,hive,pxf}-site.xml ${PXF_CONF_DIR}/servers/hdfs-non-secure &&
 		sed -i -e 's/\(0.0.0.0\|localhost\|127.0.0.1\)/${NON_SECURE_HADOOP_IP}/g' ${PXF_CONF_DIR}/servers/hdfs-non-secure/*-site.xml &&
-		sed -i -e 's|\${user.name}|${PROXY_USER}|g' ${PXF_CONF_DIR}/servers/hdfs-non-secure/pxf-site.xml &&
+		sed -i -e 's|</configuration>|<property><name>pxf.service.user.name</name><value>${PROXY_USER}</value></property></configuration>|g' ${PXF_CONF_DIR}/servers/hdfs-non-secure/pxf-site.xml &&
 		${PXF_HOME}/bin/pxf cluster sync
 	"
 	sed -i "s/>non-secure-hadoop</>${NON_SECURE_HADOOP_IP}</g" "$multiNodesCluster"
