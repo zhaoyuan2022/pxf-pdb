@@ -39,6 +39,7 @@ public class AvroResolverTest {
         context.setUser("test-user");
         // initialize checks that accessor is some kind of avro accessor
         context.setAccessor("avro");
+        context.setProfileScheme("localfile");
     }
 
     @Test

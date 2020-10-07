@@ -26,12 +26,9 @@ import static org.mockito.Mockito.when;
 @PrepareForTest({HiveAccessor.class, HiveUtilities.class, HdfsUtilities.class, HiveDataFragmenter.class})
 public class HiveAccessorTest {
 
-    @Mock
-    RequestContext requestContext;
-    @Mock
-    InputFormat inputFormat;
-    @Mock
-    RecordReader<Object, Object> reader;
+    @Mock RequestContext requestContext;
+    @Mock InputFormat inputFormat;
+    @Mock RecordReader<Object, Object> reader;
 
     HiveAccessor accessor;
     HiveUserDataBuilder userDataBuilder;
@@ -51,6 +48,7 @@ public class HiveAccessorTest {
         PowerMockito.when(requestContext.getAccessor()).thenReturn(HiveORCAccessor.class.getName());
         PowerMockito.when(requestContext.getConfig()).thenReturn("default");
         PowerMockito.when(requestContext.getUser()).thenReturn("test-user");
+        PowerMockito.when(requestContext.getProfileScheme()).thenReturn("localfile");
 
         @SuppressWarnings("unchecked")
         OngoingStubbing ongoingStubbing = when(HiveDataFragmenter.makeInputFormat(any(String.class), any(JobConf.class))).thenReturn(inputFormat);

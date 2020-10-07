@@ -48,6 +48,7 @@ public class HiveORCAccessorTest {
         context.setConfig("default");
         context.setUser("test-user");
         context.setDataSource("foo");
+        context.setProfileScheme("localfile");
         context.setFragmentMetadata(HdfsUtilities.prepareFragmentMetadata(0, 0, new String[]{"localhost"}));
         context.setFragmentUserData(userData.toString().getBytes());
         context.getTupleDescription().add(new ColumnDescriptor("col1", 1, 1, "TEXT", null));
