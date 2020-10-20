@@ -546,4 +546,15 @@ public class HcfsTypeTest {
         file.getDataUri(configuration, context);
     }
 
+    @Test
+    public void testDfsUserHomeBaseDirPropertyHasNoSideEffectInURI() {
+        configuration.set("fs.defaultFS", "hdfs://abc:8020/");
+        configuration.set("dfs.user.home.base.dir", "/home/francisco/");
+        context.setDataSource("foo/bar.txt");
+
+        HcfsType type = HcfsType.getHcfsType(configuration, context);
+        String dataUri = type.getDataUri(configuration, context);
+        assertEquals("hdfs://abc:8020/foo/bar.txt", dataUri);
+    }
+
 }
