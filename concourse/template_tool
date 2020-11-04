@@ -79,7 +79,7 @@ def build_parser():
     pxf_parser.add_argument('-t', '--template',
                             action='store',
                             dest='template_filename',
-                            default="pxf-tpl.yml",
+                            default="build_pipeline-tpl.yml",
                             help='Name of template to use, in concourse/pipelines/templates/')
 
     return pxf_parser
