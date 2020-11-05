@@ -32,13 +32,13 @@ and HDP3. The generated tarballs are then published to an S3 and GCS bucket.
 The produced tarballs can then be consumed in the pxf-build pipelines.
 
 ```shell script
-make singlecluster
+make -C "${HOME}/workspace/pxf/concourse" singlecluster
 ```
 
 # Deploy the cloudbuild pipeline
 
 ```shell script
-make cloudbuild
+make -C "${HOME}/workspace/pxf/concourse" cloudbuild
 ```
 
 # Deploy the pull-request pipeline
@@ -52,7 +52,7 @@ make -C "${HOME}/workspace/pxf/concourse" pr
 10G Performance pipeline:
 
 ```shell script
-make SCALE=10 perf
+make SCALE=10 -C "${HOME}/workspace/pxf/concourse" perf
 ```
 
 You can deploy a development version of the perf pipeline by substituting the name
@@ -62,13 +62,13 @@ the name of your development pipeline (i.e. `-p dev:<YOUR-PIPELINE>`).
 50G Performance pipeline:
 
 ```shell script
-make SCALE=50 perf
+make SCALE=50 -C "${HOME}/workspace/pxf/concourse" perf
 ```
 
 500G Performance pipeline:
 
 ```shell script
-make SCALE=500 perf
+make SCALE=500 -C "${HOME}/workspace/pxf/concourse" perf
 ```
 
 # Deploy development PXF pipelines
