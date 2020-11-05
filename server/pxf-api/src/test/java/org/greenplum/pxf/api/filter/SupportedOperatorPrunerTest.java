@@ -1,6 +1,5 @@
 package org.greenplum.pxf.api.filter;
 
-
 import org.junit.Test;
 
 import java.util.EnumSet;

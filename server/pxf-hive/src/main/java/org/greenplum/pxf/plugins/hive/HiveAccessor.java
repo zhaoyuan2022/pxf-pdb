@@ -20,10 +20,13 @@ package org.greenplum.pxf.plugins.hive;
  */
 
 import com.esotericsoftware.kryo.io.Input;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.hive.common.type.HiveDecimal;
+import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.io.IOConstants;
-import org.apache.hadoop.hive.ql.io.orc.Reader;
+import org.apache.hadoop.hive.ql.io.sarg.ConvertAstToSearchArg;
+import org.apache.hadoop.hive.ql.io.sarg.SearchArgument;
 import org.apache.hadoop.hive.serde.serdeConstants;
 import org.apache.hadoop.mapred.InputFormat;
 import org.apache.hadoop.mapred.InputSplit;
@@ -36,8 +39,11 @@ import org.greenplum.pxf.api.filter.Node;
 import org.greenplum.pxf.api.filter.OperandNode;
 import org.greenplum.pxf.api.filter.Operator;
 import org.greenplum.pxf.api.filter.OperatorNode;
+import org.greenplum.pxf.api.filter.SupportedDataTypePruner;
+import org.greenplum.pxf.api.filter.SupportedOperatorPruner;
 import org.greenplum.pxf.api.filter.ToStringTreeVisitor;
 import org.greenplum.pxf.api.filter.TreeTraverser;
+import org.greenplum.pxf.api.io.DataType;
 import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.api.utilities.ColumnDescriptor;
 import org.greenplum.pxf.plugins.hdfs.HdfsSplittableDataAccessor;
@@ -50,6 +56,7 @@ import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -84,13 +91,88 @@ import static org.greenplum.pxf.plugins.hive.HiveDataFragmenter.PXF_META_TABLE_P
 public class HiveAccessor extends HdfsSplittableDataAccessor {
 
     private static final Logger LOG = LoggerFactory.getLogger(HiveAccessor.class);
+    private static final String PXF_PPD_HIVE = "pxf.ppd.hive";
+    private static final String HIVE_DEFAULT_PARTITION = "__HIVE_DEFAULT_PARTITION__";
 
     private List<HivePartition> partitions;
-    private static final String HIVE_DEFAULT_PARTITION = "__HIVE_DEFAULT_PARTITION__";
     private int skipHeaderCount;
     protected List<Integer> hiveIndexes;
     private String hiveColumnsString;
     private String hiveColumnTypesString;
+    private boolean isPredicatePushdownAllowed;
+
+    // ----- members for predicate pushdown handling -----
+    static final EnumSet<Operator> PARQUET_SUPPORTED_OPERATORS =
+            EnumSet.of(
+                    Operator.NOOP,
+                    Operator.LESS_THAN,
+                    Operator.GREATER_THAN,
+                    Operator.LESS_THAN_OR_EQUAL,
+                    Operator.GREATER_THAN_OR_EQUAL,
+                    Operator.EQUALS,
+                    Operator.NOT_EQUALS,
+                    //Operator.IS_NULL,
+                    //Operator.IS_NOT_NULL,
+                    Operator.IN,
+                    Operator.OR,
+                    Operator.AND,
+                    Operator.NOT
+            );
+
+    static final EnumSet<Operator> ORC_SUPPORTED_OPERATORS =
+            EnumSet.of(
+                    Operator.NOOP,
+                    Operator.LESS_THAN,
+                    Operator.GREATER_THAN,
+                    Operator.LESS_THAN_OR_EQUAL,
+                    Operator.GREATER_THAN_OR_EQUAL,
+                    Operator.EQUALS,
+                    Operator.NOT_EQUALS,
+                    Operator.IS_NULL,
+                    Operator.IS_NOT_NULL,
+                    Operator.IN,
+                    Operator.OR,
+                    Operator.AND,
+                    Operator.NOT
+            );
+
+    static final EnumSet<DataType> PARQUET_SUPPORTED_DATATYPES =
+            EnumSet.of(
+                    DataType.BIGINT,
+                    DataType.INTEGER,
+                    DataType.SMALLINT,
+                    DataType.REAL,
+                    //DataType.NUMERIC,
+                    DataType.FLOAT8,
+                    DataType.TEXT,
+                    DataType.VARCHAR,
+                    DataType.BPCHAR,
+                    DataType.BOOLEAN,
+                    //DataType.DATE,
+                    //DataType.TIMESTAMP,
+                    DataType.TIME,
+                    DataType.BYTEA
+            );
+
+    static final EnumSet<DataType> ORC_SUPPORTED_DATATYPES =
+            EnumSet.of(
+                    DataType.BIGINT,
+                    DataType.INTEGER,
+                    DataType.SMALLINT,
+                    DataType.REAL,
+                    DataType.NUMERIC,
+                    DataType.FLOAT8,
+                    DataType.TEXT,
+                    DataType.VARCHAR,
+                    DataType.BPCHAR,
+                    DataType.BOOLEAN,
+                    DataType.DATE,
+                    DataType.TIMESTAMP,
+                    DataType.TIME,
+                    DataType.BYTEA
+            );
+
+    private static final TreeTraverser TRAVERSER = new TreeTraverser();
 
     /**
      * Constructs a HiveAccessor
@@ -123,8 +205,29 @@ public class HiveAccessor extends HdfsSplittableDataAccessor {
      */
     @Override
     public void initialize(RequestContext context) {
+
         super.initialize(context);
-        HiveMetadata metadata;
+
+        // determine if predicate pushdown is allowed by configuration
+        isPredicatePushdownAllowed = configuration.get(PXF_PPD_HIVE, "true").equalsIgnoreCase("true");
+        if (isPredicatePushdownAllowed) {
+            LOG.debug("Predicate pushdown for Hive is enabled");
+            /*
+             Set the property if not explicitly specified by the user to "false" to work around the issue fixed
+             in HIVE-21407 but not yet available for distribution, where in ParquetRecordReaderWrapper
+             code "conf = new JobConf(oldJobConf)" should be "conf = new JobConf(jobConf)" otherwise predicate pushdown
+             information for Parquet file read is lost and is not used in the further processing by ParquetRecordReaderWrapper
+
+             We assume our preference is to not skip the timestamp conversion, as we assume parquet file is properly storing
+             the timestamp that was converted from local timezone to UTC. If conversion is not desired and should be skipped,
+             users can set the property value to "true" in their hive-site.xml
+            */
+            jobConf.set(HiveConf.ConfVars.HIVE_PARQUET_TIMESTAMP_SKIP_CONVERSION.varname,
+                    jobConf.get(HiveConf.ConfVars.HIVE_PARQUET_TIMESTAMP_SKIP_CONVERSION.varname, "false"));
+        } else {
+            LOG.debug("Predicate pushdown for Hive has been disabled in configuration");
+        }
+
         Properties properties;
         try {
             properties = getSerdeProperties(context.getFragmentUserData());
@@ -142,13 +245,12 @@ public class HiveAccessor extends HdfsSplittableDataAccessor {
         hiveColumnsString = properties.getProperty(META_TABLE_COLUMNS);
         hiveColumnTypesString = properties.getProperty(META_TABLE_COLUMN_TYPES);
 
-        metadata = new HiveMetadata(properties, partitions, hiveIndexes);
-
-        context.setMetadata(metadata);
+        context.setMetadata(new HiveMetadata(properties, partitions, hiveIndexes));
     }
 
     /**
-     * Opens Hive data split for read. Enables Hive partition filtering. <br>
+     * Opens Hive data split for read. Enables Hive partition filtering.
+     * Adds column projection and predicate pushdown information to JobConf to be used by the reader, if supported.
      *
      * @return true if there are no partitions or there is no partition filter
      * or partition filter is set and the file currently opened by the
@@ -165,8 +267,18 @@ public class HiveAccessor extends HdfsSplittableDataAccessor {
         if (!shouldDataBeReturnedFromFilteredPartition()) {
             return false;
         }
-        // add projected columns to JobConf to make it available to RecordReaders
-        addColumns();
+        // add Hive schema information for the RecordReader to return data in the Hive schema column order
+        if (StringUtils.isNotBlank(hiveColumnsString)) {
+            jobConf.set(IOConstants.COLUMNS, hiveColumnsString);
+        }
+        if (StringUtils.isNotBlank(hiveColumnTypesString)) {
+            jobConf.set(IOConstants.COLUMNS_TYPES, hiveColumnTypesString);
+        }
+        // add column projection and predicate pushdown filters to JobConf to make them available to RecordReaders
+        if (shouldAddProjectionsAndFilters()) {
+            addColumns();
+            addFilters();
+        }
         return super.openForRead();
     }
 
@@ -223,13 +335,16 @@ public class HiveAccessor extends HdfsSplittableDataAccessor {
     @Override
     protected Object getReader(JobConf jobConf, InputSplit split)
             throws IOException {
-        if (StringUtils.isNotBlank(hiveColumnsString)) {
-            jobConf.set(IOConstants.COLUMNS, hiveColumnsString);
-        }
-        if (StringUtils.isNotBlank(hiveColumnTypesString)) {
-            jobConf.set(IOConstants.COLUMNS_TYPES, hiveColumnTypesString);
-        }
         return inputFormat.getRecordReader(split, jobConf, Reporter.NULL);
+    }
+
+    /**
+     * Specifies whether column projection and predicate pushdown information should be added to
+     * the JobConfig so that it is accessible to the RecordReader.
+     * @return true if CP / PPD information should be added, false if not
+     */
+    protected boolean shouldAddProjectionsAndFilters() {
+        return true;
     }
 
     /*
@@ -471,18 +586,10 @@ public class HiveAccessor extends HdfsSplittableDataAccessor {
     }
 
     /**
-     * @return ORC file reader
-     */
-    protected Reader getOrcReader() {
-        return HiveUtilities.getOrcReader(configuration, context);
-    }
-
-    /**
      * Adds the table tuple description to JobConf object
      * so only these columns will be returned.
      */
     protected void addColumns() {
-
         List<Integer> colIds = new ArrayList<>();
         List<String> colNames = new ArrayList<>();
         List<ColumnDescriptor> tupleDescription = context.getTupleDescription();
@@ -496,6 +603,56 @@ public class HiveAccessor extends HdfsSplittableDataAccessor {
         jobConf.set(READ_ALL_COLUMNS, "false");
         jobConf.set(READ_COLUMN_IDS_CONF_STR, StringUtils.join(colIds, ","));
         jobConf.set(READ_COLUMN_NAMES_CONF_STR, StringUtils.join(colNames, ","));
+    }
+
+    /**
+     * Uses {@link HiveSearchArgumentBuilder} to translate a filter string into a
+     * Hive {@link SearchArgument} object. The result is added as a filter to
+     * JobConf object
+     */
+    private void addFilters() throws Exception {
+        if (!isPredicatePushdownAllowed || !context.hasFilter()) {
+            return;
+        }
+
+        /* Predicate push-down configuration */
+        HiveSearchArgumentBuilder searchArgumentBuilder =
+                new HiveSearchArgumentBuilder(context.getTupleDescription(), configuration);
+
+        // Parse the filter string into a expression tree Node
+        String filterStr = context.getFilterString();
+        Node root = new FilterParser().parse(filterStr);
+
+        // Prune the parsed tree with valid supported datatypes and operators and then
+        // traverse the pruned tree with the searchArgumentBuilder to produce a SearchArgument
+        TRAVERSER.traverse(
+                root,
+                new SupportedDataTypePruner(context.getTupleDescription(), getSupportedDatatypesForPushdown()),
+                new SupportedOperatorPruner(getSupportedOperatorsForPushdown()),
+                searchArgumentBuilder);
+
+        String kryoString = Base64.encodeBase64String(
+                HiveUtilities.toKryo(searchArgumentBuilder.getFilterBuilder().build())
+        );
+        jobConf.set(ConvertAstToSearchArg.SARG_PUSHDOWN, kryoString);
+        LOG.debug("Added SARG={}", kryoString);
+    }
+
+    protected EnumSet<DataType> getSupportedDatatypesForPushdown() {
+        return PARQUET_SUPPORTED_DATATYPES;
+    }
+
+    protected EnumSet<Operator> getSupportedOperatorsForPushdown() {
+        return PARQUET_SUPPORTED_OPERATORS;
+    }
+
+    /**
+     * Package private for unit testing
+     *
+     * @return the jobConf
+     */
+    JobConf getJobConf() {
+        return jobConf;
     }
 
     protected Properties getSerdeProperties(byte[] userData) {
