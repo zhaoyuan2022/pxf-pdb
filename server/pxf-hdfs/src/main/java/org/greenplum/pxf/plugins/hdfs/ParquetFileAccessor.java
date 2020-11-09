@@ -48,7 +48,7 @@ import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
 import org.greenplum.pxf.api.OneRow;
-import org.greenplum.pxf.api.UnsupportedTypeException;
+import org.greenplum.pxf.api.error.UnsupportedTypeException;
 import org.greenplum.pxf.api.filter.FilterParser;
 import org.greenplum.pxf.api.filter.Node;
 import org.greenplum.pxf.api.filter.Operator;
@@ -59,6 +59,7 @@ import org.greenplum.pxf.api.model.Accessor;
 import org.greenplum.pxf.api.model.BasePlugin;
 import org.greenplum.pxf.api.model.ConfigurationFactory;
 import org.greenplum.pxf.api.utilities.ColumnDescriptor;
+import org.greenplum.pxf.api.utilities.SpringContext;
 import org.greenplum.pxf.plugins.hdfs.parquet.ParquetOperatorPrunerAndTransformer;
 import org.greenplum.pxf.plugins.hdfs.parquet.ParquetRecordFilterBuilder;
 import org.greenplum.pxf.plugins.hdfs.utilities.HdfsUtilities;
@@ -66,6 +67,7 @@ import org.greenplum.pxf.plugins.hdfs.utilities.HdfsUtilities;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -138,16 +140,16 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
     private int pageSize, rowGroupSize, dictionarySize;
     private long rowsRead, totalRowsRead, totalRowsWritten;
     private WriterVersion parquetVersion;
-    private final CodecFactory codecFactory = CodecFactory.getInstance();
-
     private long totalReadTimeInNanos;
 
+    private final CodecFactory codecFactory;
+
     public ParquetFileAccessor() {
-        super();
+        this(SpringContext.getBean(CodecFactory.class));
     }
 
-    ParquetFileAccessor(ConfigurationFactory configurationFactory) {
-        this.configurationFactory = configurationFactory;
+    public ParquetFileAccessor(CodecFactory codecFactory) {
+        this.codecFactory = codecFactory;
     }
 
     /**
@@ -241,9 +243,9 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
     @Override
     public boolean openForWrite() throws IOException, InterruptedException {
 
-        HcfsType hcfsType = HcfsType.getHcfsType(configuration, context);
+        HcfsType hcfsType = HcfsType.getHcfsType(context);
         // skip codec extension in filePrefix, because we add it in this accessor
-        filePrefix = hcfsType.getUriForWrite(configuration, context, true);
+        filePrefix = hcfsType.getUriForWrite(context);
         String compressCodec = context.getOption("COMPRESSION_CODEC");
         codecName = codecFactory.getCodec(compressCodec, DEFAULT_COMPRESSION);
 
@@ -318,10 +320,11 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
             return FilterCompat.NOOP;
         }
 
+        List<ColumnDescriptor> tupleDescription = context.getTupleDescription();
         ParquetRecordFilterBuilder filterBuilder = new ParquetRecordFilterBuilder(
-                context.getTupleDescription(), originalFieldsMap);
+                tupleDescription, originalFieldsMap);
         TreeVisitor pruner = new ParquetOperatorPrunerAndTransformer(
-                context.getTupleDescription(), originalFieldsMap, SUPPORTED_OPERATORS);
+                tupleDescription, originalFieldsMap, SUPPORTED_OPERATORS);
 
         try {
             // Parse the filter string into a expression tree Node
@@ -449,7 +452,7 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
         LOG.debug("{}-{}: Using parquet schema from given schema file {}", context.getTransactionId(),
                 context.getSegmentId(), schemaFile);
         try (InputStream inputStream = fs.open(new Path(schemaFile))) {
-            return MessageTypeParser.parseMessageType(IOUtils.toString(inputStream));
+            return MessageTypeParser.parseMessageType(IOUtils.toString(inputStream, StandardCharsets.UTF_8));
         }
     }
 

@@ -26,13 +26,13 @@ public class DummyFragmenter extends BaseFragmenter {
         String[] localHosts = new String[]{localhostname, localhostname};
         fragments.add(new Fragment(context.getDataSource() + ".1" /* source name */,
                 localHosts /* available hosts list */,
-                "fragment1".getBytes()));
+                new DummyFragmentMetadata("fragment1")));
         fragments.add(new Fragment(context.getDataSource() + ".2" /* source name */,
                 localHosts /* available hosts list */,
-                "fragment2".getBytes()));
+                new DummyFragmentMetadata("fragment2")));
         fragments.add(new Fragment(context.getDataSource() + ".3" /* source name */,
                 localHosts /* available hosts list */,
-                "fragment3".getBytes()));
+                new DummyFragmentMetadata("fragment3")));
         return fragments;
     }
 

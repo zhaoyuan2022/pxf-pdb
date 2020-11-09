@@ -22,26 +22,24 @@ package org.greenplum.pxf.service.rest;
 import org.apache.catalina.connector.ClientAbortException;
 import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.api.utilities.Utilities;
-import org.greenplum.pxf.service.HttpRequestParser;
-import org.greenplum.pxf.service.RequestParser;
 import org.greenplum.pxf.service.bridge.Bridge;
 import org.greenplum.pxf.service.bridge.BridgeFactory;
-import org.greenplum.pxf.service.bridge.SimpleBridgeFactory;
+import org.greenplum.pxf.service.security.SecurityService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import javax.servlet.ServletContext;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
+import javax.servlet.http.HttpServletRequest;
 import java.io.DataInputStream;
 import java.io.InputStream;
+import java.security.PrivilegedExceptionAction;
 
 import static org.greenplum.pxf.api.model.RequestContext.RequestType;
-
 
 /*
  * Running this resource manually:
@@ -82,84 +80,91 @@ import static org.greenplum.pxf.api.model.RequestContext.RequestType;
 /**
  * This class handles the subpath /&lt;version&gt;/Writable/ of this REST component
  */
-@Path("/" + Version.PXF_PROTOCOL_VERSION + "/Writable/")
+@RestController
+@RequestMapping("/pxf/" + Version.PXF_PROTOCOL_VERSION + "/Writable/")
 public class WritableResource extends BaseResource {
 
     private final BridgeFactory bridgeFactory;
 
-    /**
-     * Creates an instance of the resource with the default singletons of RequestParser and BridgeFactory.
-     */
-    public WritableResource() {
-        this(HttpRequestParser.getInstance(), SimpleBridgeFactory.getInstance());
-    }
+    private final SecurityService securityService;
 
     /**
      * Creates an instance of the resource with provided instances of RequestParser and BridgeFactory.
      *
-     * @param parser        request parser
      * @param bridgeFactory bridge factory
+     * @
      */
-    WritableResource(RequestParser<HttpHeaders> parser, BridgeFactory bridgeFactory) {
-        super(RequestType.WRITE_BRIDGE, parser);
+    public WritableResource(BridgeFactory bridgeFactory, SecurityService securityService) {
+        super(RequestType.WRITE_BRIDGE);
         this.bridgeFactory = bridgeFactory;
+        this.securityService = securityService;
     }
 
     /**
      * This function is called when http://nn:port/pxf/{version}/Writable/stream?path=...
      * is used.
      *
-     * @param servletContext Servlet context contains attributes required by SecuredHDFS
-     * @param headers        Holds HTTP headers from request
-     * @param inputStream    stream of bytes to write from Gpdb
+     * @param headers Holds HTTP headers from request
+     * @param request the HttpServletRequest
      * @return ok response if the operation finished successfully
      * @throws Exception in case of wrong request parameters, failure to
      *                   initialize bridge or to write data
      */
-    @POST
-    @Path("stream")
-    @Consumes(MediaType.APPLICATION_OCTET_STREAM)
-    public Response stream(@Context final ServletContext servletContext,
-                           @Context HttpHeaders headers,
-                           InputStream inputStream) throws Exception {
+    @PostMapping(value = "stream", consumes = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+    public ResponseEntity<String> stream(@RequestHeader MultiValueMap<String, String> headers,
+                                         HttpServletRequest request) throws Exception {
 
         RequestContext context = parseRequest(headers);
-        Bridge bridge = bridgeFactory.getWriteBridge(context);
-        String path = context.getDataSource();
+        Bridge bridge = securityService.doAs(context, false,
+                () -> bridgeFactory.getBridge(context));
+        InputStream inputStream = request.getInputStream();
 
-        // Open the output file
-        bridge.beginIteration();
-        long totalWritten = 0;
-        Exception ex = null;
+        PrivilegedExceptionAction<Long> action = () -> {
+            // Open the output file
+            bridge.beginIteration();
+            long totalWritten = 0;
+            Exception ex = null;
 
-        // dataStream will close automatically in the end of the try.
-        // inputStream is closed by dataStream.close().
-        try (DataInputStream dataStream = new DataInputStream(inputStream)) {
-            while (bridge.setNext(dataStream)) {
-                ++totalWritten;
-            }
-        } catch (ClientAbortException cae) {
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Remote connection closed by GPDB", cae);
-            } else {
-                LOG.error("Remote connection closed by GPDB (Enable debug for stacktrace)");
-            }
-        } catch (Exception e) {
-            LOG.error("Exception: totalWritten so far " + totalWritten + " to " + path, e);
-            ex = e;
-            throw ex;
-        } finally {
-            try {
-                bridge.endIteration();
+            // dataStream will close automatically in the end of the try.
+            // inputStream is closed by dataStream.close().
+            try (DataInputStream dataStream = new DataInputStream(inputStream)) {
+                while (bridge.setNext(dataStream)) {
+                    ++totalWritten;
+                }
+            } catch (ClientAbortException cae) {
+                // Occurs whenever client (GPDB) decides to end the connection
+                if (LOG.isDebugEnabled()) {
+                    // Stacktrace in debug
+                    LOG.warn(String.format("Remote connection closed by GPDB (segment %s)", context.getSegmentId()), cae);
+                } else {
+                    LOG.warn("Remote connection closed by GPDB (segment {}) (Enable debug for stacktrace)", context.getSegmentId());
+                }
+                ex = cae;
+                // Re-throw the exception so Spring MVC is aware that an IO error has occurred
+                throw cae;
             } catch (Exception e) {
-                throw (ex == null) ? e : ex;
+                LOG.error(String.format("Exception: totalWritten so far %d to %s", totalWritten, context.getDataSource()), e);
+                ex = e;
+                throw ex;
+            } finally {
+                try {
+                    bridge.endIteration();
+                } catch (Exception e) {
+                    ex = (ex == null) ? e : ex;
+                }
             }
-        }
 
-        String censuredPath = Utilities.maskNonPrintables(path);
-        String returnMsg = "wrote " + totalWritten + " bulks to " + censuredPath;
+            // Report any errors we might have encountered
+            if (ex != null) throw ex;
+
+            return totalWritten;
+        };
+
+        Long totalWritten = securityService.doAs(context, true, action);
+        String censuredPath = Utilities.maskNonPrintables(context.getDataSource());
+        String returnMsg = String.format("wrote %d bulks to %s", totalWritten, censuredPath);
         LOG.debug(returnMsg);
 
-        return Response.ok(returnMsg).build();
+        return new ResponseEntity<>(returnMsg, HttpStatus.OK);
     }
 }

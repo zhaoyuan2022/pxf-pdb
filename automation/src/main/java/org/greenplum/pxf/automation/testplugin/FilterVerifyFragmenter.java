@@ -6,7 +6,6 @@ import org.greenplum.pxf.api.model.Fragment;
 
 import java.util.List;
 
-
 /**
  * Test class for regression tests.
  * The only thing this class does is to take received filter string from GPDB (FILTER).
@@ -35,10 +34,8 @@ public class FilterVerifyFragmenter extends BaseFragmenter {
         String[] hosts = {"localhost", "localhost", "localhost"};
 
         // Set filter value as returned user data.
-        Fragment fragment = new Fragment("dummy_file_path",
-                hosts,
-                "".getBytes(),
-                filter.getBytes());
+        Fragment fragment = new Fragment("dummy_file_path", hosts,
+                new FilterVerifyFragmentMetadata(filter));
         fragments.add(fragment);
 
         return fragments;

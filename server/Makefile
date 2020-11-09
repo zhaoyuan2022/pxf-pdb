@@ -21,11 +21,6 @@ include ../common.mk
 
 default: stage-notest
 
-TOMCAT_VERSION="7.0.105"
-TOMCAT_DIR="tomcat/build"
-TOMCAT_TAR="apache-tomcat-${TOMCAT_VERSION}.tar.gz"
-TOMCAT_URL="http://archive.apache.org/dist/tomcat/tomcat-7/v${TOMCAT_VERSION}/bin/${TOMCAT_TAR}"
-
 PXF_ROOT_DIR := $(shell cd .. && pwd)
 PXF_VERSION ?= $(shell cat $(PXF_ROOT_DIR)/version)
 
@@ -36,8 +31,8 @@ help:
 	@echo	"  - clean - cleans the workspace of all produced artifacts"
 	@echo	"  - compile - compiles all PXF modules and builds their JAR files"
 	@echo	"  - test - runs unit tests for all PXF modules"
-	@echo	"  - install - setup PXF along with tomcat in the configured deployPath"
-	@echo	"  - stage - build PXF server and stage resulting artifacts along with tomcat for packaging"
+	@echo	"  - install - setup PXF in the configured deployPath"
+	@echo	"  - stage - build PXF server and stage resulting artifacts for packaging"
 	@echo	"  - doc - creates aggregate javadoc under docs"
 
 all:
@@ -65,12 +60,26 @@ test unittest:
 	./gradlew -Pversion=$(PXF_VERSION) ${GRADLEW_TEST_PARAMS}
 
 .PHONY: stage
-stage: tomcat test
-	./gradlew -Pversion=$(PXF_VERSION) stage
+stage:
+	./gradlew -Pversion=$(PXF_VERSION) test stage
+	install -m 744 -d "build/stage/pxf/lib"
+	install -m 744 -d "build/stage/pxf/lib/native"
+	install -m 744 -d "build/stage/pxf/servers"
+	install -m 744 -d "build/stage/pxf/servers/default"
+	install -m 700 -d "build/stage/pxf/logs"
+	install -m 700 -d "build/stage/pxf/run"
+	install -m 700 -d "build/stage/pxf/keytabs"
 
 .PHONY: stage-notest
-stage-notest: tomcat
+stage-notest:
 	./gradlew -Pversion=$(PXF_VERSION) stage -x test
+	install -m 744 -d "build/stage/pxf/lib"
+	install -m 744 -d "build/stage/pxf/lib/native"
+	install -m 744 -d "build/stage/pxf/servers"
+	install -m 744 -d "build/stage/pxf/servers/default"
+	install -m 700 -d "build/stage/pxf/logs"
+	install -m 700 -d "build/stage/pxf/run"
+	install -m 700 -d "build/stage/pxf/keytabs"
 
 clean:
 	./gradlew clean
@@ -81,38 +90,21 @@ distclean maintainer-clean: clean
 doc:
 	./gradlew -Pversion=$(PXF_VERSION) aggregateJavadoc
 
-.PHONY: tomcat
-tomcat:
-	@if [ -f "${TOMCAT_DIR}/${TOMCAT_TAR}" ]; then \
-		echo "${TOMCAT_TAR} already exists, nothing to do"; \
-	elif [ -f "${HOME}/.tomcat/${TOMCAT_TAR}" ]; then \
-		echo "Found Tomcat tarball at: ${HOME}/.tomcat/${TOMCAT_TAR}, creating symlink"; \
-		mkdir -p "${TOMCAT_DIR}"; \
-		ln -s "${HOME}/.tomcat/${TOMCAT_TAR}" "$(shell pwd)/${TOMCAT_DIR}"; \
-	else \
-		echo "Downloading Tomcat from ${TOMCAT_URL}..."; \
-		mkdir -p ${TOMCAT_DIR}; \
-		wget -q ${TOMCAT_URL} -P ${TOMCAT_DIR}; \
-	fi
-	@if [ ! -d "${TOMCAT_DIR}/apache-tomcat" ]; then \
-		mkdir -p ${TOMCAT_DIR}/apache-tomcat; \
-		echo "Extracting Tomcat into ${TOMCAT_DIR}..."; \
-		tar -xzf "${TOMCAT_DIR}/${TOMCAT_TAR}" -C "${TOMCAT_DIR}/apache-tomcat" --strip-components 1; \
-	fi
-	@if [ -d "${TOMCAT_DIR}/apache-tomcat/webapps" ]; then \
-		rm -rf "${TOMCAT_DIR}/apache-tomcat/webapps/ROOT"; \
-		rm -rf "${TOMCAT_DIR}/apache-tomcat/webapps/docs"; \
-		rm -rf "${TOMCAT_DIR}/apache-tomcat/webapps/examples"; \
-		rm -rf "${TOMCAT_DIR}/apache-tomcat/webapps/host-manager"; \
-		rm -rf "${TOMCAT_DIR}/apache-tomcat/webapps/manager"; \
-	fi
-
 .PHONY: install
-install: tomcat
+install: stage
 	@if [ -z "$(PXF_HOME)" ]; then \
 		echo "ERROR: PXF_HOME is not set"; exit 2; \
 	fi
-	./gradlew -Pversion=$(PXF_VERSION) install -DdeployPath="$(PXF_HOME)"
+	mkdir -p "$(PXF_HOME)"
+	cp -R build/stage/pxf/* "$(PXF_HOME)"
+
+.PHONY: install-server
+install-server: stage-notest
+	@if [ -z "$(PXF_HOME)" ]; then \
+		echo "ERROR: PXF_HOME is not set"; exit 2; \
+	fi
+	mkdir -p "$(PXF_HOME)"
+	cp -R build/stage/pxf/* "$(PXF_HOME)"
 
 .PHONY: version
 version:

@@ -21,6 +21,9 @@ package org.greenplum.pxf.service.bridge;
 
 
 import org.greenplum.pxf.api.io.Writable;
+import org.greenplum.pxf.api.model.Accessor;
+import org.greenplum.pxf.api.model.Plugin;
+import org.greenplum.pxf.api.model.Resolver;
 
 import java.io.DataInputStream;
 
@@ -33,8 +36,9 @@ public interface Bridge {
 
     /**
      * Starts the iteration for data access.
+     *
      * @return true if the operation succeeded
-     * @throws Exception
+     * @throws Exception when an error occurs during initialization
      */
     boolean beginIteration() throws Exception;
 

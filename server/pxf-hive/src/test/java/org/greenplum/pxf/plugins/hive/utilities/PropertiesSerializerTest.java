@@ -3,60 +3,47 @@ package org.greenplum.pxf.plugins.hive.utilities;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
-import java.util.Arrays;
 import java.util.Map;
 import java.util.Properties;
+import java.util.stream.Stream;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@RunWith(Parameterized.class)
 public class PropertiesSerializerTest {
 
-    @Parameterized.Parameters
-    public static Iterable<Object[]> data() {
-        return Arrays.asList(new Object[][]{
-                {"org.apache.hadoop.hive.ql.io.avro.AvroContainerInputFormat", "0",
-                        "org.apache.hadoop.hive.ql.io.orc.OrcSerde", "0"},
-                {"org.apache.hadoop.hive.ql.io.orc.OrcInputFormat", "1",
-                        "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe", "1"},
-                {"org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat", "2",
-                        "org.apache.hadoop.hive.serde2.avro.AvroSerDe", "2"},
-                {"org.apache.hadoop.hive.ql.io.RCFileInputFormat", "3",
-                        "org.apache.hadoop.hive.serde2.columnar.ColumnarSerDe", "3"},
-                {"org.apache.hadoop.mapred.SequenceFileInputFormat", "4",
-                        "org.apache.hadoop.hive.serde2.columnar.LazyBinaryColumnarSerDe", "4"},
-                {"org.apache.hadoop.mapred.TextInputFormat", "5",
-                        "org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe", "5"},
-                {"not-in-map", "not-in-map",
-                        "org.apache.hadoop.hive.serde2.OpenCSVSerde", "6"},
-                {"dont-serialize-me", "dont-serialize-me",
-                        "not-in-the-list", "not-in-the-list"}
-        });
+    static Stream<Object[]> inputFormatValues() {
+        return Stream.of(
+                new Object[]{"org.apache.hadoop.hive.ql.io.avro.AvroContainerInputFormat", "0"},
+                new Object[]{"org.apache.hadoop.hive.ql.io.orc.OrcInputFormat", "1"},
+                new Object[]{"org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat", "2"},
+                new Object[]{"org.apache.hadoop.hive.ql.io.RCFileInputFormat", "3"},
+                new Object[]{"org.apache.hadoop.mapred.SequenceFileInputFormat", "4"},
+                new Object[]{"org.apache.hadoop.mapred.TextInputFormat", "5"},
+                new Object[]{"not-in-map", "not-in-map"},
+                new Object[]{"dont-serialize-me", "dont-serialize-me"}
+        );
+    }
+
+    static Stream<Object[]> serializationValues() {
+        return Stream.of(
+                new Object[]{"org.apache.hadoop.hive.ql.io.orc.OrcSerde", "0"},
+                new Object[]{"org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe", "1"},
+                new Object[]{"org.apache.hadoop.hive.serde2.avro.AvroSerDe", "2"},
+                new Object[]{"org.apache.hadoop.hive.serde2.columnar.ColumnarSerDe", "3"},
+                new Object[]{"org.apache.hadoop.hive.serde2.columnar.LazyBinaryColumnarSerDe", "4"},
+                new Object[]{"org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe", "5"},
+                new Object[]{"org.apache.hadoop.hive.serde2.OpenCSVSerde", "6"},
+                new Object[]{"not-in-the-list", "not-in-the-list"});
     }
 
     protected Kryo propertiesKryo;
     protected Kryo kryo;
 
-    public String fileInputFormat;
-    public String expectedFileInputFormat;
-
-    public String serializationLib;
-    public String expectedSerializationLib;
-
-    public PropertiesSerializerTest(String fileInputFormat, String expectedFileInputFormat,
-                                    String serializationLib, String expectedSerializationLib) {
-        this.fileInputFormat = fileInputFormat;
-        this.expectedFileInputFormat = expectedFileInputFormat;
-        this.serializationLib = serializationLib;
-        this.expectedSerializationLib = expectedSerializationLib;
-    }
-
-    @Before
+    @BeforeEach
     public void setup() {
         propertiesKryo = new Kryo();
         propertiesKryo.addDefaultSerializer(Map.class, PropertiesSerializer.class);
@@ -64,8 +51,9 @@ public class PropertiesSerializerTest {
         kryo = new Kryo();
     }
 
-    @Test
-    public void testFileInputFormatSerialization() {
+    @MethodSource("inputFormatValues")
+    @ParameterizedTest
+    public void testFileInputFormatSerialization(String fileInputFormat, String expectedFileInputFormat) {
         Properties properties = new Properties();
         properties.put("file.inputformat", fileInputFormat);
 
@@ -78,8 +66,9 @@ public class PropertiesSerializerTest {
         assertEquals(expectedFileInputFormat, propertiesResult.get("file.inputformat"));
     }
 
-    @Test
-    public void testSerializationLibSerialization() {
+    @MethodSource("serializationValues")
+    @ParameterizedTest
+    public void testSerializationLibSerialization(String serializationLib, String expectedSerializationLib) {
         Properties properties = new Properties();
         properties.put("serialization.lib", serializationLib);
 
@@ -92,8 +81,9 @@ public class PropertiesSerializerTest {
         assertEquals(expectedSerializationLib, propertiesResult.get("serialization.lib"));
     }
 
-    @Test
-    public void testFileInputFormatDeserialization() {
+    @MethodSource("inputFormatValues")
+    @ParameterizedTest
+    public void testFileInputFormatDeserialization(String fileInputFormat, String expectedFileInputFormat) {
         Properties properties = new Properties();
         properties.put("file.inputformat", expectedFileInputFormat);
 
@@ -106,8 +96,9 @@ public class PropertiesSerializerTest {
         assertEquals(fileInputFormat, propertiesResult.get("file.inputformat"));
     }
 
-    @Test
-    public void testSerializationLibDeserialization() {
+    @MethodSource("serializationValues")
+    @ParameterizedTest
+    public void testSerializationLibDeserialization(String serializationLib, String expectedSerializationLib) {
         Properties properties = new Properties();
         properties.put("serialization.lib", expectedSerializationLib);
 

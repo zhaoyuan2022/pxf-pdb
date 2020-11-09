@@ -24,28 +24,25 @@ import org.greenplum.pxf.api.OneRow;
 import org.greenplum.pxf.api.StatsAccessor;
 import org.greenplum.pxf.api.io.Writable;
 import org.greenplum.pxf.api.model.RequestContext;
-import org.greenplum.pxf.api.utilities.AccessorFactory;
-import org.greenplum.pxf.api.utilities.ResolverFactory;
+import org.greenplum.pxf.service.utilities.BasePluginFactory;
 
 import java.util.LinkedList;
 
 /**
  * Bridge class optimized for aggregate queries.
- *
  */
 public class AggBridge extends ReadBridge implements Bridge {
 
     /* Avoid resolving rows with the same key twice */
     private LRUMap outputCache;
 
-    public AggBridge(RequestContext context) {
-        this(context, AccessorFactory.getInstance(), ResolverFactory.getInstance());
+    public AggBridge(BasePluginFactory pluginFactory, RequestContext context) {
+        super(pluginFactory, context);
     }
 
-    AggBridge(RequestContext context, AccessorFactory accessorFactory, ResolverFactory resolverFactory) {
-        super(context, accessorFactory, resolverFactory);
-    }
-
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean beginIteration() throws Exception {
         /* Initialize LRU cache with 100 items*/
@@ -55,6 +52,9 @@ public class AggBridge extends ReadBridge implements Bridge {
         return openForReadStatus;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     @SuppressWarnings("unchecked")
     public Writable getNext() throws Exception {
@@ -84,7 +84,7 @@ public class AggBridge extends ReadBridge implements Bridge {
                 }
             }
         } catch (Exception ex) {
-            LOG.error("Error occurred when reading next object from aggregate bridge: ", ex.getMessage());
+            LOG.error("Error occurred when reading next object from aggregate bridge: {}", ex.getMessage());
             throw ex;
         }
         return output;

@@ -22,44 +22,52 @@ package org.greenplum.pxf.plugins.hive;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Output;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.ql.io.sarg.PredicateLeaf;
 import org.apache.hadoop.hive.ql.io.sarg.SearchArgument;
 import org.apache.hadoop.hive.ql.io.sarg.SearchArgumentFactory;
 import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.api.utilities.ColumnDescriptor;
-import org.greenplum.pxf.plugins.hdfs.utilities.HdfsUtilities;
 import org.greenplum.pxf.plugins.hive.utilities.HiveUtilities;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.Properties;
 
 import static org.apache.hadoop.hive.ql.io.sarg.ConvertAstToSearchArg.SARG_PUSHDOWN;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public class HiveORCAccessorTest {
+class HiveORCAccessorTest {
 
     private RequestContext context;
     private HiveORCAccessor accessor;
 
-    @Before
-    public void setup() throws Exception {
+    @BeforeEach
+    public void setup() {
+        HiveUtilities hiveUtilities = new HiveUtilities();
+
         Properties properties = new Properties();
         properties.put("columns", "");
+
+        HiveFragmentMetadata metadata = new HiveFragmentMetadata(0, 0, hiveUtilities.toKryo(properties));
+
+        Configuration configuration = new Configuration();
+        configuration.set("pxf.fs.basePath", "/");
 
         context = new RequestContext();
         context.setConfig("default");
         context.setUser("test-user");
         context.setDataSource("foo");
-        context.setProfileScheme("localfile");
-        context.setFragmentMetadata(HdfsUtilities.prepareFragmentMetadata(0, 0, new String[]{"localhost"}));
-        context.setFragmentUserData(HiveUtilities.toKryo(properties));
+        context.setFragmentMetadata(metadata);
         context.getTupleDescription().add(new ColumnDescriptor("col1", 25, 0, "TEXT", null));
         context.getTupleDescription().add(new ColumnDescriptor("FOO", 25, 1, "TEXT", null));
         context.setAccessor(HiveORCAccessor.class.getName());
+        context.setConfiguration(configuration);
 
-        accessor = new HiveORCAccessor();
-        accessor.initialize(context);
+        accessor = new HiveORCAccessor(hiveUtilities);
+        accessor.setRequestContext(context);
+        accessor.afterPropertiesSet();
     }
 
     @Test
@@ -115,9 +123,9 @@ public class HiveORCAccessorTest {
         assertEquals(expected, accessor.getJobConf().get(SARG_PUSHDOWN));
     }
 
-    @Test(expected = IllegalStateException.class)
+    @Test
     public void emitAggObjectCountStatsNotInitialized() {
-        accessor.emitAggObject();
+        assertThrows(IllegalStateException.class, accessor::emitAggObject);
     }
 
     private String toKryo(SearchArgument sarg) {

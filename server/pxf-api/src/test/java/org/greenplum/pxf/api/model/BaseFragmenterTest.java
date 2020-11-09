@@ -1,25 +1,20 @@
 package org.greenplum.pxf.api.model;
 
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class BaseFragmenterTest {
-    @Rule
-    public ExpectedException expectedException = ExpectedException.none();
 
     @Test
-    public void testGetFragmentStatsIsUnsupported() throws Exception {
-        expectedException.expect(UnsupportedOperationException.class);
-        expectedException.expectMessage("Operation getFragmentStats is not supported");
-
-        new BaseFragmenter().getFragmentStats();
+    public void testGetFragmentStatsIsUnsupported() {
+        Exception e = assertThrows(UnsupportedOperationException.class,
+                () -> new BaseFragmenter().getFragmentStats());
+        assertEquals("Operation getFragmentStats is not supported", e.getMessage());
     }
 
     @Test
@@ -28,10 +23,4 @@ public class BaseFragmenterTest {
         assertNotNull(fragments);
         assertEquals(0, fragments.size());
     }
-
-    @Test
-    public void testBaseFragmenterIsNotInitialized() {
-        assertFalse(new BaseFragmenter().isInitialized());
-    }
-
 }

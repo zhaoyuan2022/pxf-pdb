@@ -19,12 +19,11 @@
 
 rootProject.name = 'pxf'
 
-include 'pxf'
-include 'pxf-api'
-include 'pxf-hbase'
-include 'pxf-hdfs'
-include 'pxf-hive'
-include 'pxf-jdbc'
-include 'pxf-json'
-include 'pxf-service'
-include 'pxf-s3'
+include 'pxf-service',
+        'pxf-api',
+        'pxf-hbase',
+        'pxf-hdfs',
+        'pxf-hive',
+        'pxf-jdbc',
+        'pxf-json',
+        'pxf-s3'

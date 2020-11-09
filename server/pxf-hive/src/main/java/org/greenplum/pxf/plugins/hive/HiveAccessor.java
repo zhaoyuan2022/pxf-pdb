@@ -43,9 +43,9 @@ import org.greenplum.pxf.api.filter.SupportedDataTypePruner;
 import org.greenplum.pxf.api.filter.SupportedOperatorPruner;
 import org.greenplum.pxf.api.filter.ToStringTreeVisitor;
 import org.greenplum.pxf.api.filter.TreeTraverser;
-import org.greenplum.pxf.api.io.DataType;
-import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.api.utilities.ColumnDescriptor;
+import org.greenplum.pxf.api.io.DataType;
+import org.greenplum.pxf.api.utilities.SpringContext;
 import org.greenplum.pxf.plugins.hdfs.HdfsSplittableDataAccessor;
 import org.greenplum.pxf.plugins.hive.utilities.HiveUtilities;
 import org.slf4j.Logger;
@@ -96,6 +96,7 @@ public class HiveAccessor extends HdfsSplittableDataAccessor {
 
     private List<HivePartition> partitions;
     private int skipHeaderCount;
+    protected HiveUtilities hiveUtilities;
     protected List<Integer> hiveIndexes;
     private String hiveColumnsString;
     private String hiveColumnTypesString;
@@ -183,16 +184,18 @@ public class HiveAccessor extends HdfsSplittableDataAccessor {
          * calling the base constructor, otherwise it would have been:
          * super(input, createInputFormat(input))
          */
-        this(null);
+        this(null, SpringContext.getBean(HiveUtilities.class));
     }
 
     /**
-     * Creates an instance of HiveAccessor using specified input format
+     * Creates an instance of HiveAccessor using specified input format and hive utilities
      *
      * @param inputFormat input format
+     * @param hiveUtilities the hive utilities
      */
-    HiveAccessor(InputFormat<?, ?> inputFormat) {
+    HiveAccessor(InputFormat<?, ?> inputFormat, HiveUtilities hiveUtilities) {
         super(inputFormat);
+        this.hiveUtilities = hiveUtilities;
     }
 
     /**
@@ -200,13 +203,11 @@ public class HiveAccessor extends HdfsSplittableDataAccessor {
      * {@link org.apache.hadoop.mapred.InputFormat}) and the Hive partition
      * fields
      *
-     * @param context request context
      * @throws RuntimeException if failed to create input format
      */
     @Override
-    public void initialize(RequestContext context) {
-
-        super.initialize(context);
+    public void afterPropertiesSet() {
+        super.afterPropertiesSet();
 
         // determine if predicate pushdown is allowed by configuration
         isPredicatePushdownAllowed = configuration.get(PXF_PPD_HIVE, "true").equalsIgnoreCase("true");
@@ -230,10 +231,11 @@ public class HiveAccessor extends HdfsSplittableDataAccessor {
 
         Properties properties;
         try {
-            properties = getSerdeProperties(context.getFragmentUserData());
+            HiveFragmentMetadata metadata = context.getFragmentMetadata();
+            properties = getSerdeProperties(metadata.getKryoProperties());
             if (inputFormat == null) {
                 String inputFormatClassName = properties.getProperty(FILE_INPUT_FORMAT);
-                inputFormat = HiveDataFragmenter.makeInputFormat(inputFormatClassName, jobConf);
+                this.inputFormat = hiveUtilities.makeInputFormat(inputFormatClassName, jobConf);
             }
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize HiveAccessor", e);
@@ -632,7 +634,7 @@ public class HiveAccessor extends HdfsSplittableDataAccessor {
                 searchArgumentBuilder);
 
         String kryoString = Base64.encodeBase64String(
-                HiveUtilities.toKryo(searchArgumentBuilder.getFilterBuilder().build())
+                hiveUtilities.toKryo(searchArgumentBuilder.getFilterBuilder().build())
         );
         jobConf.set(ConvertAstToSearchArg.SARG_PUSHDOWN, kryoString);
         LOG.debug("Added SARG={}", kryoString);
@@ -658,6 +660,6 @@ public class HiveAccessor extends HdfsSplittableDataAccessor {
     protected Properties getSerdeProperties(byte[] userData) {
         if (userData == null)
             throw new IllegalArgumentException("propsString is mandatory to initialize serde.");
-        return HiveUtilities.getKryo().readObject(new Input(userData), Properties.class);
+        return hiveUtilities.getKryo().readObject(new Input(userData), Properties.class);
     }
 }

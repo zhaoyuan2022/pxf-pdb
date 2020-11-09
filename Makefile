@@ -39,6 +39,9 @@ install:
 	make -C cli/go/src/pxf-cli install
 	make -C server install
 
+install-server:
+	make -C server install-server
+
 stage:
 	rm -rf build/stage
 	make -C external-table stage
@@ -112,8 +115,8 @@ deb:
 	cp -a server/build/stage/pxf/* build/debbuild/usr/local/pxf-gp$${GP_MAJOR_VERSION} ;\
 	echo $$(git rev-parse --verify HEAD) > build/debbuild/usr/local/pxf-gp$${GP_MAJOR_VERSION}/commit.sha ;\
 	mkdir build/debbuild/DEBIAN ;\
-	sed -e "s/%VERSION%/$${PXF_MAIN_VERSION}-$${PXF_RELEASE}/" -e "s/%MAINTAINER%/${VENDOR}/" package/control > build/debbuild/DEBIAN/control ;\
-	cp -a package/prerm build/debbuild/DEBIAN/prerm ;\
+	cp -a package/DEBIAN/* build/debbuild/DEBIAN/ ;\
+	sed -i -e "s/%VERSION%/$${PXF_MAIN_VERSION}-$${PXF_RELEASE}/" -e "s/%MAINTAINER%/${VENDOR}/" build/debbuild/DEBIAN/control ;\
 	dpkg-deb --build build/debbuild ;\
 	mv build/debbuild.deb build/pxf-gp$${GP_MAJOR_VERSION}-$${PXF_MAIN_VERSION}-$${PXF_RELEASE}-ubuntu18.04-amd64.deb
 
@@ -140,6 +143,7 @@ help:
 	@echo	'  - clean - clean up external-table, CLI and server binaries'
 	@echo	'  - test - runs tests for PXF Go CLI and server'
 	@echo	'  - install - install PXF external table extension, CLI and server'
+	@echo	'  - install-server - install PXF server without running tests'
 	@echo	'  - tar - bundle PXF external table extension, CLI, server and tomcat into a single tarball'
 	@echo	'  - rpm - create PXF RPM package'
 	@echo	'  - rpm-tar - bundle PXF RPM package along with helper scripts into a single tarball'

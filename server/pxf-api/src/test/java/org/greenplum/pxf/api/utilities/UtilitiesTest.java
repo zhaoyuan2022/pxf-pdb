@@ -19,7 +19,6 @@ package org.greenplum.pxf.api.utilities;
  * under the License.
  */
 
-
 import org.apache.hadoop.conf.Configuration;
 import org.greenplum.pxf.api.OneField;
 import org.greenplum.pxf.api.OneRow;
@@ -28,59 +27,57 @@ import org.greenplum.pxf.api.StatsAccessor;
 import org.greenplum.pxf.api.model.Accessor;
 import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.api.model.Resolver;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-import java.io.ByteArrayOutputStream;
-import java.io.ObjectOutputStream;
 import java.util.List;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-
 public class UtilitiesTest {
 
-    private String PROPERTY_KEY_FRAGMENTER_CACHE = "pxf.service.fragmenter.cache.enabled";
-
-    class StatsAccessorImpl implements StatsAccessor {
+    static class StatsAccessorImpl implements StatsAccessor {
 
         @Override
-        public boolean openForRead() throws Exception {
+        public void afterPropertiesSet() {
+        }
+
+        @Override
+        public boolean openForRead() {
             return false;
         }
 
         @Override
-        public OneRow readNextObject() throws Exception {
+        public OneRow readNextObject() {
             return null;
         }
 
         @Override
-        public void closeForRead() throws Exception {
+        public void closeForRead() {
         }
 
         @Override
-        public boolean openForWrite() throws Exception {
+        public boolean openForWrite() {
             return false;
         }
 
         @Override
-        public boolean writeNextObject(OneRow onerow) throws Exception {
+        public boolean writeNextObject(OneRow onerow) {
             return false;
         }
 
         @Override
-        public void closeForWrite() throws Exception {
+        public void closeForWrite() {
 
         }
 
         @Override
-        public void retrieveStats() throws Exception {
+        public void retrieveStats() {
         }
 
         @Override
@@ -89,46 +86,50 @@ public class UtilitiesTest {
         }
 
         @Override
-        public void initialize(RequestContext requestContext) {
+        public void setRequestContext(RequestContext context) {
         }
     }
 
-    class NonStatsAccessorImpl implements Accessor {
+    static class NonStatsAccessorImpl implements Accessor {
 
         @Override
-        public boolean openForRead() throws Exception {
+        public void afterPropertiesSet() {
+        }
+
+        @Override
+        public boolean openForRead() {
             return false;
         }
 
         @Override
-        public OneRow readNextObject() throws Exception {
+        public OneRow readNextObject() {
             return null;
         }
 
         @Override
-        public void closeForRead() throws Exception {
+        public void closeForRead() {
         }
 
         @Override
-        public boolean openForWrite() throws Exception {
+        public boolean openForWrite() {
             return false;
         }
 
         @Override
-        public boolean writeNextObject(OneRow onerow) throws Exception {
+        public boolean writeNextObject(OneRow onerow) {
             return false;
         }
 
         @Override
-        public void closeForWrite() throws Exception {
+        public void closeForWrite() {
         }
 
         @Override
-        public void initialize(RequestContext requestContext) {
+        public void setRequestContext(RequestContext context) {
         }
     }
 
-    class ReadVectorizedResolverImpl implements ReadVectorizedResolver {
+    static class ReadVectorizedResolverImpl implements ReadVectorizedResolver {
 
         @Override
         public List<List<OneField>> getFieldsForBatch(OneRow batch) {
@@ -136,20 +137,24 @@ public class UtilitiesTest {
         }
     }
 
-    class ReadResolverImpl implements Resolver {
+    static class ReadResolverImpl implements Resolver {
 
         @Override
-        public List<OneField> getFields(OneRow row) throws Exception {
+        public void afterPropertiesSet() {
+        }
+
+        @Override
+        public List<OneField> getFields(OneRow row) {
             return null;
         }
 
         @Override
-        public OneRow setFields(List<OneField> record) throws Exception {
+        public OneRow setFields(List<OneField> record) {
             return null;
         }
 
         @Override
-        public void initialize(RequestContext requestContext) {
+        public void setRequestContext(RequestContext context) {
         }
     }
 
@@ -200,7 +205,7 @@ public class UtilitiesTest {
     }
 
     @Test
-    public void byteArrayToOctalStringNull() throws Exception {
+    public void byteArrayToOctalStringNull() {
         StringBuilder sb = null;
         byte[] bytes = "nofink".getBytes();
 
@@ -217,7 +222,7 @@ public class UtilitiesTest {
     }
 
     @Test
-    public void byteArrayToOctalString() throws Exception {
+    public void byteArrayToOctalString() {
         String orig = "Have Narisha";
         String octal = "Rash Rash Rash!";
         String expected = orig + "\\\\122\\\\141\\\\163\\\\150\\\\040"
@@ -233,22 +238,20 @@ public class UtilitiesTest {
     }
 
     @Test
-    public void createAnyInstanceOldPackageName() throws Exception {
+    public void createAnyInstanceOldPackageName() {
 
         RequestContext metaData = mock(RequestContext.class);
         String className = "com.pivotal.pxf.Lucy";
 
-        try {
-            Utilities.createAnyInstance(RequestContext.class,
-                    className, metaData);
-            fail("creating an instance should fail because the class doesn't exist in classpath");
-        } catch (Exception e) {
-            assertEquals(e.getClass(), Exception.class);
-            assertEquals(
-                    e.getMessage(),
-                    "Class " + className + " does not appear in classpath. "
-                            + "Plugins provided by PXF must start with \"org.greenplum.pxf\"");
-        }
+        Exception e = assertThrows(Exception.class,
+                () -> Utilities.createAnyInstance(RequestContext.class,
+                        className, metaData),
+                "creating an instance should fail because the class doesn't exist in classpath");
+
+        assertEquals(
+                e.getMessage(),
+                "Class " + className + " does not appear in classpath. "
+                        + "Plugins provided by PXF must start with \"org.greenplum.pxf\"");
     }
 
     @Test
@@ -272,23 +275,6 @@ public class UtilitiesTest {
         input = "http://www.beatles.com/info?query=whoisthebest";
         result = Utilities.maskNonPrintables(input);
         assertEquals("http://www.beatles.com/info.query.whoisthebest", result);
-    }
-
-    @Test
-    public void parseFragmentMetadata() throws Exception {
-        RequestContext metaData = mock(RequestContext.class);
-        ByteArrayOutputStream bas = new ByteArrayOutputStream();
-        ObjectOutputStream os = new ObjectOutputStream(bas);
-        os.writeLong(10);
-        os.writeLong(100);
-        os.writeObject(new String[]{"hostname"});
-        os.close();
-        when(metaData.getFragmentMetadata()).thenReturn(bas.toByteArray());
-        FragmentMetadata fragmentMetadata = Utilities.parseFragmentMetadata(metaData);
-
-        assertEquals(10, fragmentMetadata.getStart());
-        assertEquals(100, fragmentMetadata.getEnd());
-        assertArrayEquals(new String[]{"hostname"}, fragmentMetadata.getHosts());
     }
 
     @Test
@@ -348,36 +334,6 @@ public class UtilitiesTest {
         assertFalse(Utilities.useVectorization(metaData));
     }
     */
-
-    @Test
-    public void testFragmenterCachePropertyAbsent() {
-        System.clearProperty(PROPERTY_KEY_FRAGMENTER_CACHE);
-        assertTrue(Utilities.isFragmenterCacheEnabled());
-    }
-
-    @Test
-    public void testFragmenterCachePropertyEmpty() {
-        System.setProperty(PROPERTY_KEY_FRAGMENTER_CACHE, "");
-        assertTrue(Utilities.isFragmenterCacheEnabled());
-    }
-
-    @Test
-    public void testFragmenterCachePropertyFoo() {
-        System.setProperty(PROPERTY_KEY_FRAGMENTER_CACHE, "foo");
-        assertTrue(Utilities.isFragmenterCacheEnabled());
-    }
-
-    @Test
-    public void testFragmenterCachePropertyFALSE() {
-        System.setProperty(PROPERTY_KEY_FRAGMENTER_CACHE, "FALSE");
-        assertFalse(Utilities.isFragmenterCacheEnabled());
-    }
-
-    @Test
-    public void testFragmenterCachePropertyFalse() {
-        System.setProperty(PROPERTY_KEY_FRAGMENTER_CACHE, "false");
-        assertFalse(Utilities.isFragmenterCacheEnabled());
-    }
 
     @Test
     public void testSecurityIsDisabledOnNewConfiguration() {

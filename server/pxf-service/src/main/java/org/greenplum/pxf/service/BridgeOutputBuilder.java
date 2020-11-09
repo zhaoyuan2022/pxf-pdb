@@ -23,9 +23,9 @@ import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
-import org.greenplum.pxf.api.BadRecordException;
 import org.greenplum.pxf.api.GreenplumDateTime;
 import org.greenplum.pxf.api.OneField;
+import org.greenplum.pxf.api.error.BadRecordException;
 import org.greenplum.pxf.api.io.BufferWritable;
 import org.greenplum.pxf.api.io.DataType;
 import org.greenplum.pxf.api.io.GPDBWritable;
@@ -34,6 +34,7 @@ import org.greenplum.pxf.api.io.Writable;
 import org.greenplum.pxf.api.model.GreenplumCSV;
 import org.greenplum.pxf.api.model.OutputFormat;
 import org.greenplum.pxf.api.model.RequestContext;
+import org.greenplum.pxf.api.utilities.ColumnDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,6 +71,8 @@ public class BridgeOutputBuilder {
     private boolean samplingEnabled;
     private boolean isPartialLine = false;
     private GreenplumCSV greenplumCSV;
+    private final OutputFormat outputFormat;
+    private final List<ColumnDescriptor> columnDescriptors;
 
     /**
      * Constructs a BridgeOutputBuilder.
@@ -79,7 +82,9 @@ public class BridgeOutputBuilder {
      */
     public BridgeOutputBuilder(RequestContext context) {
         this.context = context;
+        columnDescriptors = context.getTupleDescription();
         greenplumCSV = context.getGreenplumCSV();
+        outputFormat = context.getOutputFormat();
         outputList = new LinkedList<>();
         makeErrorRecord();
         samplingEnabled = (this.context.getStatsSampleRatio() > 0);
@@ -99,7 +104,7 @@ public class BridgeOutputBuilder {
     void makeErrorRecord() {
         int[] errSchema = {TEXT.getOID()};
 
-        if (context.getOutputFormat() != OutputFormat.GPDBWritable) {
+        if (outputFormat != OutputFormat.GPDBWritable) {
             return;
         }
 
@@ -115,7 +120,7 @@ public class BridgeOutputBuilder {
      * @return error record
      */
     public Writable getErrorOutput(Exception ex) throws Exception {
-        if (context.getOutputFormat() == OutputFormat.GPDBWritable) {
+        if (outputFormat == OutputFormat.GPDBWritable) {
             errorRecord.setString(0, ex.getMessage());
             return errorRecord;
         } else {
@@ -123,7 +128,7 @@ public class BridgeOutputBuilder {
             // We create a row with an extra column containing the error information
             LOG.error(ex.getMessage(), ex);
             return new Text(
-                    StringUtils.repeat(String.valueOf(greenplumCSV.getDelimiter()), context.getTupleDescription().size()) +
+                    StringUtils.repeat(String.valueOf(greenplumCSV.getDelimiter()), columnDescriptors.size()) +
                             greenplumCSV.toCsvField(ex.getMessage(), true, true, true) +
                             greenplumCSV.getNewline());
         }
@@ -138,7 +143,7 @@ public class BridgeOutputBuilder {
      */
     public LinkedList<Writable> makeOutput(List<OneField> recFields)
             throws BadRecordException {
-        if (output == null && context.getOutputFormat() == OutputFormat.GPDBWritable) {
+        if (output == null && outputFormat == OutputFormat.GPDBWritable) {
             makeGPDBWritableOutput();
         }
 
@@ -153,7 +158,7 @@ public class BridgeOutputBuilder {
         outputList.clear();
         if (recordsBatch != null) {
             for (List<OneField> record : recordsBatch) {
-                if (context.getOutputFormat() == OutputFormat.GPDBWritable) {
+                if (outputFormat == OutputFormat.GPDBWritable) {
                     makeGPDBWritableOutput();
                 }
                 fillOutputRecord(record);
@@ -178,13 +183,13 @@ public class BridgeOutputBuilder {
      * @return empty GPDBWritable object with set columns
      */
     GPDBWritable makeGPDBWritableOutput() {
-        int num_actual_fields = context.getColumns();
+        int num_actual_fields = columnDescriptors.size();
         schema = new int[num_actual_fields];
         colNames = new String[num_actual_fields];
 
         for (int i = 0; i < num_actual_fields; i++) {
-            schema[i] = context.getColumn(i).columnTypeCode();
-            colNames[i] = context.getColumn(i).columnName();
+            schema[i] = columnDescriptors.get(i).columnTypeCode();
+            colNames[i] = columnDescriptors.get(i).columnName();
         }
 
         output = new GPDBWritable(schema);
@@ -199,7 +204,7 @@ public class BridgeOutputBuilder {
      * @throws BadRecordException if building the output record failed
      */
     void fillOutputRecord(List<OneField> recFields) throws BadRecordException {
-        if (context.getOutputFormat() == OutputFormat.GPDBWritable) {
+        if (outputFormat == OutputFormat.GPDBWritable) {
             fillGPDBWritable(recFields);
         } else {
             fillText(recFields);

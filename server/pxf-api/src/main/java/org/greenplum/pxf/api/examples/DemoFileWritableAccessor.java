@@ -30,10 +30,9 @@ import java.nio.file.Path;
 
 /**
  * PXF Accessor for writing text data into a local file.
- *
+ * <p>
  * Demo implementation.
  */
-
 public class DemoFileWritableAccessor extends DemoAccessor {
 
     private OutputStream out;

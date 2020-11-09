@@ -19,6 +19,32 @@ package org.greenplum.pxf.plugins.hive;
  * under the License.
  */
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hive.ql.exec.vector.BytesColumnVector;
+import org.apache.hadoop.hive.ql.exec.vector.ColumnVector;
+import org.apache.hadoop.hive.ql.exec.vector.DecimalColumnVector;
+import org.apache.hadoop.hive.ql.exec.vector.DoubleColumnVector;
+import org.apache.hadoop.hive.ql.exec.vector.LongColumnVector;
+import org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatch;
+import org.apache.hadoop.hive.serde2.io.DateWritable;
+import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector.Category;
+import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector.PrimitiveCategory;
+import org.apache.hadoop.hive.serde2.objectinspector.StructField;
+import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
+import org.apache.hadoop.io.Text;
+import org.greenplum.pxf.api.OneField;
+import org.greenplum.pxf.api.OneRow;
+import org.greenplum.pxf.api.ReadVectorizedResolver;
+import org.greenplum.pxf.api.error.UnsupportedTypeException;
+import org.greenplum.pxf.api.io.DataType;
+
+import java.sql.Date;
+import java.util.ArrayList;
+import java.util.List;
+
 import static org.greenplum.pxf.api.io.DataType.BIGINT;
 import static org.greenplum.pxf.api.io.DataType.BOOLEAN;
 import static org.greenplum.pxf.api.io.DataType.BPCHAR;
@@ -32,35 +58,6 @@ import static org.greenplum.pxf.api.io.DataType.SMALLINT;
 import static org.greenplum.pxf.api.io.DataType.TEXT;
 import static org.greenplum.pxf.api.io.DataType.VARCHAR;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.sql.Date;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hive.ql.exec.vector.BytesColumnVector;
-import org.apache.hadoop.hive.ql.exec.vector.ColumnVector;
-import org.apache.hadoop.hive.ql.exec.vector.DecimalColumnVector;
-import org.apache.hadoop.hive.ql.exec.vector.DoubleColumnVector;
-import org.apache.hadoop.hive.ql.exec.vector.LongColumnVector;
-import org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatch;
-import org.apache.hadoop.hive.ql.io.orc.Reader;
-import org.apache.hadoop.hive.serde2.io.DateWritable;
-import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
-import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector.Category;
-import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
-import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector.PrimitiveCategory;
-import org.apache.hadoop.hive.serde2.objectinspector.StructField;
-import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
-import org.apache.hadoop.io.Text;
-import org.greenplum.pxf.api.OneField;
-import org.greenplum.pxf.api.OneRow;
-import org.greenplum.pxf.api.ReadVectorizedResolver;
-import org.greenplum.pxf.api.UnsupportedTypeException;
-import org.greenplum.pxf.api.io.DataType;
-import org.greenplum.pxf.api.model.RequestContext;
-import org.greenplum.pxf.plugins.hive.utilities.HiveUtilities;
-
 /**
  * Class which implements resolving a batch of records at once
  */
@@ -72,10 +69,10 @@ public class HiveORCVectorizedResolver extends HiveResolver implements ReadVecto
     private StructObjectInspector soi;
 
     @Override
-    public void initialize(RequestContext context) {
-        super.initialize(context);
+    public void afterPropertiesSet() {
+        super.afterPropertiesSet();
         try {
-            soi = (StructObjectInspector) getOrcReader().getObjectInspector();
+            soi = (StructObjectInspector) hiveUtilities.getOrcReader(context).getObjectInspector();
         } catch (Exception e) {
             LOG.error("Failed to create an object inspector.");
             throw new RuntimeException("Failed to initialize HiveORCVectorizedResolver", e);
@@ -92,7 +89,7 @@ public class HiveORCVectorizedResolver extends HiveResolver implements ReadVecto
         resolvedBatch = new ArrayList<>(vectorizedBatch.size);
 
         /* Create empty template row */
-        ArrayList<OneField> templateRow = new ArrayList<OneField>(columnsNumber);
+        ArrayList<OneField> templateRow = new ArrayList<>(columnsNumber);
         ArrayList<OneField> currentRow;
         for (int j = 0; j < context.getColumns(); j++) {
             templateRow.add(null);
@@ -350,12 +347,5 @@ public class HiveORCVectorizedResolver extends HiveResolver implements ReadVecto
                         + getClass().getSimpleName());
             }
         }
-    }
-
-    /**
-     * @return ORC file reader
-     */
-    private Reader getOrcReader() {
-        return HiveUtilities.getOrcReader(configuration, context);
     }
 }

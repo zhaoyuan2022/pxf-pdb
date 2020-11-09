@@ -118,7 +118,7 @@ public class HiveTextTest extends HiveBaseTest {
     public void mismatchedTypes() throws Exception {
 
         // Hive column is SMALLINT, expected GPDB type is SMALLINT(int2), but actual is INTEGER(int4)
-        String unsupported = "org.greenplum.pxf.api.UnsupportedTypeException: Invalid definition for column ";
+        String unsupported = "Invalid definition for column ";
         String[] tableFieldTypes = PXF_HIVE_TYPES_COLS.clone();
         tableFieldTypes[9] = "tn INTEGER";
         createExternalTable(GPDB_HIVE_TYPES_TABLE,

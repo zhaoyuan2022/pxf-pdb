@@ -10,6 +10,10 @@ import java.util.List;
 public class TestResolver implements Resolver {
 
     @Override
+    public void afterPropertiesSet() {
+    }
+
+    @Override
     public List<OneField> getFields(OneRow row) {
         return null;
     }
@@ -20,6 +24,6 @@ public class TestResolver implements Resolver {
     }
 
     @Override
-    public void initialize(RequestContext requestContext) {
+    public void setRequestContext(RequestContext context) {
     }
 }

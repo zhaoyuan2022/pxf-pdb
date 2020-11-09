@@ -1,70 +1,65 @@
 package org.greenplum.pxf.service.bridge;
 
+import org.apache.hadoop.conf.Configuration;
 import org.greenplum.pxf.api.io.Writable;
 import org.greenplum.pxf.api.model.Accessor;
 import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.api.model.Resolver;
-import org.greenplum.pxf.api.utilities.AccessorFactory;
-import org.greenplum.pxf.api.utilities.ResolverFactory;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import org.junit.runner.RunWith;
-import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.greenplum.pxf.service.utilities.BasePluginFactory;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.io.DataInputStream;
 
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@RunWith(MockitoJUnitRunner.class)
 public class BaseBridgeTest {
 
-    @Rule
-    public ExpectedException failure = ExpectedException.none();
+    private RequestContext context;
+    private BasePluginFactory pluginFactory;
 
-    private TestBridge bridge;
+    @BeforeEach
+    public void setup() {
+        context = new RequestContext();
+        context.setConfiguration(new Configuration());
 
-    @Mock private RequestContext mockContext;
+        pluginFactory = new BasePluginFactory();
+    }
 
     @Test
     public void testContextConstructor() {
-        when(mockContext.getAccessor()).thenReturn("org.greenplum.pxf.service.bridge.TestAccessor");
-        when(mockContext.getResolver()).thenReturn("org.greenplum.pxf.service.bridge.TestResolver");
-        bridge = new TestBridge(mockContext);
+        context.setAccessor("org.greenplum.pxf.service.bridge.TestAccessor");
+        context.setResolver("org.greenplum.pxf.service.bridge.TestResolver");
+
+        TestBridge bridge = new TestBridge(pluginFactory, context);
         assertTrue(bridge.getAccessor() instanceof TestAccessor);
         assertTrue(bridge.getResolver() instanceof TestResolver);
     }
 
     @Test
     public void testContextConstructorUnknownAccessor() {
-        failure.expect(RuntimeException.class);
-        failure.expectMessage("Class unknown-accessor is not found");
+        context.setAccessor("org.greenplum.pxf.unknown-accessor");
+        context.setResolver("org.greenplum.pxf.service.bridge.TestResolver");
 
-        when(mockContext.getAccessor()).thenReturn("unknown-accessor");
-        when(mockContext.getResolver()).thenReturn("org.greenplum.pxf.service.bridge.TestResolver");
-        bridge = new TestBridge(mockContext);
+        RuntimeException e = assertThrows(RuntimeException.class, () -> new TestBridge(pluginFactory, context));
+        assertEquals("Class org.greenplum.pxf.unknown-accessor is not found", e.getMessage());
     }
 
     @Test
     public void testContextConstructorUnknownResolver() {
-        failure.expect(RuntimeException.class);
-        failure.expectMessage("Class unknown-resolver is not found");
+        context.setAccessor("org.greenplum.pxf.service.bridge.TestAccessor");
+        context.setResolver("org.greenplum.pxf.unknown-resolver");
 
-        when(mockContext.getAccessor()).thenReturn("org.greenplum.pxf.service.bridge.TestAccessor");
-        when(mockContext.getResolver()).thenReturn("unknown-resolver");
-        bridge = new TestBridge(mockContext);
+        Exception e = assertThrows(RuntimeException.class, () -> new TestBridge(pluginFactory, context));
+        assertEquals("Class org.greenplum.pxf.unknown-resolver is not found", e.getMessage());
     }
 
     static class TestBridge extends BaseBridge {
 
-        public TestBridge(RequestContext context) {
-            super(context);
-        }
-
-        public TestBridge(RequestContext context, AccessorFactory accessorFactory, ResolverFactory resolverFactory) {
-            super(context, accessorFactory, resolverFactory);
+        public TestBridge(BasePluginFactory pluginFactory, RequestContext context) {
+            super(pluginFactory, context);
         }
 
         @Override
@@ -94,5 +89,4 @@ public class BaseBridgeTest {
             return resolver;
         }
     }
-
 }

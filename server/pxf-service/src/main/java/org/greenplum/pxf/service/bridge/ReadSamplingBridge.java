@@ -21,9 +21,8 @@ package org.greenplum.pxf.service.bridge;
 
 import org.greenplum.pxf.api.io.Writable;
 import org.greenplum.pxf.api.model.RequestContext;
-import org.greenplum.pxf.api.utilities.AccessorFactory;
-import org.greenplum.pxf.api.utilities.ResolverFactory;
 import org.greenplum.pxf.service.utilities.AnalyzeUtils;
+import org.greenplum.pxf.service.utilities.BasePluginFactory;
 
 import java.util.BitSet;
 
@@ -45,32 +44,10 @@ public class ReadSamplingBridge extends ReadBridge {
     private int bitSetSize;
     private int curIndex;
 
-    /**
-     * C'tor - set the implementation of the bridge.
-     *
-     * @param context input containing sampling ratio
-     */
-    public ReadSamplingBridge(RequestContext context) {
-        this(context, AccessorFactory.getInstance(), ResolverFactory.getInstance());
-    }
-
-    ReadSamplingBridge(RequestContext context, AccessorFactory accessorFactory, ResolverFactory resolverFactory) {
-        super(context, accessorFactory, resolverFactory);
+    public ReadSamplingBridge(BasePluginFactory pluginFactory, RequestContext context) {
+        super(pluginFactory, context);
         calculateBitSet(context.getStatsSampleRatio());
         this.curIndex = 0;
-    }
-
-    private void calculateBitSet(float sampleRatio) {
-        int sampleSize = (int) (sampleRatio * 10000);
-        bitSetSize = 10000;
-
-        while ((bitSetSize > 100) && (sampleSize % 10 == 0)) {
-            bitSetSize /= 10;
-            sampleSize /= 10;
-        }
-        LOG.debug("bit set size = %d sample size = %d", bitSetSize, sampleSize);
-
-        sampleBitSet = AnalyzeUtils.generateSamplingBitSet(bitSetSize, sampleSize);
     }
 
     /**
@@ -92,6 +69,19 @@ public class ReadSamplingBridge extends ReadBridge {
 
         incIndex();
         return output;
+    }
+
+    private void calculateBitSet(float sampleRatio) {
+        int sampleSize = (int) (sampleRatio * 10000);
+        bitSetSize = 10000;
+
+        while ((bitSetSize > 100) && (sampleSize % 10 == 0)) {
+            bitSetSize /= 10;
+            sampleSize /= 10;
+        }
+        LOG.debug("bit set size = %d sample size = %d", bitSetSize, sampleSize);
+
+        sampleBitSet = AnalyzeUtils.generateSamplingBitSet(bitSetSize, sampleSize);
     }
 
     private void incIndex() {

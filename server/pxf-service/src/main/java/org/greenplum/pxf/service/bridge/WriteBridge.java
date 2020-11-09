@@ -19,15 +19,14 @@ package org.greenplum.pxf.service.bridge;
  * under the License.
  */
 
-
-import org.greenplum.pxf.api.BadRecordException;
 import org.greenplum.pxf.api.OneField;
 import org.greenplum.pxf.api.OneRow;
+import org.greenplum.pxf.api.error.BadRecordException;
 import org.greenplum.pxf.api.io.Writable;
+import org.greenplum.pxf.api.model.OutputFormat;
 import org.greenplum.pxf.api.model.RequestContext;
-import org.greenplum.pxf.api.utilities.AccessorFactory;
-import org.greenplum.pxf.api.utilities.ResolverFactory;
 import org.greenplum.pxf.service.BridgeInputBuilder;
+import org.greenplum.pxf.service.utilities.BasePluginFactory;
 
 import java.io.DataInputStream;
 import java.util.List;
@@ -40,20 +39,17 @@ import java.util.List;
 public class WriteBridge extends BaseBridge {
 
     private final BridgeInputBuilder inputBuilder;
+    private final OutputFormat outputFormat;
 
-    /*
-     * C'tor - set the implementation of the bridge
+    public WriteBridge(BasePluginFactory pluginFactory, RequestContext context) {
+        super(pluginFactory, context);
+        this.inputBuilder = new BridgeInputBuilder();
+        this.outputFormat = context.getOutputFormat();
+    }
+
+    /**
+     * {@inheritDoc}
      */
-    public WriteBridge(RequestContext context) {
-        super(context);
-        inputBuilder = new BridgeInputBuilder(context);
-    }
-
-    WriteBridge(RequestContext context, AccessorFactory accessorFactory, ResolverFactory resolverFactory) {
-        super(context, accessorFactory, resolverFactory);
-        inputBuilder = new BridgeInputBuilder(context);
-    }
-
     @Override
     public boolean beginIteration() throws Exception {
         return accessor.openForWrite();
@@ -66,7 +62,7 @@ public class WriteBridge extends BaseBridge {
     @Override
     public boolean setNext(DataInputStream inputStream) throws Exception {
 
-        List<OneField> record = inputBuilder.makeInput(inputStream);
+        List<OneField> record = inputBuilder.makeInput(outputFormat, inputStream);
         if (record == null) {
             return false;
         }
@@ -93,6 +89,9 @@ public class WriteBridge extends BaseBridge {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Writable getNext() {
         throw new UnsupportedOperationException("getNext is not implemented");

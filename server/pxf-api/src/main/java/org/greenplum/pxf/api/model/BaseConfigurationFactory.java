@@ -1,11 +1,14 @@
 package org.greenplum.pxf.api.model;
 
-import org.apache.commons.lang.ArrayUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeys;
+import org.greenplum.pxf.api.configuration.PxfServerProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.net.URL;
@@ -15,14 +18,16 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
 
+@Component
 public class BaseConfigurationFactory implements ConfigurationFactory {
 
-    private static final BaseConfigurationFactory instance = new BaseConfigurationFactory();
     protected final Logger LOG = LoggerFactory.getLogger(this.getClass());
+
     private final File serversConfigDirectory;
 
-    public BaseConfigurationFactory() {
-        this(SERVERS_CONFIG_DIR);
+    @Autowired
+    public BaseConfigurationFactory(PxfServerProperties pxfServerProperties) {
+        this(new File(String.format("%s%sservers", pxfServerProperties.getBase(), File.separator)));
     }
 
     BaseConfigurationFactory(File serversConfigDirectory) {
@@ -30,14 +35,8 @@ public class BaseConfigurationFactory implements ConfigurationFactory {
     }
 
     /**
-     * Returns the static instance for this factory
-     *
-     * @return the static instance for this factory
+     * {@inheritDoc}
      */
-    public static BaseConfigurationFactory getInstance() {
-        return instance;
-    }
-
     @Override
     public Configuration initConfiguration(String configDirectory, String serverName, String userName, Map<String, String> additionalProperties) {
         // start with built-in Hadoop configuration that loads core-site.xml
@@ -56,6 +55,9 @@ public class BaseConfigurationFactory implements ConfigurationFactory {
         // set synthetic property pxf.session.user so that is can be used in config files for interpolation in other properties
         // for example in JDBC when setting session authorization from a proxy user to the end-user
         configuration.set(PXF_SESSION_USER_PROPERTY, userName);
+
+        // add the server name itself as a configuration property
+        configuration.set(PXF_SERVER_NAME_PROPERTY, serverName);
 
         File[] serverDirectories = null;
         Path p = Paths.get(configDirectory);

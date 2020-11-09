@@ -12,17 +12,18 @@ import org.greenplum.pxf.api.model.BasePlugin;
  * First column - text, second column - int (counter), third column - bool, fourth column - text.
  */
 public class ColumnProjectionVerifyAccessor extends BasePlugin implements Accessor {
-    private String userData;
+
+    private String columnProjection;
     private String userDelimiter;
 
     private int counter = 0;
     private char firstColumn = 'A';
 
     @Override
-    public boolean openForRead() throws Exception {
+    public boolean openForRead() {
 
-        // TODO whitelist the option
-        userData = new String(context.getFragmentUserData());
+        ColumnProjectionVerifyFragmentMetadata metadata = context.getFragmentMetadata();
+        columnProjection = metadata.getProjection();
         userDelimiter = String.valueOf(context.getGreenplumCSV().getDelimiter());
 
         return true;
@@ -80,7 +81,7 @@ public class ColumnProjectionVerifyAccessor extends BasePlugin implements Access
         sb.append(userDelimiter);
 
         if (context.getTupleDescription().get(3).isProjected()) {
-            sb.append(userData);
+            sb.append(columnProjection);
         } else {
             // Specifies the string that represents a NULL value.
             // The default is \N (backslash-N) in TEXT mode, and
@@ -92,21 +93,21 @@ public class ColumnProjectionVerifyAccessor extends BasePlugin implements Access
     }
 
     @Override
-    public void closeForRead() throws Exception {
+    public void closeForRead() {
     }
 
     @Override
-    public boolean openForWrite() throws Exception {
+    public boolean openForWrite() {
         throw new UnsupportedOperationException("openForWrite method is not implemented");
     }
 
     @Override
-    public boolean writeNextObject(OneRow onerow) throws Exception {
+    public boolean writeNextObject(OneRow onerow) {
         throw new UnsupportedOperationException("writeNextObject method is not implemented");
     }
 
     @Override
-    public void closeForWrite() throws Exception {
+    public void closeForWrite() {
         throw new UnsupportedOperationException("closeForWrite method is not implemented");
     }
 }

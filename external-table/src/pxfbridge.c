@@ -21,6 +21,7 @@
 #include "pxfbridge.h"
 #include "cdb/cdbtm.h"
 #include "cdb/cdbvars.h"
+#include "utils/guc.h"
 
 /* helper function declarations */
 static void build_uri_for_read(gphadoop_context *context);
@@ -156,6 +157,12 @@ build_uri_for_read(gphadoop_context *context)
 	resetStringInfo(&context->uri);
 	appendStringInfo(&context->uri, "http://%s/%s/%s/Bridge/",
 					 data->authority, PXF_SERVICE_PREFIX, PXF_VERSION);
+
+	if ((LOG >= log_min_messages) || (LOG >= client_min_messages))
+	{
+		appendStringInfo(&context->uri, "?trace=true");
+	}
+
 	elog(DEBUG2, "pxf: uri %s for read", context->uri.data);
 }
 
@@ -165,8 +172,14 @@ build_uri_for_read(gphadoop_context *context)
 static void
 build_uri_for_write(gphadoop_context *context)
 {
-	appendStringInfo(&context->uri, "http://%s/%s/%s/Writable/stream?path=",
+	appendStringInfo(&context->uri, "http://%s/%s/%s/Writable/stream",
 					 get_authority(), PXF_SERVICE_PREFIX, PXF_VERSION);
+
+	if ((LOG >= log_min_messages) || (LOG >= client_min_messages))
+	{
+		appendStringInfo(&context->uri, "?trace=true");
+	}
+
 	elog(DEBUG2, "pxf: uri %s with file name for write: %s",
 		context->uri.data, context->gphd_uri->data);
 }
@@ -217,6 +230,7 @@ set_current_fragment_headers(gphadoop_context *context)
 	if (frag_data->fragment_idx == fragment_count)
 	{
 		churl_headers_override(context->churl_headers, "X-GP-LAST-FRAGMENT", "true");
+		churl_headers_override(context->churl_headers, "Connection", "close");
 	}
 
 	if (frag_data->user_data)

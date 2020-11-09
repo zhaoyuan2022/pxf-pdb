@@ -21,7 +21,6 @@ package org.greenplum.pxf.plugins.hive;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hive.common.JavaUtils;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.IMetaStoreClient;
 import org.apache.hadoop.hive.metastore.MetaStoreUtils;
@@ -34,21 +33,19 @@ import org.apache.hadoop.mapred.FileSplit;
 import org.apache.hadoop.mapred.InputFormat;
 import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
-import org.apache.hadoop.mapred.TextInputFormat;
+import org.greenplum.pxf.api.error.PxfRuntimeException;
 import org.greenplum.pxf.api.filter.FilterParser;
 import org.greenplum.pxf.api.filter.Node;
 import org.greenplum.pxf.api.filter.Operator;
 import org.greenplum.pxf.api.filter.TreeTraverser;
 import org.greenplum.pxf.api.filter.TreeVisitor;
-import org.greenplum.pxf.api.model.BaseConfigurationFactory;
-import org.greenplum.pxf.api.model.ConfigurationFactory;
 import org.greenplum.pxf.api.model.Fragment;
 import org.greenplum.pxf.api.model.FragmentStats;
 import org.greenplum.pxf.api.model.Metadata;
-import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.api.utilities.ColumnDescriptor;
+import org.greenplum.pxf.api.utilities.SpringContext;
 import org.greenplum.pxf.plugins.hdfs.HdfsDataFragmenter;
-import org.greenplum.pxf.plugins.hdfs.utilities.HdfsUtilities;
+import org.greenplum.pxf.plugins.hive.utilities.HiveUtilities;
 import org.greenplum.pxf.plugins.hive.utilities.ProfileFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -101,6 +98,7 @@ public class HiveDataFragmenter extends HdfsDataFragmenter {
 
     private IMetaStoreClient client;
     private final HiveClientWrapper hiveClientWrapper;
+    protected final HiveUtilities hiveUtilities;
 
     // Data structure to hold hive partition names if exist, to be used by
     // partition filtering
@@ -108,50 +106,31 @@ public class HiveDataFragmenter extends HdfsDataFragmenter {
     private final Map<String, String> partitionKeyTypes = new HashMap<>();
 
     public HiveDataFragmenter() {
-        this(BaseConfigurationFactory.getInstance(), HiveClientWrapper.getInstance());
+        this(SpringContext.getBean(HiveUtilities.class), SpringContext.getBean(HiveClientWrapper.class));
     }
 
-    HiveDataFragmenter(ConfigurationFactory configurationFactory, HiveClientWrapper hiveClientWrapper) {
-        this.configurationFactory = configurationFactory;
+    HiveDataFragmenter(HiveUtilities hiveUtilities, HiveClientWrapper hiveClientWrapper) {
         this.hiveClientWrapper = hiveClientWrapper;
-    }
-
-    @Override
-    public void initialize(RequestContext context) {
-        super.initialize(context);
-        client = hiveClientWrapper.initHiveClient(this.context, configuration);
-    }
-
-    @Override
-    public List<Fragment> getFragments() throws Exception {
-        Metadata.Item tblDesc = hiveClientWrapper.extractTableFromName(context.getDataSource());
-
-        fetchTableMetaData(tblDesc);
-
-        return fragments;
+        this.hiveUtilities = hiveUtilities;
     }
 
     /**
-     * Creates the partition InputFormat.
-     *
-     * @param inputFormatName input format class name
-     * @param jobConf         configuration data for the Hadoop framework
-     * @return a {@link org.apache.hadoop.mapred.InputFormat} derived object
-     * @throws Exception if failed to create input format
+     * {@inheritDoc}
      */
-    public static InputFormat<?, ?> makeInputFormat(String inputFormatName,
-                                                    JobConf jobConf)
-            throws Exception {
-        Class<?> c = Class.forName(inputFormatName, true,
-                JavaUtils.getClassLoader());
-        InputFormat<?, ?> inputFormat = (InputFormat<?, ?>) c.getDeclaredConstructor().newInstance();
+    @Override
+    public void afterPropertiesSet() {
+        super.afterPropertiesSet();
+        client = hiveClientWrapper.initHiveClient(this.context, configuration);
+    }
 
-        if ("org.apache.hadoop.mapred.TextInputFormat".equals(inputFormatName)) {
-            // TextInputFormat needs a special configuration
-            ((TextInputFormat) inputFormat).configure(jobConf);
-        }
-
-        return inputFormat;
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<Fragment> getFragments() throws Exception {
+        Metadata.Item tblDesc = hiveClientWrapper.extractTableFromName(context.getDataSource());
+        fetchTableMetaData(tblDesc);
+        return fragments;
     }
 
     /*
@@ -271,10 +250,10 @@ public class HiveDataFragmenter extends HdfsDataFragmenter {
         for (ColumnDescriptor cd : context.getTupleDescription()) {
             if (!columnAndPartitionNames.contains(cd.columnName()) &&
                     !columnAndPartitionNames.contains(cd.columnName().toLowerCase())) {
-                throw new IllegalArgumentException(
-                        String.format("Column '%s' does not exist in the Hive schema. " +
-                                        "Ensure the column exists and check the column name spelling and case",
-                                cd.columnName()));
+                throw new PxfRuntimeException(
+                        String.format("column '%s' does not exist in the Hive schema", cd.columnName()),
+                        "Ensure the column exists and check the column name spelling and case."
+                );
             }
         }
     }
@@ -314,8 +293,8 @@ public class HiveDataFragmenter extends HdfsDataFragmenter {
     /* Fills a table partition */
     private void fetchMetaData(HiveTablePartition tablePartition, boolean hasComplexTypes)
             throws Exception {
-        InputFormat<?, ?> fformat = makeInputFormat(
-                tablePartition.storageDesc.getInputFormat(), jobConf);
+        JobConf jobConf = getJobConf();
+        InputFormat<?, ?> fformat = hiveUtilities.makeInputFormat(tablePartition.storageDesc.getInputFormat(), jobConf);
         String profile = null;
         String userProfile = context.getProfile();
         if (userProfile != null) {
@@ -342,12 +321,12 @@ public class HiveDataFragmenter extends HdfsDataFragmenter {
         }
 
         for (InputSplit split : splits) {
-            FileSplit fsp = (FileSplit) split;
-            String filepath = fsp.getPath().toString();
+            FileSplit fileSplit = (FileSplit) split;
+            String filepath = fileSplit.getPath().toString();
+            byte[] kryoProperties = hiveClientWrapper.buildFragmentMetadata(fragmenterForProfile, tablePartition);
 
-            byte[] locationInfo = HdfsUtilities.prepareFragmentMetadata(fsp);
-            byte[] userData = hiveClientWrapper.makeUserData(fragmenterForProfile, tablePartition);
-            Fragment fragment = new Fragment(filepath, HOSTS, locationInfo, userData, profile);
+            HiveFragmentMetadata metadata = new HiveFragmentMetadata(fileSplit, kryoProperties);
+            Fragment fragment = new Fragment(filepath, HOSTS, metadata, profile);
             fragments.add(fragment);
         }
     }

@@ -2,7 +2,6 @@ package org.greenplum.pxf.automation.testplugin;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.plugins.hive.HiveInputFormatFragmenter;
 
 public class HiveInputFormatFragmenterWithFilter extends HiveInputFormatFragmenter {
@@ -10,8 +9,8 @@ public class HiveInputFormatFragmenterWithFilter extends HiveInputFormatFragment
     private static final Log LOG = LogFactory.getLog(HiveInputFormatFragmenterWithFilter.class);
 
     @Override
-    public void initialize(RequestContext requestContext) {
-        super.initialize(requestContext);
+    public void afterPropertiesSet() {
+        super.afterPropertiesSet();
         addFilters();  // Set the test hive filter (overwrite gpdb filter)
     }
 
@@ -27,9 +26,9 @@ public class HiveInputFormatFragmenterWithFilter extends HiveInputFormatFragment
         if ((filterStr == null) || filterStr.isEmpty() || "null".equals(filterStr))
             return;
 
-            context.setFilterString(filterStr);
-            LOG.debug("User defined filter: " + context.getFilterString());
+        context.setFilterString(filterStr);
+        LOG.debug("User defined filter: " + context.getFilterString());
 
-            LOG.debug("User defined filter: " + context.hasFilter());
+        LOG.debug("User defined filter: " + context.hasFilter());
     }
 }

@@ -19,54 +19,39 @@ package org.greenplum.pxf.service.rest;
  * under the License.
  */
 
-import org.apache.catalina.connector.ClientAbortException;
-import org.greenplum.pxf.api.io.Writable;
 import org.greenplum.pxf.api.model.RequestContext;
-import org.greenplum.pxf.service.HttpRequestParser;
-import org.greenplum.pxf.service.RequestParser;
 import org.greenplum.pxf.service.bridge.Bridge;
 import org.greenplum.pxf.service.bridge.BridgeFactory;
-import org.greenplum.pxf.service.bridge.SimpleBridgeFactory;
+import org.greenplum.pxf.service.security.SecurityService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
-import javax.servlet.ServletContext;
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.WebApplicationException;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.StreamingOutput;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /*
  * This class handles the subpath /<version>/Bridge/ of this
  * REST component
  */
-@Path("/" + Version.PXF_PROTOCOL_VERSION + "/Bridge/")
+@RestController
+@RequestMapping("/pxf/" + Version.PXF_PROTOCOL_VERSION)
 public class BridgeResource extends BaseResource {
 
-    private BridgeFactory bridgeFactory;
+    private final BridgeFactory bridgeFactory;
 
-    /**
-     * Creates an instance of the resource with the default singletons of RequestParser and BridgeFactory.
-     */
-    public BridgeResource() {
-        this(HttpRequestParser.getInstance(), SimpleBridgeFactory.getInstance());
-    }
+    private final SecurityService securityService;
 
-    /**
-     * Creates an instance of the resource with provided instances of RequestParser and BridgeFactory.
-     *
-     * @param parser        request parser
-     * @param bridgeFactory bridge factory
-     */
-    BridgeResource(RequestParser<HttpHeaders> parser, BridgeFactory bridgeFactory) {
-        super(RequestContext.RequestType.READ_BRIDGE, parser);
+    public BridgeResource(BridgeFactory bridgeFactory, SecurityService securityService) {
+        super(RequestContext.RequestType.READ_BRIDGE);
         this.bridgeFactory = bridgeFactory;
+        this.securityService = securityService;
     }
 
     /**
@@ -75,63 +60,22 @@ public class BridgeResource extends BaseResource {
      * <p>
      * Parameters come via HTTP headers.
      *
-     * @param servletContext Servlet context contains attributes required by SecuredHDFS
-     * @param headers        Holds HTTP headers from request
+     * @param headers Holds HTTP headers from request
      * @return response object containing stream that will output records
      */
-    @GET
-    @Produces(MediaType.APPLICATION_OCTET_STREAM)
-    public Response read(@Context final ServletContext servletContext,
-                         @Context HttpHeaders headers) {
+    @GetMapping(value = "/Bridge", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+    public ResponseEntity<StreamingResponseBody> read(
+            @RequestHeader MultiValueMap<String, String> headers) throws IOException, InterruptedException {
 
         RequestContext context = parseRequest(headers);
-        Bridge bridge = bridgeFactory.getReadBridge(context);
+        Bridge bridge = securityService.doAs(context, false,
+                () -> bridgeFactory.getBridge(context));
 
-        final int fragment = context.getDataFragment();
-        final String dataDir = context.getDataSource();
+        // Create a streaming class which will iterate over the records and put
+        // them on the output stream
+        StreamingResponseBody response =
+                new BridgeResponse(securityService, bridge, context);
 
-        // Creating an internal streaming class which will iterate
-        // the records and put them on the output stream
-        final StreamingOutput streaming = new StreamingOutput() {
-            @Override
-            public void write(final OutputStream out) throws IOException,
-                    WebApplicationException {
-                long recordCount = 0;
-
-                try {
-                    if (!bridge.beginIteration()) {
-                        return;
-                    }
-                    Writable record;
-                    DataOutputStream dos = new DataOutputStream(out);
-
-                    LOG.debug("Starting streaming fragment {} of resource {}", fragment, dataDir);
-                    while ((record = bridge.getNext()) != null) {
-                        record.write(dos);
-                        ++recordCount;
-                    }
-                    LOG.debug("Finished streaming fragment {} of resource {}, {} records.", fragment, dataDir, recordCount);
-                } catch (ClientAbortException e) {
-                    // Occurs whenever client (GPDB) decides to end the connection
-                    if (LOG.isDebugEnabled()) {
-                        // Stacktrace in debug
-                        LOG.debug("Remote connection closed by GPDB", e);
-                    } else {
-                        LOG.error("Remote connection closed by GPDB (Enable debug for stacktrace)");
-                    }
-                } catch (Exception e) {
-                    throw new IOException(e.getMessage(), e);
-                } finally {
-                    LOG.debug("Stopped streaming fragment {} of resource {}, {} records.", fragment, dataDir, recordCount);
-                    try {
-                        bridge.endIteration();
-                    } catch (Exception e) {
-                        // ignore ... any significant errors should already have been handled
-                    }
-                }
-            }
-        };
-
-        return Response.ok(streaming, MediaType.APPLICATION_OCTET_STREAM).build();
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 }

@@ -59,21 +59,13 @@ public class ParquetResolver extends BasePlugin implements Resolver {
 
     private MessageType schema;
     private SimpleGroupFactory groupFactory;
-    private final ObjectMapper mapper = new ObjectMapper();
     private List<ColumnDescriptor> columnDescriptors;
-
-    public ParquetResolver() {
-        super();
-    }
-
-    ParquetResolver(ConfigurationFactory configurationFactory) {
-        this.configurationFactory = configurationFactory;
-    }
+    private ObjectMapper mapper = new ObjectMapper();
 
     @Override
-    public void initialize(RequestContext requestContext) {
-        super.initialize(requestContext);
-        this.columnDescriptors = context.getTupleDescription();
+    public void afterPropertiesSet() {
+        super.afterPropertiesSet();
+        columnDescriptors = context.getTupleDescription();
     }
 
     @Override

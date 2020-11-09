@@ -3,42 +3,39 @@ package org.greenplum.pxf.service.bridge;
 import org.greenplum.pxf.api.ReadVectorizedResolver;
 import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.api.utilities.Utilities;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.greenplum.pxf.service.utilities.BasePluginFactory;
+import org.springframework.stereotype.Component;
 
+@Component
 public class SimpleBridgeFactory implements BridgeFactory {
 
-    private static final Logger LOG = LoggerFactory.getLogger(SimpleBridgeFactory.class);
-    private static final SimpleBridgeFactory instance = new SimpleBridgeFactory();
+    private final BasePluginFactory pluginFactory;
+
+    public SimpleBridgeFactory(BasePluginFactory pluginFactory) {
+        this.pluginFactory = pluginFactory;
+    }
 
     /**
-     * Returns a singleton instance of the factory.
-     *
-     * @return a singleton instance of the factory.
+     * {@inheritDoc}
      */
-    public static BridgeFactory getInstance() {
-        return instance;
-    }
-
     @Override
-    public Bridge getReadBridge(RequestContext context) {
+    public Bridge getBridge(RequestContext context) {
 
         Bridge bridge;
-        if (context.getStatsSampleRatio() > 0) {
-            bridge = new ReadSamplingBridge(context);
+        if (context.getRequestType() == RequestContext.RequestType.WRITE_BRIDGE) {
+            bridge = new WriteBridge(pluginFactory, context);
+        } else if (context.getRequestType() != RequestContext.RequestType.READ_BRIDGE) {
+            throw new UnsupportedOperationException();
+        } else if (context.getStatsSampleRatio() > 0) {
+            bridge = new ReadSamplingBridge(pluginFactory, context);
         } else if (Utilities.aggregateOptimizationsSupported(context)) {
-            bridge = new AggBridge(context);
+            bridge = new AggBridge(pluginFactory, context);
         } else if (useVectorization(context)) {
-            bridge = new ReadVectorizedBridge(context);
+            bridge = new ReadVectorizedBridge(pluginFactory, context);
         } else {
-            bridge = new ReadBridge(context);
+            bridge = new ReadBridge(pluginFactory, context);
         }
         return bridge;
-    }
-
-    @Override
-    public Bridge getWriteBridge(RequestContext context) {
-        return new WriteBridge(context);
     }
 
     /**

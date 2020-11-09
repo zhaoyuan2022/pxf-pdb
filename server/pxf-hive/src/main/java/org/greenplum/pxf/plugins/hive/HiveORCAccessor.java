@@ -25,8 +25,8 @@ import org.greenplum.pxf.api.OneRow;
 import org.greenplum.pxf.api.StatsAccessor;
 import org.greenplum.pxf.api.filter.Operator;
 import org.greenplum.pxf.api.io.DataType;
-import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.api.utilities.EnumAggregationType;
+import org.greenplum.pxf.api.utilities.SpringContext;
 import org.greenplum.pxf.api.utilities.Utilities;
 import org.greenplum.pxf.plugins.hive.utilities.HiveUtilities;
 
@@ -52,19 +52,23 @@ public class HiveORCAccessor extends HiveAccessor implements StatsAccessor {
      * Constructs a HiveORCFileAccessor.
      */
     public HiveORCAccessor() {
-        super(new OrcInputFormat());
+        this(SpringContext.getBean(HiveUtilities.class));
+    }
+
+    public HiveORCAccessor(HiveUtilities hiveUtilities) {
+        super(new OrcInputFormat(), hiveUtilities);
     }
 
     @Override
-    public void initialize(RequestContext requestContext) {
-        super.initialize(requestContext);
+    public void afterPropertiesSet() {
+        super.afterPropertiesSet();
         useStats = Utilities.aggregateOptimizationsSupported(context);
     }
 
     @Override
     public boolean openForRead() throws Exception {
         if (useStats) {
-            orcReader = getOrcReader();
+            orcReader = hiveUtilities.getOrcReader(context);
             if (orcReader == null) {
                 return false;
             }
@@ -133,7 +137,7 @@ public class HiveORCAccessor extends HiveAccessor implements StatsAccessor {
      * @return ORC file reader
      */
     protected Reader getOrcReader() {
-        return HiveUtilities.getOrcReader(configuration, context);
+        return hiveUtilities.getOrcReader(context);
     }
 
 }

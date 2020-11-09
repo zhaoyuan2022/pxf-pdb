@@ -14,11 +14,7 @@ import org.apache.parquet.io.MessageColumnIO;
 import org.apache.parquet.io.RecordReader;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.pig.convert.DecimalUtils;
-import org.apache.parquet.schema.DecimalMetadata;
 import org.apache.parquet.schema.MessageType;
-//noinspection deprecation
-import org.apache.parquet.schema.OriginalType;
-//noinspection deprecation
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 import org.greenplum.pxf.api.OneField;
@@ -27,10 +23,8 @@ import org.greenplum.pxf.api.io.DataType;
 import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.api.utilities.ColumnDescriptor;
 import org.greenplum.pxf.plugins.hdfs.parquet.ParquetTypeConverter;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -46,22 +40,21 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ParquetResolverTest {
 
-    @Rule
-    public ExpectedException thrown = ExpectedException.none();
     private ParquetResolver resolver;
     private RequestContext context;
     private MessageType schema;
     private String localTimestampString;
 
-    @Before
+    @BeforeEach
     public void setup() {
         resolver = new ParquetResolver();
         context = new RequestContext();
@@ -79,27 +72,27 @@ public class ParquetResolverTest {
 
     @Test
     public void testInitialize() {
-        resolver.initialize(context);
+        resolver.setRequestContext(context);
     }
 
     @Test
     public void testGetFields_FailsOnMissingSchema() {
-        thrown.expect(RuntimeException.class);
-        thrown.expectMessage("No schema detected in request context");
-
         context.setMetadata(null);
-        resolver.initialize(context);
-        resolver.getFields(new OneRow());
+        resolver.setRequestContext(context);
+
+        Exception e = assertThrows(RuntimeException.class,
+                () -> resolver.getFields(new OneRow()));
+        assertEquals("No schema detected in request context", e.getMessage());
     }
 
     @Test
-    public void testSetFields_FailsOnMissingSchema() throws IOException {
-        thrown.expect(RuntimeException.class);
-        thrown.expectMessage("No schema detected in request context");
-
+    public void testSetFields_FailsOnMissingSchema() {
         context.setMetadata(null);
-        resolver.initialize(context);
-        resolver.setFields(new ArrayList<>());
+        resolver.setRequestContext(context);
+
+        Exception e = assertThrows(RuntimeException.class,
+                () -> resolver.setFields(new ArrayList<>()));
+        assertEquals("No schema detected in request context", e.getMessage());
     }
 
     @Test
@@ -108,7 +101,8 @@ public class ParquetResolverTest {
         // schema has changed, set metadata again
         context.setMetadata(schema);
         context.setTupleDescription(getColumnDescriptorsFromSchema(schema));
-        resolver.initialize(context);
+        resolver.setRequestContext(context);
+        resolver.afterPropertiesSet();
 
         Instant timestamp = Instant.parse("2013-07-14T04:00:05Z"); // UTC
         ZonedDateTime localTime = timestamp.atZone(ZoneId.systemDefault());
@@ -198,7 +192,8 @@ public class ParquetResolverTest {
         // schema has changed, set metadata again
         context.setMetadata(schema);
         context.setTupleDescription(getColumnDescriptorsFromSchema(schema));
-        resolver.initialize(context);
+        resolver.setRequestContext(context);
+        resolver.afterPropertiesSet();
         List<OneField> fields = new ArrayList<>();
         fields.add(new OneField(DataType.TEXT.getOID(), null));
         fields.add(new OneField(DataType.TEXT.getOID(), null));
@@ -232,7 +227,8 @@ public class ParquetResolverTest {
 
     @Test
     public void testGetFields_Primitive_EmptySchema() throws IOException {
-        resolver.initialize(context);
+        resolver.setRequestContext(context);
+        resolver.afterPropertiesSet();
 
         List<Group> groups = readParquetFile("primitive_types.parquet", 25, schema);
         OneRow row1 = new OneRow(groups.get(0)); // get row 1
@@ -246,7 +242,8 @@ public class ParquetResolverTest {
         // schema has changed, set metadata again
         context.setMetadata(schema);
         context.setTupleDescription(getColumnDescriptorsFromSchema(schema));
-        resolver.initialize(context);
+        resolver.setRequestContext(context);
+        resolver.afterPropertiesSet();
 
         List<Group> groups = readParquetFile("primitive_types.parquet", 25, schema);
         assertEquals(25, groups.size());
@@ -315,7 +312,8 @@ public class ParquetResolverTest {
         // schema has changed, set metadata again
         context.setMetadata(readSchema);
 
-        resolver.initialize(context);
+        resolver.setRequestContext(context);
+        resolver.afterPropertiesSet();
 
         // use readSchema to read only specific columns from parquet file into Group
         List<Group> groups = readParquetFile("primitive_types.parquet", 25, readSchema);
@@ -375,11 +373,12 @@ public class ParquetResolverTest {
     @SuppressWarnings("deprecation")
     public void testGetFields_Primitive_RepeatedString() throws IOException {
         List<Type> columns = new ArrayList<>();
-        columns.add(new PrimitiveType(Type.Repetition.REPEATED, PrimitiveTypeName.BINARY, "myString", OriginalType.UTF8));
+        columns.add(new PrimitiveType(Type.Repetition.REPEATED, PrimitiveTypeName.BINARY, "myString", org.apache.parquet.schema.OriginalType.UTF8));
         schema = new MessageType("TestProtobuf.StringArray", columns);
         context.setMetadata(schema);
         context.setTupleDescription(getColumnDescriptorsFromSchema(schema));
-        resolver.initialize(context);
+        resolver.setRequestContext(context);
+        resolver.afterPropertiesSet();
 
         List<Group> groups = readParquetFile("proto-repeated-string.parquet", 3, schema);
         List<OneField> fields;
@@ -408,7 +407,8 @@ public class ParquetResolverTest {
         // schema has changed, set metadata again
         context.setMetadata(schema);
         context.setTupleDescription(getColumnDescriptorsFromSchema(schema));
-        resolver.initialize(context);
+        resolver.setRequestContext(context);
+        resolver.afterPropertiesSet();
 
         /*
         Corresponding DB column types  are:
@@ -510,7 +510,8 @@ public class ParquetResolverTest {
         schema = new MessageType("TestProtobuf.RepeatedIntMessage", columns);
         context.setMetadata(schema);
         context.setTupleDescription(getColumnDescriptorsFromSchema(schema));
-        resolver.initialize(context);
+        resolver.setRequestContext(context);
+        resolver.afterPropertiesSet();
 
         List<Group> groups = readParquetFile("old-repeated-int.parquet", 1, schema);
         List<OneField> fields = assertRow(groups, 0, 1);
@@ -539,22 +540,22 @@ public class ParquetResolverTest {
     private MessageType getParquetSchemaForPrimitiveTypes(Type.Repetition repetition, boolean readCase) {
         List<Type> fields = new ArrayList<>();
 
-        fields.add(new PrimitiveType(repetition, PrimitiveTypeName.BINARY, "s1", OriginalType.UTF8));
-        fields.add(new PrimitiveType(repetition, PrimitiveTypeName.BINARY, "s2", OriginalType.UTF8));
+        fields.add(new PrimitiveType(repetition, PrimitiveTypeName.BINARY, "s1", org.apache.parquet.schema.OriginalType.UTF8));
+        fields.add(new PrimitiveType(repetition, PrimitiveTypeName.BINARY, "s2", org.apache.parquet.schema.OriginalType.UTF8));
         fields.add(new PrimitiveType(repetition, PrimitiveTypeName.INT32, "n1", null));
         fields.add(new PrimitiveType(repetition, PrimitiveTypeName.DOUBLE, "d1", null));
-        fields.add(new PrimitiveType(repetition, PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, 16, "dc1", OriginalType.DECIMAL, new DecimalMetadata(38, 18), null));
+        fields.add(new PrimitiveType(repetition, PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, 16, "dc1", org.apache.parquet.schema.OriginalType.DECIMAL, new org.apache.parquet.schema.DecimalMetadata(38, 18), null));
         fields.add(new PrimitiveType(repetition, PrimitiveTypeName.INT96, "tm", null));
         fields.add(new PrimitiveType(repetition, PrimitiveTypeName.FLOAT, "f", null));
         fields.add(new PrimitiveType(repetition, PrimitiveTypeName.INT64, "bg", null));
         fields.add(new PrimitiveType(repetition, PrimitiveTypeName.BOOLEAN, "b", null));
 
         // GPDB only has int16 and not int8 type, so for write tiny numbers int8 are still treated as shorts in16
-        OriginalType tinyType = readCase ? OriginalType.INT_8 : OriginalType.INT_16;
+        org.apache.parquet.schema.OriginalType tinyType = readCase ? org.apache.parquet.schema.OriginalType.INT_8 : org.apache.parquet.schema.OriginalType.INT_16;
         fields.add(new PrimitiveType(repetition, PrimitiveTypeName.INT32, "tn", tinyType));
-        fields.add(new PrimitiveType(repetition, PrimitiveTypeName.INT32, "sml", OriginalType.INT_16));
-        fields.add(new PrimitiveType(repetition, PrimitiveTypeName.BINARY, "vc1", OriginalType.UTF8));
-        fields.add(new PrimitiveType(repetition, PrimitiveTypeName.BINARY, "c1", OriginalType.UTF8));
+        fields.add(new PrimitiveType(repetition, PrimitiveTypeName.INT32, "sml", org.apache.parquet.schema.OriginalType.INT_16));
+        fields.add(new PrimitiveType(repetition, PrimitiveTypeName.BINARY, "vc1", org.apache.parquet.schema.OriginalType.UTF8));
+        fields.add(new PrimitiveType(repetition, PrimitiveTypeName.BINARY, "c1", org.apache.parquet.schema.OriginalType.UTF8));
         fields.add(new PrimitiveType(repetition, PrimitiveTypeName.BINARY, "bin", null));
 
         fields.add(new PrimitiveType(repetition, PrimitiveTypeName.INT96, "tmtz", null));
@@ -608,8 +609,8 @@ public class ParquetResolverTest {
     @SuppressWarnings("deprecation")
     private void testSetFields_RightTrimCharHelper(String varchar, String inputChar, String expectedChar) throws IOException {
         List<Type> typeFields = new ArrayList<>();
-        typeFields.add(new PrimitiveType(Type.Repetition.OPTIONAL, PrimitiveTypeName.BINARY, "vc1", OriginalType.UTF8));
-        typeFields.add(new PrimitiveType(Type.Repetition.OPTIONAL, PrimitiveTypeName.BINARY, "c1", OriginalType.UTF8));
+        typeFields.add(new PrimitiveType(Type.Repetition.OPTIONAL, PrimitiveTypeName.BINARY, "vc1", org.apache.parquet.schema.OriginalType.UTF8));
+        typeFields.add(new PrimitiveType(Type.Repetition.OPTIONAL, PrimitiveTypeName.BINARY, "c1", org.apache.parquet.schema.OriginalType.UTF8));
         schema = new MessageType("hive_schema", typeFields);
         context.setMetadata(schema);
 
@@ -618,7 +619,8 @@ public class ParquetResolverTest {
         columnDescriptors.add(new ColumnDescriptor("c1", DataType.BPCHAR.getOID(), 1, "char", null));
         context.setTupleDescription(columnDescriptors);
 
-        resolver.initialize(context);
+        resolver.setRequestContext(context);
+        resolver.afterPropertiesSet();
 
         List<OneField> fields = new ArrayList<>();
         fields.add(new OneField(DataType.TEXT.getOID(), varchar));

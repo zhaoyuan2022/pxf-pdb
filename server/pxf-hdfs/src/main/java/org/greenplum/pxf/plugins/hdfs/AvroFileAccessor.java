@@ -37,7 +37,7 @@ import org.apache.hadoop.mapred.FileSplit;
 import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.greenplum.pxf.api.OneRow;
-import org.greenplum.pxf.api.model.RequestContext;
+import org.greenplum.pxf.api.utilities.SpringContext;
 import org.greenplum.pxf.plugins.hdfs.avro.AvroUtilities;
 
 import java.io.IOException;
@@ -65,8 +65,12 @@ public class AvroFileAccessor extends HdfsSplittableDataAccessor {
      * Constructs a new instance of the AvroFileAccessor
      */
     public AvroFileAccessor() {
+        this(SpringContext.getBean(AvroUtilities.class));
+    }
+
+    AvroFileAccessor(AvroUtilities avroUtilities) {
         super(new AvroInputFormat<GenericRecord>());
-        avroUtilities = AvroUtilities.getInstance();
+        this.avroUtilities = avroUtilities;
     }
 
     /*
@@ -86,10 +90,9 @@ public class AvroFileAccessor extends HdfsSplittableDataAccessor {
      * avro file or by generating it on the fly from the Greenplum schema.
      */
     @Override
-    public void initialize(RequestContext requestContext) {
-        super.initialize(requestContext);
-
-        schema = avroUtilities.obtainSchema(context, configuration, hcfsType);
+    public void afterPropertiesSet() {
+        super.afterPropertiesSet();
+        schema = avroUtilities.obtainSchema(context, hcfsType);
     }
 
     @Override
@@ -118,7 +121,7 @@ public class AvroFileAccessor extends HdfsSplittableDataAccessor {
      */
     @Override
     public OneRow readNextObject() throws IOException {
-        /** Resetting datum to null, to avoid stale bytes to be padded from the previous row's datum */
+        /* Resetting datum to null, to avoid stale bytes to be padded from the previous row's datum */
         avroWrapper.datum(null);
         if (reader.next(avroWrapper, NullWritable.get())) { // There is one more record in the current split.
             rowsRead++;
@@ -150,7 +153,7 @@ public class AvroFileAccessor extends HdfsSplittableDataAccessor {
             case SNAPPY_CODEC:
                 writer.setCodec(CodecFactory.snappyCodec());
                 break;
-            case  BZIP2_CODEC:
+            case BZIP2_CODEC:
                 writer.setCodec(CodecFactory.bzip2Codec());
                 break;
             case XZ_CODEC:
@@ -163,7 +166,7 @@ public class AvroFileAccessor extends HdfsSplittableDataAccessor {
                 throw new RuntimeException(String.format("Avro Compression codec %s not supported", codec));
         }
 
-        Path file = new Path(hcfsType.getUriForWrite(configuration, context, true) + ".avro");
+        Path file = new Path(hcfsType.getUriForWrite(context) + ".avro");
         FileSystem fs = file.getFileSystem(jobConf);
         FSDataOutputStream avroOut = null;
         try {

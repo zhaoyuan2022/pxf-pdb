@@ -30,14 +30,13 @@ import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.api.utilities.Utilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
-import javax.annotation.Nullable;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-
 
 /**
  * This class relies heavily on Hadoop API to
@@ -55,33 +54,27 @@ import java.util.Map;
  * security is off, no login will be performed regardless of connector being
  * used.
  */
+@Component
 public class SecureLogin {
+
     private static final Logger LOG = LoggerFactory.getLogger(SecureLogin.class);
 
     public static final String CONFIG_KEY_SERVICE_PRINCIPAL = "pxf.service.kerberos.principal";
     public static final String CONFIG_KEY_SERVICE_KEYTAB = "pxf.service.kerberos.keytab";
     public static final String CONFIG_KEY_SERVICE_USER_IMPERSONATION = "pxf.service.user.impersonation";
     public static final String CONFIG_KEY_SERVICE_USER_NAME = "pxf.service.user.name";
-    private static final String PROPERTY_KEY_USER_IMPERSONATION = "pxf.service.user.impersonation.enabled";
 
     private static final Map<String, LoginSession> loginMap = new HashMap<>();
 
-    private static final SecureLogin instance = new SecureLogin();
-
     /**
-     * Prevent instantiation of this class by external code
+     * Package-private for testing
      */
-    private SecureLogin() {
+    private final PxfUserGroupInformation pxfUserGroupInformation;
+
+    public SecureLogin(PxfUserGroupInformation pxfUserGroupInformation) {
+        this.pxfUserGroupInformation = pxfUserGroupInformation;
     }
 
-    /**
-     * Returns the static instance for this factory
-     *
-     * @return the static instance for this factory
-     */
-    public static SecureLogin getInstance() {
-        return instance;
-    }
 
     /**
      * Returns UserGroupInformation for the login user for server specified by the configuration. Tries to re-use
@@ -102,9 +95,9 @@ public class SecureLogin {
      * existing login user if there was a previous login for this server and no configuration parameters have
      * changed since the last login, otherwise logs the user in and stored the result for future reference.
      *
-     * @param serverName
-     * @param configDirectory
-     * @param configuration
+     * @param serverName      the name of the server
+     * @param configDirectory the location of the configuration directory
+     * @param configuration   the configuration for the server
      * @return UserGroupInformation of the login user
      * @throws IOException if an error occurs
      */
@@ -136,7 +129,7 @@ public class SecureLogin {
 
         // try to relogin to keep the TGT token from expiring, if it still has a long validity, it will be a no-op
         if (Utilities.isSecurityEnabled(configuration)) {
-            PxfUserGroupInformation.reloginFromKeytab(serverName, loginSession);
+            pxfUserGroupInformation.reloginFromKeytab(serverName, loginSession);
         }
 
         return loginSession.getLoginUser();
@@ -178,7 +171,7 @@ public class SecureLogin {
             LOG.info("Kerberos principal for server {}: {}", serverName, principal);
             LOG.info("Kerberos keytab for server {}: {}", serverName, keytabFilename);
 
-            LoginSession loginSession = PxfUserGroupInformation
+            LoginSession loginSession = pxfUserGroupInformation
                     .loginUserFromKeytab(configuration, serverName, configDirectory, principal, keytabFilename);
 
             LOG.info("Logged in as principal {} for server {}", loginSession.getLoginUser(), serverName);
@@ -195,7 +188,7 @@ public class SecureLogin {
      * @return true if user impersonation is enabled, false otherwise
      */
     public boolean isUserImpersonationEnabled(Configuration configuration) {
-        String valueFromUserImpersonationOnServer = configuration.get(SecureLogin.CONFIG_KEY_SERVICE_USER_IMPERSONATION, System.getProperty(PROPERTY_KEY_USER_IMPERSONATION, "false"));
+        String valueFromUserImpersonationOnServer = configuration.get(SecureLogin.CONFIG_KEY_SERVICE_USER_IMPERSONATION, "true");
         return StringUtils.equalsIgnoreCase(valueFromUserImpersonationOnServer, "true");
     }
 
@@ -215,7 +208,7 @@ public class SecureLogin {
 
         LoginSession expectedLoginSession;
         if (Utilities.isSecurityEnabled(configuration)) {
-            long kerberosMinMillisBeforeRelogin = PxfUserGroupInformation.getKerberosMinMillisBeforeRelogin(serverName, configuration);
+            long kerberosMinMillisBeforeRelogin = pxfUserGroupInformation.getKerberosMinMillisBeforeRelogin(serverName, configuration);
             expectedLoginSession = new LoginSession(
                     configDirectory,
                     getServicePrincipal(serverName, configuration),
@@ -255,7 +248,7 @@ public class SecureLogin {
             return principal;
         } catch (Exception e) {
             throw new IllegalStateException(
-                String.format("Failed to determine local hostname for server {} : {}", serverName, e.getMessage()), e);
+                    String.format("Failed to determine local hostname for server %s : %s", serverName, e.getMessage()), e);
         }
     }
 
@@ -268,7 +261,7 @@ public class SecureLogin {
      * @param configuration the hadoop configuration
      * @return the path of the service keytab for the given server and configuration
      */
-     String getServiceKeytab(String serverName, Configuration configuration) {
+    String getServiceKeytab(String serverName, Configuration configuration) {
         // use system property as default for backward compatibility when only 1 Kerberized cluster was supported
         String defaultKeytab = StringUtils.equalsIgnoreCase(serverName, "default") ?
                 System.getProperty(CONFIG_KEY_SERVICE_KEYTAB) :
@@ -278,11 +271,12 @@ public class SecureLogin {
 
     /**
      * Retrieve the name of the current host. The code is copied from org.hadoop.security.SecurityUtil class.
+     *
      * @param conf configuration
      * @return name of the host
-     * @throws IOException
+     * @throws IOException when an IOException occurs
      */
-    private String getLocalHostName(@Nullable Configuration conf) throws IOException {
+    private String getLocalHostName(Configuration conf) throws IOException {
         if (conf != null) {
             String dnsInterface = conf.get("hadoop.security.dns.interface");
             String nameServer = conf.get("hadoop.security.dns.nameserver");
@@ -309,6 +303,7 @@ public class SecureLogin {
 
     /**
      * Resets and cleans the cache of login sessions. For testing only.
+     *
      * @return unmodifiable cache
      */
     static Map<String, LoginSession> getCache() {
@@ -319,7 +314,8 @@ public class SecureLogin {
 
     /**
      * Adds a given value to cache. For testing only.
-     * @param server server
+     *
+     * @param server  server
      * @param session session
      */
     static void addToCache(String server, LoginSession session) {

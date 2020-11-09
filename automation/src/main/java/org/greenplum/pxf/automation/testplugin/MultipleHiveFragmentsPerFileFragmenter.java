@@ -15,17 +15,13 @@ import org.apache.hadoop.mapred.JobConf;
 import org.greenplum.pxf.api.model.BaseFragmenter;
 import org.greenplum.pxf.api.model.Fragment;
 import org.greenplum.pxf.api.model.Metadata;
-import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.plugins.hive.HiveClientWrapper;
-import org.greenplum.pxf.plugins.hive.HiveDataFragmenter;
+import org.greenplum.pxf.plugins.hive.HiveFragmentMetadata;
+import org.greenplum.pxf.plugins.hive.utilities.HiveUtilities;
+import org.springframework.beans.factory.annotation.Autowired;
 
-import java.io.ByteArrayOutputStream;
-import java.io.ObjectOutputStream;
 import java.util.List;
 import java.util.Properties;
-
-import static org.greenplum.pxf.plugins.hive.utilities.HiveUtilities.toKryo;
-
 
 /**
  * Fragmenter which splits one file into multiple fragments. Helps to simulate a
@@ -40,15 +36,32 @@ public class MultipleHiveFragmentsPerFileFragmenter extends BaseFragmenter {
     private static final long SPLIT_SIZE = 1024;
     private JobConf jobConf;
     private IMetaStoreClient client;
-    private final HiveClientWrapper hiveClientWrapper;
+    private HiveClientWrapper hiveClientWrapper;
+    private HiveUtilities hiveUtilities;
 
-    public MultipleHiveFragmentsPerFileFragmenter() {
-        hiveClientWrapper = HiveClientWrapper.getInstance();
+    /**
+     * Sets the {@link HiveClientWrapper} object
+     *
+     * @param hiveClientWrapper the hive client wrapper object
+     */
+    @Autowired
+    public void setHiveClientWrapper(HiveClientWrapper hiveClientWrapper) {
+        this.hiveClientWrapper = hiveClientWrapper;
+    }
+
+    /**
+     * Sets the {@link HiveUtilities} object
+     *
+     * @param hiveUtilities the hive utilities object
+     */
+    @Autowired
+    public void setHiveUtilities(HiveUtilities hiveUtilities) {
+        this.hiveUtilities = hiveUtilities;
     }
 
     @Override
-    public void initialize(RequestContext context) {
-        super.initialize(context);
+    public void afterPropertiesSet() {
+        super.afterPropertiesSet();
         jobConf = new JobConf(configuration, MultipleHiveFragmentsPerFileFragmenter.class);
         client = hiveClientWrapper.initHiveClient(context, configuration);
     }
@@ -65,19 +78,9 @@ public class MultipleHiveFragmentsPerFileFragmenter extends BaseFragmenter {
         Properties properties = getSchema(tbl);
 
         for (int i = 0; i < fragmentsNum; i++) {
-
-            byte[] userData = toKryo(properties);
-
-            ByteArrayOutputStream bas = new ByteArrayOutputStream();
-            ObjectOutputStream os = new ObjectOutputStream(bas);
-            os.writeLong(i * SPLIT_SIZE); // start
-            os.writeLong(SPLIT_SIZE); // length
-            os.writeObject(localHosts); // hosts
-            os.close();
-
+            byte[] userData = hiveUtilities.toKryo(properties);
             String filePath = getFilePath(tbl);
-
-            fragments.add(new Fragment(filePath, localHosts, bas.toByteArray(), userData));
+            fragments.add(new Fragment(filePath, localHosts, new HiveFragmentMetadata(i * SPLIT_SIZE, SPLIT_SIZE, userData)));
         }
 
         return fragments;
@@ -94,7 +97,7 @@ public class MultipleHiveFragmentsPerFileFragmenter extends BaseFragmenter {
 
         StorageDescriptor descTable = tbl.getSd();
 
-        InputFormat<?, ?> fformat = HiveDataFragmenter.makeInputFormat(descTable.getInputFormat(), jobConf);
+        InputFormat<?, ?> fformat = hiveUtilities.makeInputFormat(descTable.getInputFormat(), jobConf);
 
         FileInputFormat.setInputPaths(jobConf, new Path(descTable.getLocation()));
 

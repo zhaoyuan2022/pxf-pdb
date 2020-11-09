@@ -2,7 +2,6 @@ package org.greenplum.pxf.automation.testplugin;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.plugins.hive.HiveDataFragmenter;
 
 public class HiveDataFragmenterWithFilter extends HiveDataFragmenter {
@@ -10,8 +9,8 @@ public class HiveDataFragmenterWithFilter extends HiveDataFragmenter {
     private static final Log LOG = LogFactory.getLog(HiveDataFragmenterWithFilter.class);
 
     @Override
-    public void initialize(RequestContext requestContext) {
-        super.initialize(requestContext);
+    public void afterPropertiesSet() {
+        super.afterPropertiesSet();
         addFilters();  // Set the test hive filter (overwrite gpdb filter)
     }
 

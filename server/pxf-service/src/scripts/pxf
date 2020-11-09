@@ -17,162 +17,125 @@
 # under the License.
 
 #
-# pxf-service    start/stop/initialize/status the PXF instance
+# pxf-service    start/stop/restart/initialize/reset/status the PXF instance
 #
 
-parent_script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
+[[ -n "$DEBUG" ]] && set -x
+
+WORKING_DIR="$(pwd)"
+
+# Follow symlinks to find the real script
+cd "$(dirname "$0")" || exit 1
+script_file=$(pwd)/$(basename "$0")
+while [[ -L "$script_file" ]]; do
+  script_file=$(readlink "$script_file")
+  cd "$(dirname "$script_file")" || exit 1
+  script_file=$(pwd)/$(basename "$script_file")
+done
+
+parent_script_dir="$( (cd "$( dirname "${script_file}" )/.." && pwd -P) )"
+cd "$WORKING_DIR" || exit 1
 
 # establish PXF_HOME and global vars used by all commands
-# do not allow overrides of PXF_HOME so that his script only manages this given installation
-export PXF_HOME=$parent_script_dir
+export PXF_HOME=${parent_script_dir}
 
-default_env_script=${PXF_HOME}/conf/pxf-env-default.sh
-tomcat_root=${PXF_HOME}/apache-tomcat
-tomcat_templates=${PXF_HOME}/templates/tomcat
-instance=${PXF_HOME}/pxf-service
+# Path to PXF_BASE directories, defaults to PXF_HOME
+export PXF_BASE=${PXF_BASE:=$PXF_HOME}
 
-SED_OPTS=(-i)
-if [[ $OSTYPE == "darwin"* ]]; then
-    SED_OPTS+=("")
-fi
-SED_OPTS+=(-e)
+[[ -f ${PXF_BASE}/conf/pxf-env.sh ]] && source "${PXF_BASE}/conf/pxf-env.sh"
+
+# Path to HDFS native libraries
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}${PXF_BASE}/lib/native:/usr/lib/hadoop/lib/native
+
+# Path to JAVA
+export JAVA_HOME=${JAVA_HOME:=/usr/java/default}
+
+# Path to Log directory
+export PXF_LOGDIR=${PXF_LOGDIR:=${PXF_BASE}/logs}
+
+# Path to Run directory
+export PXF_RUNDIR=${PXF_RUNDIR:=${PXF_BASE}/run}
+
+# Port
+export PXF_PORT=${PXF_PORT:=5888}
+
+# Memory
+export PXF_JVM_OPTS=${PXF_JVM_OPTS:='-Xmx2g -Xms1g'}
+
+# Set to true to enable Remote debug via port 2020
+export PXF_DEBUG=${PXF_DEBUG:-false}
+
+# Kill PXF on OutOfMemoryError, set to false to disable
+export PXF_OOM_KILL=${PXF_OOM_KILL:-true}
+
+# Additional locations to be class-loaded by the application
+export LOADER_PATH="${PXF_LOADER_PATH:+$PXF_LOADER_PATH,}file:${PXF_BASE}/conf,file:${PXF_BASE}/lib"
+
+[[ -z "$STOP_WAIT_TIME" ]] && STOP_WAIT_TIME="60"
+identity="pxf-app"
+
+jarfile="${PXF_HOME}/application/pxf-app-_PXF_VERSION_.jar"
+pid_file="${PXF_RUNDIR}/${identity}.pid"
+
+# ANSI Colors
+echoRed() { echo $'\e[0;31m'"$1"$'\e[0m'; }
+echoGreen() { echo $'\e[0;32m'"$1"$'\e[0m'; }
+echoYellow() { echo $'\e[0;33m'"$1"$'\e[0m'; }
 
 function validate_user()
 {
-    # make sure current user is not root
-    if (( EUID == 0 )); then
-        fail 'Cannot run as root user'
-    fi
+    [[ $EUID == 0 ]] && fail 'Cannot run as root user'
 }
 
-function confirm_with_user()
+function checkPermissions()
 {
-    echo '*****************************************************************************'
-    echo '* PXF_CONF variable is not defined, using default location'
-    echo "* Using ${PXF_CONF} for user configurations"
-    echo '* WARNING: using this directory is not recommended for production deployments'
-    echo '*****************************************************************************'
-
-    read -rp 'Do you want to proceed? [Y]: ' answer
-    answer=${answer:-'Y'}
-    case ${answer:0:1} in
-        y|Y)
-            echo 'Proceeding with the initialization'
-        ;;
-        *)
-            echo 'Initialization aborted'
-            exit 1
-        ;;
-    esac
-}
-
-function update_pxf_conf()
-{
-    if [[ -z $PXF_CONF ]]; then
-        # PXF_CONF was not specified during init command
-        # need to default to user's home directory and ask for confirmation, unless silent mode is used
-        local current_user pxf_user_home
-        current_user=$( id -un )
-        pxf_user_home=$HOME
-        if [[ -z $pxf_user_home ]]; then
-            fail "PXF_CONF is not set and user $current_user home directory is not defined"
-        elif [[ ! -d ${pxf_user_home} ]]; then
-            fail "PXF_CONF is not set and user $current_user home directory $pxf_user_home does not exist"
-        else
-            export PXF_CONF=${pxf_user_home}/pxf
-            if [[ $silent == false ]]; then
-                confirm_with_user
-            fi
-        fi
-    fi
-
-    echo "Using $PXF_CONF as a location for user-configurable files"
-
-    # update the value on PXF_CONF in the default env file
-    sed "${SED_OPTS[@]}" "s|{PXF_CONF:-.*}$|{PXF_CONF:-\"${PXF_CONF}\"}|g" "$default_env_script"
-}
-
-function getEnvironment()
-{
-    local USER_SPECIFIED_JAVA_HOME=${JAVA_HOME}
-    # load default environment
-    if [[ ! -f $default_env_script ]]; then
-        fail "Failed to find $default_env_script"
-    fi
-    # shellcheck source=/Users/pivotal/workspace/pxf/server/pxf-service/src/scripts/pxf-env-default.sh
-    source "$default_env_script"
-    # we may have just overridden the user's intended JAVA_HOME
-    # by sourcing PXF_CONF/conf/pxf-env.sh
-    [[ ${PRESERVE_JAVA_HOME} == true ]] && JAVA_HOME=${USER_SPECIFIED_JAVA_HOME}
+    touch "$pid_file" &> /dev/null || { echoRed "ERROR: Operation not permitted (cannot access pid file: '$pid_file')"; return 4; }
+    [[ -d "$PXF_LOGDIR" ]] || { echoRed "ERROR: Operation not permitted (log directory does not exist: '$PXF_LOGDIR')"; return 4; }
 }
 
 function checkJavaHome()
 {
-    # validate JAVA_HOME
-    if [[ ! -x ${JAVA_HOME}/bin/java ]]; then
-        fail "\$JAVA_HOME=$JAVA_HOME is invalid. Set \$JAVA_HOME in your environment before initializing PXF."
-    fi
+    # Find Java
+    [[ -x ${JAVA_HOME}/bin/java ]] || fail "\$JAVA_HOME=$JAVA_HOME is invalid. Set \$JAVA_HOME in your environment before running PXF commands."
+    javaexe="$JAVA_HOME/bin/java"
 }
 
 # print error message and return with error code
 function fail()
 {
-    echo "ERROR: $1"
+    echoRed "ERROR: $1"
+    exit 1
+}
+
+# print error message and provide a hint
+function failWithHint()
+{
+    echoRed    "ERROR: $1"
+    echoYellow "HINT:  $2"
     exit 1
 }
 
 #
-# createInstance creates a tomcat instance and
-# configures based on pre-configured template files.
-#
-function createInstance()
-{
-    mkdir -p "$instance"
-    if ! cp -r "$tomcat_root"/* "$instance"; then
-        echo 'ERROR: instance creation failed'
-        return 1
-    fi
-
-    chmod 700 "$instance"
-
-    # copy configuration files into instance
-    cp "$tomcat_templates"/bin/{kill-pxf,setenv,catalina}.sh "${instance}/bin"
-    cp "$tomcat_templates"/conf/{logging.properties,{server,web}.xml} "${instance}/conf"
-
-    return 0
-}
-
-#
-# deployWebapp adds the pxf-webapp to the new instance's webapps folder
-# and the custom loader to the instance's lib directory
-#
-function deployWebapp()
-{
-    cp "${PXF_HOME}/lib/pxf.war" "${instance}/webapps" || return 1
-    cp "$PXF_HOME"/lib/pxf-service-*[0-9]*.jar "${instance}/lib" || return 1
-
-    return 0
-}
-
-#
-# waitForTomcat waits for tomcat to finish loading
+# waitForSpringBoot waits for spring boot to finish loading
 # for given attempts number.
 #
-function waitForTomcat()
+function waitForSpringBoot()
 {
     attempts=0
     max_attempts=$1 # number of attempts to connect
+    echo_after_attempts=$2 # only start echoing after this number of attempts
     sleep_time=1 # sleep 1 second between attempts
 
-    # wait until tomcat is up:
-    sleep 2
-    echo 'Checking if tomcat is up and running...'
-    until $curl --silent --connect-timeout 1 -I "http://localhost:$PXF_PORT" | grep 'PXF Server'; do
+    # wait until spring boot is up:
+    echoYellow 'Checking if PXF is up and running...'
+    until $curl --silent --connect-timeout 1 -I "http://localhost:$PXF_PORT" | grep 'PXF Server' > /dev/null; do
         if (( ++attempts == max_attempts )); then
-            echo 'ERROR: PXF is down - tomcat is not running'
+            echoRed 'ERROR: PXF is down - the application is not running'
             return 1
         fi
-        echo "tomcat not responding, re-trying after $sleep_time second (attempt number ${attempts})"
+        if (( attempts >= echo_after_attempts )); then
+            echoYellow "PXF not responding, re-trying after $sleep_time second (attempt number ${attempts})"
+        fi
         sleep $sleep_time
     done
 
@@ -180,107 +143,44 @@ function waitForTomcat()
 }
 
 #
-# checkWebapp checks if tomcat is up for $1 attempts and then
+# checkWebapp checks if PXF is up for $1 attempts and then
 # verifies PXF webapp is functional
 #
 function checkWebapp()
 {
-    waitForTomcat "$1" || return 1
+    waitForSpringBoot "$1" "$2" || return 1
 
-    echo 'Checking if PXF webapp is up and running...'
-    curlResponse=$($curl -s "http://localhost:${PXF_PORT}/pxf/v0")
-    expectedResponse='Wrong version v0, supported version is v[0-9]+'
+    curlResponse=$($curl -s "http://localhost:${PXF_PORT}/actuator/health")
 
-    if [[ $curlResponse =~ $expectedResponse ]]; then
-        echo "PXF webapp is listening on port $PXF_PORT"
-        return 0
-    fi
-
-    echo 'ERROR: PXF webapp is inaccessible but tomcat is up. Check logs for more information'
-    return 1
+    [[ $curlResponse == {\"status\":\"UP\"* ]] || fail "PXF is inaccessible. Check logs ($PXF_LOGDIR) for more information"
+    return 0
 }
 
-# instanceExists returns 0 when the instance exists
-# non zero otherwise
-function instanceExists()
-{
-    if [[ ! -d $instance ]]; then
-        return 1
-    fi
-
-    "${instance}/bin/catalina.sh" version > /dev/null 2>&1
+# determines whether the application is running
+function isRunning() {
+    ps -p "$1" &> /dev/null
 }
 
-function checkInstance()
+# creates the runtime directory structure inside $PXF_BASE
+function createPxfBaseDirectories()
 {
-	instanceExists || fail 'Cannot find PXF instance, maybe call init?'
+    install -m 744 -d "${PXF_BASE}/conf"
+    install -m 744 -d "${PXF_BASE}/lib"
+    install -m 744 -d "${PXF_BASE}/lib/native"
+    install -m 744 -d "${PXF_BASE}/servers"
+    install -m 744 -d "${PXF_BASE}/servers/default"
+    install -m 700 -d "${PXF_BASE}/logs"
+    install -m 700 -d "${PXF_BASE}/run"
+    install -m 700 -d "${PXF_BASE}/keytabs"
 }
 
-function createLogsDir()
+# copies configuration files inside $PXF_BASE
+function copyConfigurationFilesToPxfBase()
 {
-    # logs dir is likely outside PXF_HOME, setup only if it does not yet exist
-    if [[ ! -d $PXF_LOGDIR ]]; then
-        echo "Creating PXF logs directory $PXF_LOGDIR ..."
-        mkdir -p "$PXF_LOGDIR"
-        chmod 700 "$PXF_LOGDIR"
-    fi
-}
-
-function createRunDir()
-{
-    echo "Creating PXF runtime directory $PXF_RUNDIR ..."
-    mkdir -p "$PXF_RUNDIR"
-    chmod 700 "$PXF_RUNDIR"
-}
-
-function generatePrivateClasspath()
-{
-    # verify that a template file for the distribution exists
-    local template_file=${PXF_HOME}/templates/pxf/pxf-private.classpath.template
-    if [[ ! -f $template_file ]]; then
-        fail "Template file $template_file not found"
-    fi
-
-    echo "Generating ${PXF_HOME}/conf/pxf-private.classpath file from $template_file ..."
-
-    # create initial version of the file by replacing PXF_HOME and PXF_CONF tokens
-    cp "$template_file" "${PXF_HOME}/conf/pxf-private.classpath"
-    sed "${SED_OPTS[@]}" "s|PXF_HOME|${PXF_HOME}|g" "${PXF_HOME}/conf/pxf-private.classpath"
-    sed "${SED_OPTS[@]}" "s|PXF_CONF|${PXF_CONF}|g" "${PXF_HOME}/conf/pxf-private.classpath"
-}
-
-function generateUserConfigs()
-{
-    # create and setup user configuration directories (only if they do not exist)
-    setup_conf_directory "$PXF_CONF"
-    setup_conf_directory "${PXF_CONF}/conf" "${PXF_HOME}/templates/user/conf"
-    setup_conf_directory "${PXF_CONF}/keytabs"
-    setup_conf_directory "${PXF_CONF}/lib"
-    setup_conf_directory "${PXF_CONF}/lib/native"
-    setup_conf_directory "${PXF_CONF}/servers/default"
-    setup_conf_directory "${PXF_CONF}/templates" "${PXF_HOME}/templates/user/templates" 'override'
-}
-
-function setup_conf_directory()
-{
-    local target=$1
-    local source=$2
-    local override=$3
-
-    if [[ ! -d $target ]]; then
-        if [[ -z $source ]]; then
-            echo "Creating configuration directory $target ..."
-            mkdir -p "$target"
-        else
-            echo "Copying configurations from $source to $target ..."
-            cp -R "$source" "$(dirname "$target")"
-        fi
-    elif [[ -n $source && -n $override ]]; then
-        echo "Updating configurations from $source to $target ..."
-        cp -R "$source" "$(dirname "$target")"
-    else
-        echo "Directory $target already exists, no update required"
-    fi
+    cp -Lv "${PXF_HOME}/conf/pxf-application.properties" "${PXF_BASE}/conf"
+    cp -Lv "${PXF_HOME}/conf/pxf-env.sh"                 "${PXF_BASE}/conf"
+    cp -Lv "${PXF_HOME}/conf/pxf-log4j2.xml"             "${PXF_BASE}/conf"
+    cp -Lv "${PXF_HOME}/conf/pxf-profiles.xml"           "${PXF_BASE}/conf"
 }
 
 function validate_system()
@@ -297,7 +197,10 @@ function printUsage()
     normal=$(tput sgr0)
     bold=$(tput bold)
     cat <<-EOF
-	${bold}usage${normal}:  pxf <command> [-y]
+	${bold}NAME${normal}
+	    pxf - manage a single PXF instance or a PXF cluster
+
+	${bold}usage${normal}:  pxf <command>
 	        pxf cluster <command>
 	        pxf {-h | --help}
 	EOF
@@ -312,27 +215,31 @@ doHelp() {
     cat <<-EOF
 
 	${bold}List of commands${normal}:
-	  init                initialize the local PXF server instance, install PXF extension under \$GPHOME. Use --skip-register to skip PXF extension installation
 	  start               start the local PXF server instance
 	  stop                stop the local PXF server instance
 	  restart             restart the local PXF server instance (not supported for cluster)
 	  status              show the status of the local PXF server instance
 	  version             show the version of PXF server
-	  reset               undo the local PXF initialization
 	  register            install PXF extension under \$GPHOME (useful after upgrades of Greenplum server)
+	  prepare             prepares a new base directory specified by the \$PXF_BASE environment variable.
+	                      It creates the servers, logs, lib, keytabs, and run directories inside \$PXF_BASE
+	                      and copies configuration files.
+	  migrate             migrates configurations from older installations of PXF
 	  cluster <command>   perform <command> on all the segment hosts in the cluster; try ${bold}pxf cluster help$normal
 
-	  sync <hostname>     synchronize \$PXF_CONF/{conf,lib,servers} directories onto <hostname>. Use --delete to delete extraneous remote files
+	  sync <hostname>     synchronize \$PXF_BASE/{conf,lib,servers} directories onto <hostname>. Use --delete to delete extraneous remote files
+
+	  init                ${bold}(deprecated)${normal} install PXF extension under \$GPHOME
+	  reset               ${bold}(deprecated)${normal} no operation
 
 	${bold}Options${normal}:
 	  -h, --help    show command help
-	  -y            answer yes, use default PXF_CONF=\$HOME/pxf user configuration directory
 	EOF
     exit 0
 }
 
 function promptUser() {
-    echo "$1"
+    echoGreen "$1"
     read -r answer
     [[ $answer == y || $answer == Y ]]
 }
@@ -340,43 +247,26 @@ function promptUser() {
 # doReset handles the reset command
 function doReset()
 {
-    local force=$2
-    local prompt='Ensure your local PXF instance is stopped before continuing. '
-    prompt+='This is a destructive action. Press y to continue:'
-    if [[ $force != -f && $force != --force ]] && ! promptUser "$prompt"; then
-        echo 'pxf reset cancelled'
-        return 1
-    fi
-
-    if doStatus >/dev/null; then
-        echo "PXF is running. Please stop PXF before running 'pxf [cluster] reset'"
-        return 1
-    fi
-
-    echo "Cleaning ${PXF_HOME}/conf/pxf-private.classpath..."
-    rm -f "${PXF_HOME}/conf/pxf-private.classpath"
-    echo "Ignoring ${PXF_CONF}..."
-    echo "Cleaning ${instance}..."
-    rm -rf "$instance"
-    echo "Cleaning ${PXF_RUNDIR}..."
-    rm -rf "$PXF_RUNDIR"
-
-    echo "Reverting changes to ${default_env_script}..."
-    sed "${SED_OPTS[@]}" "s|{PXF_CONF:-\"${PXF_CONF}\"}|{PXF_CONF:-NOT_INITIALIZED}|g" "$default_env_script"
-
-    echo "Finished cleaning PXF instance directories"
+    echoYellow '*****************************************************************************'
+    echoYellow '* DEPRECATION NOTICE:'
+    echoYellow '* The "pxf [cluster] reset" command is deprecated and will be removed'
+    echoYellow '* in a future release of PXF.'
+    echoYellow '*****************************************************************************'
 }
 
 function installExternalTableExtension()
 {
     if [[ -d ${parent_script_dir}/gpextable ]]; then
         if [[ -z "${GPHOME}" ]]; then
-            echo 'WARNING: environment variable GPHOME is not set, skipping install of Greenplum External Table PXF Extension'
+            echoYellow 'WARNING: environment variable GPHOME is not set, skipping install of Greenplum External Table PXF Extension'
         elif [[ ! -f ${GPHOME}/greenplum_path.sh ]]; then
-            echo "WARNING: environment variable GPHOME (${GPHOME}) must be set to a valid Greenplum installation, skipping install of Greenplum External Table PXF Extension'"
+            echoYellow "WARNING: environment variable GPHOME (${GPHOME}) must be set to a valid Greenplum installation, skipping install of Greenplum External Table PXF Extension'"
         else
-            echo "Installing Greenplum External Table PXF Extension into ${GPHOME}"
-            cp -av ${parent_script_dir}/gpextable/* ${GPHOME}
+            echoGreen "Installing Greenplum External Table PXF Extension into '${GPHOME}'"
+
+            local target_control_file="${GPHOME}/share/postgresql/extension/pxf.control"
+            cp -Lv "${parent_script_dir}/gpextable/pxf.control" "${target_control_file}"
+            chmod 644 "${target_control_file}"
         fi
     fi
 }
@@ -384,32 +274,82 @@ function installExternalTableExtension()
 # doInit handles the init command
 function doInit()
 {
-    if instanceExists; then
-        echo "Instance already exists. Use 'pxf [cluster] reset' before attempting to re-initialize PXF"
-        return 1
-    fi
-
-    update_pxf_conf
-    # preserve JAVA_HOME in case user is trying to change it
-    PRESERVE_JAVA_HOME=true getEnvironment
+    echoYellow '*****************************************************************************'
+    echoYellow '* DEPRECATION NOTICE:'
+    echoYellow '* The "pxf [cluster] init" command is deprecated and will be removed'
+    echoYellow '* in a future release of PXF.'
+    echoYellow '*'
+    echoYellow '* Use the "pxf [cluster] register" command instead.'
+    echoYellow '*'
+    echoYellow '*****************************************************************************'
     checkJavaHome
-    generatePrivateClasspath || return 1
-    generateUserConfigs || return 1
-    editPxfEnvSh || return 1
-    createInstance || return 1
-    deployWebapp || return 1
-    createLogsDir || return 1
-    createRunDir  || return 1
-    if [[ $skipRegister == false ]]; then
-      installExternalTableExtension || return 1
-    else
-      echo "Skipping PXF extension installation"
-    fi
+    installExternalTableExtension || return 1
 }
 
-function editPxfEnvSh()
+# doPrepare prepares PXF_BASE outside of PXF_HOME
+function doPrepare()
 {
-	sed -i.bak -e "s|.*JAVA_HOME=.*|JAVA_HOME=${JAVA_HOME}|g" "${PXF_CONF}/conf/pxf-env.sh" && rm "${PXF_CONF}/conf/pxf-env.sh.bak"
+    # FILE1 -ef FILE2  True if file1 is a hard link to file2.
+    [[ ! $PXF_HOME -ef $PXF_BASE ]] || failWithHint "'pxf [cluster] prepare' requires a \$PXF_BASE value different from your PXF installation directory." "Use 'PXF_BASE=<YOUR_PXF_BASE_DIRECTORY> pxf [cluster] prepare'."
+
+    if [[ -d $PXF_BASE ]] && [[ "$(ls -A $PXF_BASE)" ]]; then
+        echoRed "ERROR: The \$PXF_BASE ($PXF_BASE) location is not empty."
+        echoRed "       Ensure that the \$PXF_BASE directory you configured is empty."
+        exit 1
+    fi
+
+    mkdir -p $PXF_BASE || fail "Unable to create the \$PXF_BASE directory under $PXF_BASE"
+    createPxfBaseDirectories || fail "Unable to create the runtime directory structure inside $PXF_BASE"
+    copyConfigurationFilesToPxfBase || fail "Unable to copy configuration files inside $PXF_BASE/conf"
+
+    echoGreen ""
+    echoGreen "PXF configurations and runtime have been created under '$PXF_BASE'"
+    echoGreen "Ensure you run PXF commands with the \$PXF_BASE environment set to '$PXF_BASE'"
+    echoGreen "Consider adding PXF_BASE to ~/.bashrc: 'export PXF_BASE=$PXF_BASE'"
+}
+
+# run the migration script on a shell with minimal environment variables loaded
+function migrateMergeConfiguration()
+{
+    env -i "$BASH" -c "PXF_BASE=$PXF_BASE PXF_CONF=$PXF_CONF $PXF_HOME/bin/merge-pxf-config.sh"
+}
+
+# doMigrate migrates old configurations of PXF to a Spring Boot based configuration of PXF
+function doMigrate()
+{
+    # Validate PXF_CONF
+    [[ -n "$PXF_CONF" ]] || failWithHint "The \$PXF_CONF environment variable is not specified. Specify the \$PXF_CONF location of your old PXF installation" "Use 'PXF_CONF=<YOUR_PXF_CONF_DIRECTORY> [PXF_BASE=<YOUR_PXF_BASE_DIRECTORY>] pxf [cluster] migrate'."
+
+    # Make sure $PXF_CONF/conf/pxf-env.sh is present
+    [[ -f "${PXF_CONF}/conf/pxf-env.sh" ]]       || fail "Invalid \$PXF_CONF location. The '${PXF_CONF}/conf/pxf-env.sh' file is missing"
+    # Make sure $PXF_CONF/conf/pxf-profiles.xml is present
+    [[ -f "${PXF_CONF}/conf/pxf-profiles.xml" ]] || fail "Invalid \$PXF_CONF location. The '${PXF_CONF}/conf/pxf-profiles.xml' file is missing"
+    [[ -d "${PXF_CONF}/servers" ]]               || fail "Invalid \$PXF_CONF location. The '${PXF_CONF}/servers' directory is missing"
+    [[ -d "${PXF_CONF}/lib" ]]                   || fail "Invalid \$PXF_CONF location. The '${PXF_CONF}/lib' directory is missing"
+    [[ -d "${PXF_CONF}/keytabs" ]]               || fail "Invalid \$PXF_CONF location. The '${PXF_CONF}/keytabs' directory is missing"
+
+    # validate PXF_BASE
+    [[ -d $PXF_BASE ]] || failWithHint "PXF_BASE=$PXF_BASE does not exist" "Prepare PXF_BASE by running: 'PXF_BASE=$PXF_BASE pxf [cluster] prepare'"
+    [[ -w $PXF_BASE ]] || fail "PXF_BASE=$PXF_BASE is not writable"
+
+    # FILE1 -ef FILE2  True if file1 is a hard link to file2.
+    [[ ! "$PXF_CONF" -ef "$PXF_BASE" ]] || fail "The PXF_CONF directory must be different from your target directory '$PXF_BASE'"
+
+    # Validate PXF_BASE
+    [[ -f "${PXF_BASE}/conf/pxf-env.sh" ]]                 || failWithHint "The '${PXF_BASE}/conf/pxf-env.sh' file is missing" "Prepare PXF_BASE by running: 'PXF_BASE=$PXF_BASE pxf [cluster] prepare'"
+    [[ -f "${PXF_BASE}/conf/pxf-application.properties" ]] || failWithHint "The '${PXF_BASE}/conf/pxf-application.properties' file is missing" "Prepare PXF_BASE by running: 'PXF_BASE=$PXF_BASE pxf [cluster] prepare'"
+    [[ -f "${PXF_BASE}/conf/pxf-log4j2.xml" ]]             || failWithHint "The '${PXF_BASE}/conf/pxf-log4j2.xml' file is missing" "Prepare PXF_BASE by running: 'PXF_BASE=$PXF_BASE pxf [cluster] prepare'"
+
+    echoGreen ""
+    echoGreen "Starting PXF configuration migration from PXF_CONF='${PXF_CONF}' to PXF_BASE='${PXF_BASE}'"
+    echoGreen "Copying '${PXF_CONF}/conf/pxf-profiles.xml' file to '${PXF_BASE}/conf'"
+    cp -L "${PXF_CONF}/conf/pxf-profiles.xml" "${PXF_BASE}/conf"
+    echoGreen "Copying servers, lib, and keytabs directories from '${PXF_CONF}' to '${PXF_BASE}'"
+    cp -LR "${PXF_CONF}/servers" "${PXF_CONF}/lib" "${PXF_CONF}/keytabs" "${PXF_BASE}"
+    echoGreen "Merging values from '${PXF_CONF}/conf/pxf-env.sh' to '${PXF_BASE}/conf/pxf-application.properties' and '${PXF_BASE}/conf/pxf-env.sh'"
+    migrateMergeConfiguration
+    echoGreen "PXF migration completed successfully. Migrated from '${PXF_CONF}' to '${PXF_BASE}'"
+    echoGreen "NOTE: Any customizations to your pxf-log4j.properties file will need to be manually migrated."
 }
 
 #
@@ -421,16 +361,47 @@ function editPxfEnvSh()
 #
 function doStart()
 {
-    local flags=()
-    getEnvironment
     checkJavaHome
-    checkInstance
-    checkPxfConf
     warnUserEnvScript
-    [[ $PXF_DEBUG == true ]] && flags+=(jpda)
-    flags+=(start)
-    "${instance}/bin/catalina.sh" "${flags[@]}" || return 1
-    checkWebapp 300 || return 1
+    do_start
+}
+
+function do_start() {
+    if [[ -f "$pid_file" ]]; then
+        pid=$(cat "$pid_file")
+        isRunning "$pid" && { echoYellow "PXF is already running [pid=$pid]"; return 0; }
+    fi
+
+    PXF_OPTS=(-Djava.util.logging.manager=org.apache.logging.log4j.jul.LogManager -Dlogging.config=${PXF_BASE}/conf/pxf-log4j2.xml)
+    [[ $PXF_DEBUG == true ]]      && PXF_OPTS+=(-agentlib:jdwp=transport=dt_socket,address=2020,suspend=n,server=y)
+    [[ $PXF_OOM_KILL = true ]]    && PXF_OPTS+=(-XX:OnOutOfMemoryError="${PXF_HOME}/bin/kill-pxf.sh %p")
+    [[ -n "$PXF_OOM_DUMP_PATH" ]] && PXF_OPTS+=(-XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=$PXF_OOM_DUMP_PATH)
+    JAVA_OPTS=($PXF_JVM_OPTS  "${PXF_OPTS[@]}")
+    RUN_ARGS=(--spring.config.location=classpath:/application.properties,file:${PXF_BASE}/conf/pxf-application.properties)
+
+    local arguments=(-Dsun.misc.URLClassPath.disableJarChecking=true "${JAVA_OPTS[@]}" -jar "$jarfile" $RUN_ARGS)
+
+    working_dir=$(dirname "$jarfile")
+    pushd "$working_dir" > /dev/null || exit 1
+    checkPermissions || return $?
+
+    echoGreen "Starting PXF with properties:"
+    echoGreen "   JAVA_HOME=${JAVA_HOME}"
+    echoGreen "   PXF_HOME=${PXF_HOME}"
+    echoGreen "   PXF_BASE=${PXF_BASE}"
+    echoGreen "   PXF_LOGDIR=${PXF_LOGDIR}"
+    echoGreen "   PXF_RUNDIR=${PXF_RUNDIR}"
+    echoGreen "   PXF_JVM_OPTS=${PXF_JVM_OPTS}"
+    [[ $PXF_DEBUG == true ]] && echoGreen "   LOADER_PATH=${LOADER_PATH}"
+
+    "$javaexe" "${arguments[@]}" >> /dev/null 2>&1 &
+    pid=$!
+    disown $pid
+    echo "$pid" > "$pid_file"
+
+    [[ -z $pid ]] && fail "Failed to start PXF"
+    checkWebapp 300 10 || return 1
+    echoGreen "PXF started [pid=$pid]. Listening on port $PXF_PORT";
 }
 
 #
@@ -442,22 +413,56 @@ function doStart()
 #
 function doStop()
 {
-    getEnvironment
     checkJavaHome
-    checkInstance
-    checkPxfConf
     warnUserEnvScript
-    "${instance}/bin/catalina.sh" stop -force || return 1
+
+    working_dir=$(dirname "$jarfile")
+    pushd "$working_dir" > /dev/null
+    [[ -f $pid_file ]] || { echoYellow "Not running (pidfile not found). Is PXF running? Stop aborted."; return 0; }
+    pid=$(cat "$pid_file")
+    isRunning "$pid" || { echoYellow "Not running (process ${pid}). Removing stale pid file '$pid_file'."; rm -f "$pid_file"; return 0; }
+
+    echoYellow "Stopping PXF [pid=$pid]..."
+
+    # first try endpoint (assume it might be disabled)
+    if $curl --max-time 5 --silent -X POST "localhost:$PXF_PORT/actuator/shutdown" | grep "Shutting down, bye..." > /dev/null; then
+      for i in $(seq 1 $STOP_WAIT_TIME); do
+        if isRunning "$pid"; then
+          sleep 1
+        else
+          echoGreen "PXF stopped [pid=$pid]"
+          rm -f $pid_file
+          return 0
+        fi
+      done
+    fi
+
+    # second try a nice kill and if that doesn't work force kill
+    do_stop "$pid" "$pid_file" || do_stop "$pid" "$pid_file" "-f"
+    rm -f $pid_file
+}
+
+do_stop() {
+  local killcmd=(kill)
+  [[ $3 == -f ]] && killcmd+=(-9)
+  killcmd+=("$1")
+  "${killcmd[@]}" &> /dev/null || { echoRed "Unable to terminate process $1"; return 1; }
+  for i in $(seq 1 $STOP_WAIT_TIME); do
+    isRunning "$1" || { echoGreen "PXF stopped [$1]"; rm -f "$2"; return 0; }
+    [[ $i -eq STOP_WAIT_TIME/2 ]] && "${killcmd[@]}" &> /dev/null
+    sleep 1
+  done
+  echoRed "Unable to terminate process $1";
+  return 1;
 }
 
 function doStatus()
 {
-    getEnvironment
     checkJavaHome
-    checkInstance
-    checkPxfConf
     warnUserEnvScript
-    checkWebapp 1 || return 1
+    checkWebapp 1 0 || return 1
+    echoGreen "PXF is listening on port $PXF_PORT"
+    return 0
 }
 
 function doSync()
@@ -466,55 +471,37 @@ function doSync()
     if [[ -z $target_host ]]; then
         fail 'A destination hostname must be provided'
     fi
-    getEnvironment
-    checkInstance
-    checkPxfConf
     warnUserEnvScript
-    rsync -az${DELETE:+ --delete} -e "ssh -o StrictHostKeyChecking=no" "$PXF_CONF"/{conf,lib,servers} "${target_host}:$PXF_CONF"
+    rsync -az${DELETE:+ --delete} -e "ssh -o StrictHostKeyChecking=no" "$PXF_BASE"/{conf,lib,servers} "${target_host}:$PXF_BASE"
 }
 
 function doCluster()
 {
-    local pxf_cluster_command=$2 is_init=false
-    [[ ${pxf_cluster_command} == init ]] && is_init=true
-    PRESERVE_JAVA_HOME=${is_init} getEnvironment
-    # Go CLI handles unset PXF_CONF when appropriate
-    [[ $PXF_CONF == NOT_INITIALIZED ]] && unset PXF_CONF
-    [[ ${is_init} == false ]] && warnUserEnvScript
+    local cmd=$2
+    # Go CLI handles unset PXF_BASE when appropriate
+    if [[ ${cmd} != init ]] && [[ ${cmd} != prepare ]]; then
+        warnUserEnvScript
+    fi
     "${parent_script_dir}/bin/pxf-cli" "$@"
 }
 
 function warnUserEnvScript()
 {
-   local user_env_script=${PXF_CONF}/conf/pxf-env.sh
-   if [[ ! -f $user_env_script ]]; then
-      echo "WARNING: failed to find ${user_env_script}, default parameters will be used"
-   fi
-}
-
-function checkPxfConf()
-{
-   if [[ $PXF_CONF == NOT_INITIALIZED ]]; then
-      echo 'ERROR: PXF is not initialized, call pxf init command'
-      exit 1
-   fi
+   local user_env_script=${PXF_BASE}/conf/pxf-env.sh
+   [[ -f $user_env_script ]] || echoYellow "WARNING: failed to find ${user_env_script}, default parameters will be used"
 }
 
 pxf_script_command=$1
 
 silent=false
-skipRegister=false
 
 validate_user
 validate_system
 
 case $pxf_script_command in
     'init')
-        if [[ $2 == -y || $2 == -Y || $3 == -y || $3 == -Y ]]; then
+        if [[ $2 == -y || $2 == -Y ]]; then
             silent=true
-        fi
-        if [[ $2 == -s || $2 == --skip-register || $3 == -s || $3 == --skip-register ]]; then
-            skipRegister=true
         fi
         doInit
         ;;
@@ -529,7 +516,6 @@ case $pxf_script_command in
         ;;
     'restart')
         doStop
-        sleep 1s
         doStart
         ;;
     'status')
@@ -553,6 +539,12 @@ case $pxf_script_command in
         ;;
     'reset')
         doReset "$@"
+        ;;
+    'prepare')
+        doPrepare "$@"
+        ;;
+    'migrate')
+        doMigrate "$@"
         ;;
     *)
         printUsage

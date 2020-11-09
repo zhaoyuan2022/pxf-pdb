@@ -3,8 +3,9 @@ package org.greenplum.pxf.plugins.hdfs;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.mapreduce.MRJobConfig;
-import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.greenplum.pxf.api.error.PxfRuntimeException;
 import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.api.utilities.Utilities;
 import org.slf4j.Logger;
@@ -14,23 +15,26 @@ import java.net.URI;
 import java.util.Arrays;
 
 import static org.apache.hadoop.fs.FileSystem.FS_DEFAULT_NAME_KEY;
+import static org.greenplum.pxf.api.model.ConfigurationFactory.PXF_CONFIG_SERVER_DIRECTORY_PROPERTY;
+import static org.greenplum.pxf.api.model.ConfigurationFactory.PXF_SERVER_NAME_PROPERTY;
 
 public enum HcfsType {
     ADL,
     CUSTOM {
         @Override
-        public String getDataUri(Configuration configuration, RequestContext context) {
+        public String getDataUri(RequestContext context) {
             String profileScheme = StringUtils.isBlank(context.getProfileScheme()) ? "" : context.getProfileScheme() + "://";
-            return getDataUriForPrefix(configuration, context, profileScheme);
+            return getDataUriForPrefix(context, profileScheme);
         }
     },
     FILE {
         @Override
-        protected String validateAndNormalizeBasePath(String basePath) {
+        protected String validateAndNormalizeBasePath(String serverName, String basePath) {
             if (StringUtils.isBlank(basePath))
-                throw new IllegalArgumentException(
-                        String.format("configure a valid value for '%s' property for this server to access the filesystem",
-                                CONFIG_KEY_BASE_PATH));
+                throw new PxfRuntimeException(
+                        String.format("invalid configuration for server '%s'", serverName),
+                        String.format("Configure a valid value for '%s' property for server '%s' to access the filesystem.",
+                                CONFIG_KEY_BASE_PATH, serverName));
 
             return "/".equals(basePath)
                     ? "/"
@@ -39,14 +43,6 @@ public enum HcfsType {
     },
     GS,
     HDFS,
-    // LOCALFILE is deprecated and it will be removed in version 6.0.0 of PXF
-    @Deprecated
-    LOCALFILE("file") {
-        @Override
-        public String validateAndNormalizeDataSource(String dataSource) {
-            return dataSource;
-        }
-    },
     S3,
     S3A,
     S3N,
@@ -83,20 +79,20 @@ public enum HcfsType {
      * @param context The input data parameters
      * @return an absolute data path
      */
-    public static HcfsType getHcfsType(Configuration configuration, RequestContext context) {
-        String scheme = getScheme(configuration, context);
+    public static HcfsType getHcfsType(RequestContext context) {
+        String scheme = getScheme(context);
 
         // now we have scheme, resolve to enum
         HcfsType type = HcfsType.fromString(scheme.toUpperCase());
         // disableSecureTokenRenewal for this configuration if non-secure
-        type.getDataUriForPrefix(configuration, "/", scheme);
+        type.getDataUriForPrefix(context.getConfiguration(), "/", scheme);
         return type;
     }
 
-    private static String getScheme(Configuration configuration, RequestContext context) {
+    private static String getScheme(RequestContext context) {
         // if defaultFs is defined and not file://, it takes precedence over protocol
         String schemeFromContext = context.getProfileScheme();
-        URI defaultFS = FileSystem.getDefaultUri(configuration);
+        URI defaultFS = FileSystem.getDefaultUri(context.getConfiguration());
         String defaultFSScheme = defaultFS.getScheme();
         if (StringUtils.isBlank(defaultFSScheme)) {
             throw new IllegalStateException(String.format("No scheme for property %s=%s", FS_DEFAULT_NAME_KEY, defaultFS));
@@ -104,74 +100,57 @@ public enum HcfsType {
 
         // protocol from RequestContext will take precedence over defaultFS
         if (StringUtils.isNotBlank(schemeFromContext)) {
-            checkForConfigurationMismatch(defaultFSScheme, schemeFromContext);
+            checkForConfigurationMismatch(defaultFSScheme, schemeFromContext, context.getServerName(), context.getConfiguration().get(PXF_CONFIG_SERVER_DIRECTORY_PROPERTY));
             return schemeFromContext;
         }
 
         return defaultFSScheme;
     }
 
-    private static void checkForConfigurationMismatch(String defaultFSScheme, String schemeFromContext) {
+    private static void checkForConfigurationMismatch(String defaultFSScheme, String schemeFromContext, String serverName, String configurationDirectory) {
         // do not allow protocol mismatch, unless defaultFs has file:// scheme
         if (!FILE_SCHEME.equals(defaultFSScheme) &&
                 !StringUtils.equalsIgnoreCase(defaultFSScheme, schemeFromContext)) {
-            throw new IllegalArgumentException(
-                    String.format("profile protocol (%s) is not compatible with server filesystem (%s)",
-                            schemeFromContext, defaultFSScheme));
+            throw new PxfRuntimeException(
+                    String.format("profile '%s' is not compatible with server's '%s' configuration ('%s')",
+                            schemeFromContext, serverName, defaultFSScheme),
+                    String.format("Ensure that '%s' includes only the configuration files for profile '%s'.",
+                            configurationDirectory, schemeFromContext));
         }
     }
 
     /**
      * Returns a unique fully resolved URI including the protocol for write.
      * The filename is generated with the transaction and segment IDs resulting
-     * in <TRANSACTION-ID>_<SEGMENT-ID>. If a COMPRESSION_CODEC is provided, the
-     * default codec extension will be appended to the name of the file.
+     * in <TRANSACTION-ID>_<SEGMENT-ID>.
      *
-     * @param configuration The hadoop configurations
-     * @param context       The input data parameters
+     * @param context The input data parameters
      * @return an absolute data path for write
      */
-    public String getUriForWrite(Configuration configuration, RequestContext context) {
-        return getUriForWrite(configuration, context, false);
+    public String getUriForWrite(RequestContext context) {
+        return getUriForWrite(context, null);
     }
 
     /**
      * Returns a unique fully resolved URI including the protocol for write.
      * The filename is generated with the transaction and segment IDs resulting
-     * in <TRANSACTION-ID>_<SEGMENT-ID>. If a COMPRESSION_CODEC is provided and
-     * the skipCodedExtension parameter is false, the default codec extension
-     * will be appended to the name of the file.
+     * in <TRANSACTION-ID>_<SEGMENT-ID>. If a compressionCodec is provided, the
+     * default codec extension will be appended to the name of the file.
      *
-     * @param configuration      the hadoop configurations
-     * @param context            the input data parameters
-     * @param skipCodecExtension true if the codec extension is not desired, false otherwise
+     * @param context          the input data parameters
+     * @param compressionCodec the compression coded used for the extension
      * @return an absolute data path for write
      */
-    public String getUriForWrite(Configuration configuration, RequestContext context, boolean skipCodecExtension) {
+    public String getUriForWrite(RequestContext context, CompressionCodec compressionCodec) {
         String fileName = String.format("%s/%s_%d",
-                StringUtils.removeEnd(getDataUri(configuration, context), "/"),
+                StringUtils.removeEnd(getDataUri(context), "/"),
                 context.getTransactionId(),
                 context.getSegmentId());
 
-        if (!skipCodecExtension) {
-            String compressCodec = context.getOption("COMPRESSION_CODEC");
-            if (compressCodec != null) {
-                // get compression codec default extension
-                CodecFactory codecFactory = CodecFactory.getInstance();
-                String extension;
-                try {
-                    extension = codecFactory
-                            .getCodec(compressCodec, configuration)
-                            .getDefaultExtension();
-                } catch (IllegalArgumentException e) {
-                    LOG.debug("Unable to get extension for codec '{}'", compressCodec);
-                    extension = codecFactory
-                            .getCodec(compressCodec, CompressionCodecName.UNCOMPRESSED)
-                            .getExtension();
-                }
-                // append codec extension to the filename
-                fileName += extension;
-            }
+        if (compressionCodec != null) {
+            String extension = compressionCodec.getDefaultExtension();
+            // append codec extension to the filename
+            fileName += extension;
         }
 
         LOG.debug("File name for write: {}", fileName);
@@ -184,8 +163,8 @@ public enum HcfsType {
      * @param context The input data parameters
      * @return an absolute data path
      */
-    public String getDataUri(Configuration configuration, RequestContext context) {
-        return getDataUriForPrefix(configuration, context, this.prefix);
+    public String getDataUri(RequestContext context) {
+        return getDataUriForPrefix(context, this.prefix);
     }
 
     /**
@@ -225,8 +204,8 @@ public enum HcfsType {
         return effectiveDataSource;
     }
 
-    protected String getDataUriForPrefix(Configuration configuration, RequestContext context, String scheme) {
-        return getDataUriForPrefix(configuration, context.getDataSource(), scheme);
+    protected String getDataUriForPrefix(RequestContext context, String scheme) {
+        return getDataUriForPrefix(context.getConfiguration(), context.getDataSource(), scheme);
     }
 
     protected String getDataUriForPrefix(Configuration configuration, String dataSource, String scheme) {
@@ -234,7 +213,7 @@ public enum HcfsType {
         URI defaultFS = FileSystem.getDefaultUri(configuration);
 
         String uri;
-        String normalizedBasePath = validateAndNormalizeBasePath(configuration.get(CONFIG_KEY_BASE_PATH));
+        String normalizedBasePath = validateAndNormalizeBasePath(configuration.get(PXF_SERVER_NAME_PROPERTY), configuration.get(CONFIG_KEY_BASE_PATH));
         String normalizedDataSource = validateAndNormalizeDataSource(dataSource);
 
         if (FILE_SCHEME.equals(defaultFS.getScheme())) {
@@ -252,10 +231,11 @@ public enum HcfsType {
     /**
      * Validates the basePath and normalizes it for the appropriate filesystem
      *
-     * @param basePath the basePath as configured by the user
+     * @param serverName the name of the server being accessed
+     * @param basePath   the basePath as configured by the user
      * @return the normalized basePath
      */
-    protected String validateAndNormalizeBasePath(String basePath) {
+    protected String validateAndNormalizeBasePath(String serverName, String basePath) {
         return StringUtils.isBlank(basePath)
                 // Return an empty string to prevent "null" in the string concatenation
                 ? ""

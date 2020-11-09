@@ -19,8 +19,6 @@ package org.greenplum.pxf.api.utilities;
  * under the License.
  */
 
-import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.SecurityUtil;
@@ -30,10 +28,8 @@ import org.greenplum.pxf.api.model.RequestContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.regex.Matcher;
@@ -59,28 +55,6 @@ public class Utilities {
      * matches a :, /, ?, or #
      */
     public static final Pattern NON_HOSTNAME_CHARACTERS = Pattern.compile("[:/?#]");
-
-    /**
-     * Returns a decoded base64 byte[], or throws an error if the base64 string is invalid
-     *
-     * @param encoded   the base64 encoded string
-     * @param paramName the name of the parameter
-     * @return the decoded base64 string
-     */
-    public static byte[] parseBase64(String encoded, String paramName) {
-        if (encoded == null) {
-            return null;
-        }
-        if (!Base64.isArrayByteBase64(encoded.getBytes())) {
-            String message = String.format("%s must be Base64 encoded. (Bad value: %s)", paramName, encoded);
-            throw new IllegalArgumentException(message);
-        }
-        byte[] parsed = Base64.decodeBase64(encoded);
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Decoded value: {}", new String(parsed));
-        }
-        return parsed;
-    }
 
     /**
      * Validation for directory names that can be created
@@ -249,35 +223,6 @@ public class Utilities {
     }
 
     /**
-     * Parses input data and returns fragment metadata.
-     *
-     * @param context input data which has protocol information
-     * @return fragment metadata
-     * @throws RuntimeException when error occurred during metadata parsing
-     */
-    public static FragmentMetadata parseFragmentMetadata(RequestContext context) {
-        if (context.getFragmentMetadata() == null) {
-            return new FragmentMetadata(0, 0, HOSTS);
-        }
-        try (ObjectInputStream objectStream =
-                     new ObjectInputStream(new ByteArrayInputStream(context.getFragmentMetadata()))) {
-            long start = objectStream.readLong();
-            long end = objectStream.readLong();
-            String[] hosts = (String[]) objectStream.readObject();
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Parsed split: path={} start={} end={} hosts={}",
-                        context.getDataSource(),
-                        start,
-                        end,
-                        ArrayUtils.toString(hosts));
-            }
-            return new FragmentMetadata(start, end, hosts);
-        } catch (IOException | ClassNotFoundException e) {
-            throw new RuntimeException("Exception while reading expected fragment metadata", e);
-        }
-    }
-
-    /**
      * Determines whether components can use aggregate optimized implementations.
      *
      * @param requestContext input protocol data
@@ -308,16 +253,6 @@ public class Utilities {
             LOG.error("Unable to load class: {}", e.getMessage());
         }
         return result;
-    }
-
-    /**
-     * Returns whether fragmenter cache has been configured as enabled.
-     * Defaults to true.
-     *
-     * @return true if fragmenter cache is enabled, false otherwise
-     */
-    public static boolean isFragmenterCacheEnabled() {
-        return !StringUtils.equalsIgnoreCase(System.getProperty(PROPERTY_KEY_FRAGMENTER_CACHE, "true"), "false");
     }
 
     /**

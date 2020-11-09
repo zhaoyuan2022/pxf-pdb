@@ -3,8 +3,7 @@ package org.greenplum.pxf.service.bridge;
 import org.greenplum.pxf.api.model.Accessor;
 import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.api.model.Resolver;
-import org.greenplum.pxf.api.utilities.AccessorFactory;
-import org.greenplum.pxf.api.utilities.ResolverFactory;
+import org.greenplum.pxf.service.utilities.BasePluginFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,25 +17,16 @@ public abstract class BaseBridge implements Bridge {
 
     protected Accessor accessor;
     protected Resolver resolver;
+    protected RequestContext context;
 
-    /**
-     * Creates a new instance for a given request context. Uses default singleton instances of
-     * plugin factories to request accessor and resolver.
-     * @param context request context
-     */
-    public BaseBridge(RequestContext context) {
-        this(context, AccessorFactory.getInstance(), ResolverFactory.getInstance());
-    }
+    public BaseBridge(BasePluginFactory pluginFactory, RequestContext context) {
+        String accessorClassName = context.getAccessor();
+        String resolverClassName = context.getResolver();
 
-    /**
-     * Creates a new instance for a given request context. Uses provides instances of
-     * plugin factories to request accessor and resolver.
-     * @param context request context
-     * @param accessorFactory accessor factory
-     * @param resolverFactory resolver factory
-     */
-    BaseBridge(RequestContext context, AccessorFactory accessorFactory, ResolverFactory resolverFactory) {
-        this.accessor = accessorFactory.getPlugin(context);
-        this.resolver = resolverFactory.getPlugin(context);
+        LOG.debug("Creating accessor bean '{}' and resolver bean '{}'", accessorClassName, resolverClassName);
+
+        this.context = context;
+        this.accessor = pluginFactory.getPlugin(context, accessorClassName);
+        this.resolver = pluginFactory.getPlugin(context, resolverClassName);
     }
 }

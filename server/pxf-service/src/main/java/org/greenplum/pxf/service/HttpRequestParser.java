@@ -1,5 +1,6 @@
 package org.greenplum.pxf.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.commons.lang.StringUtils;
 import org.greenplum.pxf.api.model.OutputFormat;
 import org.greenplum.pxf.api.model.PluginConf;
@@ -7,13 +8,14 @@ import org.greenplum.pxf.api.model.ProtocolHandler;
 import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.api.utilities.ColumnDescriptor;
 import org.greenplum.pxf.api.utilities.EnumAggregationType;
-import org.greenplum.pxf.api.utilities.Utilities;
-import org.greenplum.pxf.service.profile.ProfilesConf;
+import org.greenplum.pxf.api.utilities.FragmentMetadata;
+import org.greenplum.pxf.api.utilities.FragmentMetadataSerDe;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+import org.springframework.util.MultiValueMap;
 
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.MultivaluedMap;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URLDecoder;
@@ -30,53 +32,45 @@ import java.util.stream.Collectors;
 /**
  * Parser for HTTP requests that contain data in HTTP headers.
  */
-public class HttpRequestParser implements RequestParser<HttpHeaders> {
+@Component
+public class HttpRequestParser implements RequestParser<MultiValueMap<String, String>> {
+
+    private static final Logger LOG = LoggerFactory.getLogger(HttpRequestParser.class);
 
     private static final String TRUE_LCASE = "true";
     private static final String FALSE_LCASE = "false";
-
-    private static final Logger LOG = LoggerFactory.getLogger(HttpRequestParser.class);
-    private static final HttpRequestParser instance = new HttpRequestParser();
     private static final String PROFILE_SCHEME = "PROFILE-SCHEME";
 
-    private PluginConf pluginConf;
+    private final PluginConf pluginConf;
+    protected FragmentMetadataSerDe metadataSerDe;
 
-    public HttpRequestParser() {
-        this(ProfilesConf.getInstance());
-    }
-
-    HttpRequestParser(PluginConf pluginConf) {
+    /**
+     * Create a new instance of the HttpRequestParser with the given PluginConf
+     *
+     * @param pluginConf the plugin conf
+     */
+    public HttpRequestParser(PluginConf pluginConf) {
         this.pluginConf = pluginConf;
     }
 
-    public static HttpRequestParser getInstance() {
-        return instance;
-    }
-
-    /**
-     * Throws an exception when the given property value is missing in request.
-     *
-     * @param property missing property name
-     * @throws IllegalArgumentException throws an exception with the property
-     *                                  name in the error message
-     */
-    private static void protocolViolation(String property) {
-        String error = String.format("Property %s has no value in the current request", property);
-        throw new IllegalArgumentException(error);
+    @Autowired
+    public void setMetadataSerDe(FragmentMetadataSerDe metadataSerDe) {
+        this.metadataSerDe = metadataSerDe;
     }
 
     @Override
-    public RequestContext parseRequest(HttpHeaders request, RequestContext.RequestType requestType) {
+    public RequestContext parseRequest(MultiValueMap<String, String> requestHeaders, RequestContext.RequestType requestType) {
 
-        RequestMap params = new RequestMap(request.getRequestHeaders());
+        RequestMap params = new RequestMap(requestHeaders);
 
         if (LOG.isDebugEnabled()) {
             // Logging only keys to prevent sensitive data to be logged
             LOG.debug("Parsing request parameters: " + params.keySet());
         }
 
-        // build new instance of RequestContext and fill it with parsed values
         RequestContext context = new RequestContext();
+
+        // fill the Request-scoped RequestContext with parsed values
 
         // whether we are in a fragmenter, read_bridge, or write_bridge scenario
         context.setRequestType(requestType);
@@ -123,8 +117,17 @@ public class HttpRequestParser implements RequestParser<HttpHeaders> {
             context.setFragmentIndex(Integer.parseInt(fragmentIndexStr));
         }
 
-        String encodedFragmentMetadata = params.removeOptionalProperty("FRAGMENT-METADATA");
-        context.setFragmentMetadata(Utilities.parseBase64(encodedFragmentMetadata, "Fragment metadata information"));
+        String jsonFragmentMetadata = params.removeOptionalProperty("FRAGMENT-METADATA");
+        FragmentMetadata fragmentMetadata;
+
+        try {
+            fragmentMetadata = deserializeFragmentMetadata(jsonFragmentMetadata);
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException(String.format("unable to deserialize fragment meta '%s'", jsonFragmentMetadata), e);
+        }
+        context.setFragmentMetadata(fragmentMetadata);
+
+        context.setLastFragment(params.removeOptionalBoolProperty("LAST-FRAGMENT"));
         context.setHost(params.removeProperty("URL-HOST"));
         context.setMetadata(params.removeUserProperty("METADATA"));
         context.setPort(params.removeIntProperty("URL-PORT"));
@@ -168,9 +171,6 @@ public class HttpRequestParser implements RequestParser<HttpHeaders> {
         }
 
         context.setUser(params.removeProperty("USER"));
-
-        String encodedFragmentUserData = params.removeOptionalProperty("FRAGMENT-USER-DATA");
-        context.setUserData(Utilities.parseBase64(encodedFragmentUserData, "Fragment user data"));
 
         // Store alignment for global use as a system property
         System.setProperty("greenplum.alignment", params.removeProperty("ALIGNMENT"));
@@ -244,6 +244,30 @@ public class HttpRequestParser implements RequestParser<HttpHeaders> {
         return context;
     }
 
+    /**
+     * Deserializes the JSON string into a {@link FragmentMetadata}
+     *
+     * @param jsonFragmentMetadata the fragment metadata
+     * @return the {@link FragmentMetadata}
+     * @throws JsonProcessingException when the JSON deserialization fails
+     */
+    private FragmentMetadata deserializeFragmentMetadata(String jsonFragmentMetadata) throws JsonProcessingException {
+        return StringUtils.isBlank(jsonFragmentMetadata) ? null :
+                metadataSerDe.deserialize(jsonFragmentMetadata);
+    }
+
+    /**
+     * Throws an exception when the given property value is missing in request.
+     *
+     * @param property missing property name
+     * @throws IllegalArgumentException throws an exception with the property
+     *                                  name in the error message
+     */
+    private static void protocolViolation(String property) {
+        String error = String.format("Property %s has no value in the current request", property);
+        throw new IllegalArgumentException(error);
+    }
+
     private void parseGreenplumCSV(RequestMap params, RequestContext context) {
         context.getGreenplumCSV()
                 .withDelimiter(params.removeUserProperty("DELIMITER"))
@@ -287,18 +311,6 @@ public class HttpRequestParser implements RequestParser<HttpHeaders> {
         pluginsMap.forEach((k, v) -> params.put(RequestMap.USER_PROP_PREFIX + k, v));
 
         params.put(RequestMap.USER_PROP_PREFIX + PROFILE_SCHEME, pluginConf.getProtocol(profile));
-    }
-
-    private boolean parseBooleanValue(String threadSafeStr) {
-
-        if (threadSafeStr.equalsIgnoreCase(TRUE_LCASE)) {
-            return true;
-        }
-        if (threadSafeStr.equalsIgnoreCase(FALSE_LCASE)) {
-            return false;
-        }
-        throw new IllegalArgumentException("Illegal boolean value '"
-                + threadSafeStr + "'." + " Usage: [TRUE|FALSE]");
     }
 
     /*
@@ -385,19 +397,20 @@ public class HttpRequestParser implements RequestParser<HttpHeaders> {
      * (ISO-LATIN-1) to UTF_8.
      */
     static class RequestMap extends TreeMap<String, String> {
+        private static final long serialVersionUID = 4745394510220213936L;
         private static final String PROP_PREFIX = "X-GP-";
         private static final String USER_PROP_PREFIX = "X-GP-OPTIONS-";
         private static final String USER_PROP_PREFIX_LOWERCASE = "x-gp-options-";
         private static final String ENCODED_HEADER_VALUES_NAME = PROP_PREFIX + "ENCODED-HEADER-VALUES";
 
-        RequestMap(MultivaluedMap<String, String> requestHeaders) {
+        RequestMap(MultiValueMap<String, String> requestHeaders) {
             super(String.CASE_INSENSITIVE_ORDER);
 
             boolean decodeHeaderValue = false;
             for (Map.Entry<String, List<String>> entry : requestHeaders.entrySet()) {
                 if (StringUtils.equalsIgnoreCase(ENCODED_HEADER_VALUES_NAME, entry.getKey())) {
                     String value = getValue(entry.getValue());
-                    decodeHeaderValue = StringUtils.equalsIgnoreCase("true", value);
+                    decodeHeaderValue = StringUtils.equalsIgnoreCase(TRUE_LCASE, value);
                     break;
                 }
             }
@@ -415,7 +428,7 @@ public class HttpRequestParser implements RequestParser<HttpHeaders> {
                     }
                 }
                 LOG.trace("Key: {} Value: {}", key, value);
-                put(key, value.replace("\\\"", "\""));
+                put(key, value);
             }
         }
 
@@ -488,16 +501,14 @@ public class HttpRequestParser implements RequestParser<HttpHeaders> {
         }
 
         /**
-         * Returns a property value as boolean type. A boolean property is defined
-         * as an int where 0 means false, and anything else true (like C).
+         * Returns an optional property value as boolean type. If the property
+         * is missing, the default false is returned.
          *
-         * @param property the lookup property
-         * @return property value as boolean
-         * @throws NumberFormatException if the value is missing or can't be
-         *                               represented by an Integer
+         * @param property the lookup property key
+         * @return true when the property is true, false otherwise
          */
-        private boolean removeBoolProperty(String property) {
-            return removeIntProperty(property) != 0;
+        private boolean removeOptionalBoolProperty(String property) {
+            return StringUtils.equals(TRUE_LCASE, removeOptionalProperty(property));
         }
     }
 

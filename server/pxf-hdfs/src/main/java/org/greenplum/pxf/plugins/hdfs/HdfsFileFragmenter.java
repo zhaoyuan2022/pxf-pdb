@@ -4,7 +4,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.InvalidInputException;
-import org.greenplum.pxf.api.model.ConfigurationFactory;
+import org.apache.hadoop.mapred.JobConf;
 import org.greenplum.pxf.api.model.Fragment;
 import org.greenplum.pxf.plugins.hdfs.utilities.PxfInputFormat;
 
@@ -20,13 +20,6 @@ import java.util.stream.Collectors;
  */
 public class HdfsFileFragmenter extends HdfsDataFragmenter {
 
-    public HdfsFileFragmenter() {
-    }
-
-    HdfsFileFragmenter(ConfigurationFactory configurationFactory) {
-        super(configurationFactory);
-    }
-
     /**
      * Gets the fragments for a data source URI that can appear as a file name,
      * a directory name or a wildcard. Returns the data fragments in JSON
@@ -34,7 +27,8 @@ public class HdfsFileFragmenter extends HdfsDataFragmenter {
      */
     @Override
     public List<Fragment> getFragments() throws Exception {
-        String fileName = hcfsType.getDataUri(jobConf, context);
+        JobConf jobConf = getJobConf();
+        String fileName = hcfsType.getDataUri(context);
         Path path = new Path(fileName);
 
         PxfInputFormat pxfInputFormat = new PxfInputFormat();

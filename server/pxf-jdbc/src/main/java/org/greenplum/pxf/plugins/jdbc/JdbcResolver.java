@@ -165,11 +165,9 @@ public class JdbcResolver extends JdbcBasePlugin implements Resolver {
                 String valDebug;
                 if (oneField.val == null) {
                     valDebug = "null";
-                }
-                else if (oneFieldType == DataType.BYTEA) {
+                } else if (oneFieldType == DataType.BYTEA) {
                     valDebug = String.format("'{}'", new String((byte[]) oneField.val));
-                }
-                else {
+                } else {
                     valDebug = String.format("'{}'", oneField.val.toString());
                 }
 

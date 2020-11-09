@@ -22,7 +22,6 @@ package org.greenplum.pxf.plugins.hdfs;
 
 import org.apache.commons.lang.StringUtils;
 import org.greenplum.pxf.api.OneRow;
-import org.greenplum.pxf.api.model.RequestContext;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -43,16 +42,15 @@ public class QuotedLineBreakAccessor extends HdfsAtomicDataAccessor {
     Queue<String> lineQueue;
 
     @Override
-    public void initialize(RequestContext requestContext) {
-        super.initialize(requestContext);
-
+    public void afterPropertiesSet() {
+        super.afterPropertiesSet();
         // true if the files are read as a single row, false otherwise
         fileAsRow = StringUtils.equalsIgnoreCase("true", context.getOption("FILE_AS_ROW"));
 
         if (fileAsRow && context.getTupleDescription().size() != 1) {
             throw new IllegalArgumentException(String.format("the FILE_AS_ROW " +
-                    "property only supports tables with a single column in " +
-                    "the table definition. %d columns were provided",
+                            "property only supports tables with a single column in " +
+                            "the table definition. %d columns were provided",
                     context.getTupleDescription().size()));
         }
     }

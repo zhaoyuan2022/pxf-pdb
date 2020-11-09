@@ -42,7 +42,7 @@ function run_pg_regress() {
 		source "\${GPHOME}/greenplum_path.sh"
 
 		export GPHD_ROOT=${GPHD_ROOT}
-		export PXF_HOME=${PXF_HOME} PXF_CONF=${PXF_CONF_DIR}
+		export PXF_HOME=${PXF_HOME} PXF_BASE=${PXF_BASE_DIR}
 		export PGPORT=${PGPORT}
 		export HCFS_CMD=${GPHD_ROOT}/bin/hdfs
 		export HCFS_PROTOCOL=${PROTOCOL}
@@ -120,25 +120,25 @@ function run_pxf_automation() {
 }
 
 function generate_extras_fat_jar() {
-	mkdir -p /tmp/fatjar "${PXF_HOME}/tmp"
+	mkdir -p /tmp/fatjar
 	pushd /tmp/fatjar
-		find "${PXF_CONF_DIR}/lib" -name '*.jar' -exec jar -xf {} \;
-		jar -cf "${PXF_HOME}/lib/pxf-extras-1.0.0.jar" .
-		chown -R gpadmin:gpadmin "${PXF_HOME}/lib/pxf-extras-1.0.0.jar"
+		find "${PXF_BASE_DIR}/lib" -name '*.jar' -exec jar -xf {} \;
+		jar -cf "/tmp/pxf-extras-1.0.0.jar" .
+		chown -R gpadmin:gpadmin "/tmp/pxf-extras-1.0.0.jar"
 	popd
 }
 
 function configure_mapr_dependencies() {
-	# Copy mapr specific jars to $PXF_CONF_DIR/lib
+	# Copy mapr specific jars to $PXF_BASE_DIR/lib
 	HADOOP_COMMON=/opt/mapr/hadoop/hadoop-2.7.0/share/hadoop/common
 	cp "${HADOOP_COMMON}/lib/maprfs-5.2.2-mapr.jar" \
 		"${HADOOP_COMMON}/lib/hadoop-auth-2.7.0-mapr-1707.jar" \
-		"${HADOOP_COMMON}/hadoop-common-2.7.0-mapr-1707.jar" "${PXF_CONF_DIR}/lib"
+		"${HADOOP_COMMON}/hadoop-common-2.7.0-mapr-1707.jar" "${PXF_BASE_DIR}/lib"
 	# Copy *-site.xml files
-	cp /opt/mapr/hadoop/hadoop-2.7.0/etc/hadoop/*-site.xml "${PXF_CONF_DIR}/servers/default"
+	cp /opt/mapr/hadoop/hadoop-2.7.0/etc/hadoop/*-site.xml "${PXF_BASE_DIR}/servers/default"
 	# Copy mapred-site.xml for recursive hdfs directories test
 	# We need to do this step after PXF Server init
-	cp "${PXF_CONF_DIR}/templates/mapred-site.xml" "${PXF_CONF_DIR}/servers/default/recursive-site.xml"
+	cp "${PXF_HOME}/templates/mapred-site.xml" "${PXF_BASE_DIR}/servers/default/recursive-site.xml"
 	# Set mapr port to 7222 in default.xml (sut)
 	sed -i 's|<port>8020</port>|<port>7222</port>|' pxf_src/automation/src/test/resources/sut/default.xml
 }
@@ -157,7 +157,7 @@ function setup_hadoop() {
 }
 
 function configure_sut() {
-	AMBARI_DIR=$(find /tmp/build/ -name ambari_env_files)
+	[[ -d /tmp/build/ ]] && AMBARI_DIR=$(find /tmp/build/ -name ambari_env_files)
 	if [[ -n $AMBARI_DIR ]]; then
 		REALM=$(< "$AMBARI_DIR"/REALM)
 		HADOOP_IP=$(grep < "$AMBARI_DIR"/etc_hostfile ambari-1 | awk '{print $1}')
@@ -256,7 +256,7 @@ function _main() {
 	su gpadmin -c "${CWDIR}/initialize_gpdb.bash"
 
 	add_remote_user_access_for_gpdb testuser
-	init_and_configure_pxf_server
+	configure_pxf_server
 
 	local HCFS_BUCKET # team-specific bucket names
 	case ${PROTOCOL} in

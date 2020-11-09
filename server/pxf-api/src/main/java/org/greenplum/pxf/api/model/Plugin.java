@@ -1,15 +1,19 @@
 package org.greenplum.pxf.api.model;
 
 /**
- * Base interface for all plugin types that manages initialization and provides
- * information on plugin thread safety
+ * Base interface for all plugin types
  */
 public interface Plugin {
 
     /**
-     * Initialize the plugin for the incoming request
+     * Sets the context for the current request
      *
-     * @param requestContext data provided in the request
+     * @param context the context for the current request
      */
-    void initialize(RequestContext requestContext);
+    void setRequestContext(RequestContext context);
+
+    /**
+     * Invoked after the {@code RequestContext} has been bound
+     */
+    void afterPropertiesSet();
 }

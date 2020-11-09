@@ -19,13 +19,12 @@ package org.greenplum.pxf.service.bridge;
  * under the License.
  */
 
-import org.greenplum.pxf.api.BadRecordException;
 import org.greenplum.pxf.api.OneRow;
+import org.greenplum.pxf.api.error.BadRecordException;
 import org.greenplum.pxf.api.io.Writable;
 import org.greenplum.pxf.api.model.RequestContext;
-import org.greenplum.pxf.api.utilities.AccessorFactory;
-import org.greenplum.pxf.api.utilities.ResolverFactory;
 import org.greenplum.pxf.service.BridgeOutputBuilder;
+import org.greenplum.pxf.service.utilities.BasePluginFactory;
 
 import java.io.CharConversionException;
 import java.io.DataInputStream;
@@ -47,21 +46,12 @@ import java.util.zip.ZipException;
  */
 public class ReadBridge extends BaseBridge {
 
-    final BridgeOutputBuilder outputBuilder;
-    Deque<Writable> outputQueue = new LinkedList<>();
+    protected BridgeOutputBuilder outputBuilder;
+    protected Deque<Writable> outputQueue = new LinkedList<>();
 
-    /**
-     * C'tor - set the implementation of the bridge.
-     *
-     * @param context input containing accessor and resolver names
-     */
-    public ReadBridge(RequestContext context) {
-        this(context, AccessorFactory.getInstance(), ResolverFactory.getInstance());
-    }
-
-    ReadBridge(RequestContext context, AccessorFactory accessorFactory, ResolverFactory resolverFactory) {
-        super(context, accessorFactory, resolverFactory);
-        outputBuilder = new BridgeOutputBuilder(context);
+    public ReadBridge(BasePluginFactory pluginFactory, RequestContext context) {
+        super(pluginFactory, context);
+        this.outputBuilder = new BridgeOutputBuilder(context);
     }
 
     /**
@@ -153,6 +143,9 @@ public class ReadBridge extends BaseBridge {
                 || ex instanceof UTFDataFormatException || ex instanceof ZipException);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean setNext(DataInputStream inputStream) {
         throw new UnsupportedOperationException("setNext is not implemented");

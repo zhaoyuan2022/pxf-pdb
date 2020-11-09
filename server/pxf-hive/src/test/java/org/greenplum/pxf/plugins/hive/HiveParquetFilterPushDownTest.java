@@ -1,20 +1,17 @@
 package org.greenplum.pxf.plugins.hive;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.serde.serdeConstants;
-import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.MessageTypeParser;
 import org.greenplum.pxf.api.OneField;
 import org.greenplum.pxf.api.OneRow;
 import org.greenplum.pxf.api.io.DataType;
 import org.greenplum.pxf.api.model.Accessor;
-import org.greenplum.pxf.api.model.Fragment;
 import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.api.model.Resolver;
 import org.greenplum.pxf.api.utilities.ColumnDescriptor;
-import org.greenplum.pxf.plugins.hdfs.utilities.HdfsUtilities;
 import org.greenplum.pxf.plugins.hive.utilities.HiveUtilities;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.sql.Date;
 import java.time.Instant;
@@ -26,10 +23,10 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class HiveParquetFilterPushDownTest {
 
@@ -66,8 +63,8 @@ public class HiveParquetFilterPushDownTest {
 
     private List<ColumnDescriptor> columnDescriptors;
 
-    @Before
-    public void setup() throws Exception {
+    @BeforeEach
+    public void setup() {
         columnDescriptors = new ArrayList<>();
         columnDescriptors.add(new ColumnDescriptor("id", DataType.INTEGER.getOID(), 0, "int4", null));
         columnDescriptors.add(new ColumnDescriptor("name", DataType.TEXT.getOID(), 1, "text", null));
@@ -87,26 +84,6 @@ public class HiveParquetFilterPushDownTest {
         columnDescriptors.add(new ColumnDescriptor("dec3", DataType.NUMERIC.getOID(), 15, "numeric", new Integer[]{13, 5}));
         columnDescriptors.add(new ColumnDescriptor("num1", DataType.INTEGER.getOID(), 16, "int", null));
 
-        MessageType schema = MessageTypeParser.parseMessageType("message hive_schema {\n" +
-                "  optional int32 id;\n" +
-                "  optional binary name (UTF8);\n" +
-                "  optional int32 cdate (DATE);\n" +
-                "  optional double amt;\n" +
-                "  optional binary grade (UTF8);\n" +
-                "  optional boolean b;\n" +
-                "  optional int96 tm;\n" +
-                "  optional int64 bg;\n" +
-                "  optional binary bin;\n" +
-                "  optional int32 sml (INT_16);\n" +
-                "  optional float r;\n" +
-                "  optional binary vc1 (UTF8);\n" +
-                "  optional binary c1 (UTF8);\n" +
-                "  optional fixed_len_byte_array(16) dec1 (DECIMAL(38,18));\n" +
-                "  optional fixed_len_byte_array(3) dec2 (DECIMAL(5,2));\n" +
-                "  optional fixed_len_byte_array(6) dec3 (DECIMAL(13,5));\n" +
-                "  optional int32 num1;\n" +
-                "}");
-
         // Hive User Data
         Properties props = new Properties();
         props.put("file.inputformat", INPUT_FORMAT_NAME);
@@ -114,8 +91,10 @@ public class HiveParquetFilterPushDownTest {
         props.put(serdeConstants.LIST_COLUMNS, COLUMN_NAMES);
         props.put(serdeConstants.LIST_COLUMN_TYPES, COLUMN_TYPES);
 
-        accessor = new HiveAccessor();
-        resolver = new HiveResolver();
+        HiveUtilities hiveUtilities = new HiveUtilities();
+
+        accessor = new HiveAccessor(null, hiveUtilities);
+        resolver = new HiveResolver(hiveUtilities);
         context = new RequestContext();
 
         String path = Objects.requireNonNull(getClass().getClassLoader().getResource("parquet_types.parquet")).getPath();
@@ -127,12 +106,14 @@ public class HiveParquetFilterPushDownTest {
         context.setProfileScheme("localfile");
         context.setRequestType(RequestContext.RequestType.READ_BRIDGE);
         context.setDataSource(path);
-        context.setFragmentMetadata(HdfsUtilities.prepareFragmentMetadata(0, 4196, Fragment.HOSTS));
-        context.setFragmentUserData(HiveUtilities.toKryo(props));
+        context.setFragmentMetadata(new HiveFragmentMetadata(0, 4196, new HiveUtilities().toKryo(props)));
         context.setTupleDescription(columnDescriptors);
+        context.setConfiguration(new Configuration());
 
-        accessor.initialize(context);
-        resolver.initialize(context);
+        accessor.setRequestContext(context);
+        accessor.afterPropertiesSet();
+        resolver.setRequestContext(context);
+        resolver.afterPropertiesSet();
     }
 
     @Test
@@ -706,16 +687,16 @@ public class HiveParquetFilterPushDownTest {
         OneRow oneRow;
         for (int expectedRow : expectedRows) {
             oneRow = accessor.readNextObject();
-            assertNotNull("Row " + expectedRow, oneRow);
+            assertNotNull(oneRow, "Row " + expectedRow);
             List<OneField> fieldList = resolver.getFields(oneRow);
-            assertNotNull("Row " + expectedRow, fieldList);
-            assertEquals("Row " + expectedRow, 17, fieldList.size());
+            assertNotNull(fieldList, "Row " + expectedRow);
+            assertEquals(17, fieldList.size(), "Row " + expectedRow);
 
             assertTypes(fieldList);
             assertValues(fieldList, expectedRow - 1);
         }
         oneRow = accessor.readNextObject();
-        assertNull("No more rows expected", oneRow);
+        assertNull(oneRow, "No more rows expected");
 
         accessor.closeForRead();
     }
@@ -782,39 +763,39 @@ public class HiveParquetFilterPushDownTest {
         List<ColumnDescriptor> columnDescriptors = context.getTupleDescription();
 
         if (columnDescriptors.get(0).isProjected()) {
-            assertEquals("Row " + row, COL1[row], fieldList.get(0).val);
+            assertEquals(COL1[row], fieldList.get(0).val, "Row " + row);
         } else {
-            assertNull("Row " + row, fieldList.get(0).val);
+            assertNull(fieldList.get(0).val, "Row " + row);
         }
 
         if (columnDescriptors.get(1).isProjected()) {
-            assertEquals("Row " + row, COL2[row], fieldList.get(1).val);
+            assertEquals(COL2[row], fieldList.get(1).val, "Row " + row);
         } else {
-            assertNull("Row " + row, fieldList.get(1).val);
+            assertNull(fieldList.get(1).val, "Row " + row);
         }
 
         if (columnDescriptors.get(2).isProjected() && COL3[row] != null) {
-            assertEquals("Row " + row, Date.valueOf(COL3[row]), fieldList.get(2).val);
+            assertEquals(Date.valueOf(COL3[row]), fieldList.get(2).val, "Row " + row);
         } else {
-            assertNull("Row " + row, fieldList.get(2).val);
+            assertNull(fieldList.get(2).val, "Row " + row);
         }
 
         if (columnDescriptors.get(3).isProjected() && COL4[row] != null) {
-            assertEquals("Row " + row, COL4[row], fieldList.get(3).val);
+            assertEquals(COL4[row], fieldList.get(3).val, "Row " + row);
         } else {
-            assertNull("Row " + row, fieldList.get(3).val);
+            assertNull(fieldList.get(3).val, "Row " + row);
         }
 
         if (columnDescriptors.get(4).isProjected() && COL5[row] != null) {
-            assertEquals("Row " + row, COL5[row], fieldList.get(4).val);
+            assertEquals(COL5[row], fieldList.get(4).val, "Row " + row);
         } else {
-            assertNull("Row " + row, fieldList.get(4).val);
+            assertNull(fieldList.get(4).val, "Row " + row);
         }
 
         if (columnDescriptors.get(5).isProjected() && COL6[row] != null) {
-            assertEquals("Row " + row, COL6[row], fieldList.get(5).val);
+            assertEquals(COL6[row], fieldList.get(5).val, "Row " + row);
         } else {
-            assertNull("Row " + row, fieldList.get(5).val);
+            assertNull(fieldList.get(5).val, "Row " + row);
         }
 
         if (columnDescriptors.get(6).isProjected() && COL7[row] != null) {
@@ -823,76 +804,76 @@ public class HiveParquetFilterPushDownTest {
             ZonedDateTime localTime = timestamp.atZone(ZoneId.systemDefault());
             String localTimestampString = localTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S"));
 
-            assertEquals("Row " + row, localTimestampString, fieldList.get(6).val.toString());
+            assertEquals(localTimestampString, fieldList.get(6).val.toString(), "Row " + row);
         } else {
-            assertNull("Row " + row, fieldList.get(6).val);
+            assertNull(fieldList.get(6).val, "Row " + row);
         }
 
         if (columnDescriptors.get(7).isProjected() && COL8[row] != null) {
-            assertEquals("Row " + row, COL8[row], fieldList.get(7).val);
+            assertEquals(COL8[row], fieldList.get(7).val, "Row " + row);
         } else {
-            assertNull("Row " + row, fieldList.get(7).val);
+            assertNull(fieldList.get(7).val, "Row " + row);
         }
 
         if (columnDescriptors.get(8).isProjected() && COL9[row] != null) {
-            assertTrue("Row " + row, fieldList.get(8).val instanceof byte[]);
+            assertTrue(fieldList.get(8).val instanceof byte[], "Row " + row);
             byte[] bin = (byte[]) fieldList.get(8).val;
-            assertEquals("Row " + row, 1, bin.length);
-            assertEquals("Row " + row + ", actual " + String.format("%8s", Integer.toBinaryString(bin[0] & 0xFF)).replace(' ', '0'),
-                    COL9[row].byteValue(), bin[0]);
+            assertEquals(1, bin.length, "Row " + row);
+            assertEquals(COL9[row].byteValue(), bin[0],
+                    "Row " + row + ", actual " + String.format("%8s", Integer.toBinaryString(bin[0] & 0xFF)).replace(' ', '0'));
         } else {
-            assertNull("Row " + row, fieldList.get(8).val);
+            assertNull(fieldList.get(8).val, "Row " + row);
         }
 
         if (columnDescriptors.get(9).isProjected() && COL10[row] != null) {
-            assertEquals("Row " + row, COL10[row], fieldList.get(9).val);
+            assertEquals(COL10[row], fieldList.get(9).val, "Row " + row);
         } else {
-            assertNull("Row " + row, fieldList.get(9).val);
+            assertNull(fieldList.get(9).val, "Row " + row);
         }
 
         if (columnDescriptors.get(10).isProjected() && COL11[row] != null) {
-            assertEquals("Row " + row, COL11[row], fieldList.get(10).val);
+            assertEquals(COL11[row], fieldList.get(10).val, "Row " + row);
         } else {
-            assertNull("Row " + row, fieldList.get(10).val);
+            assertNull(fieldList.get(10).val, "Row " + row);
         }
 
         if (columnDescriptors.get(11).isProjected() && COL12[row] != null) {
-            assertEquals("Row " + row, COL12[row], fieldList.get(11).val.toString());
+            assertEquals(COL12[row], fieldList.get(11).val.toString(), "Row " + row);
         } else {
             assertNull(fieldList.get(11).val);
         }
 
         if (columnDescriptors.get(12).isProjected() && COL13[row] != null) {
-            assertEquals("Row " + row, COL13[row], fieldList.get(12).val.toString());
+            assertEquals(COL13[row], fieldList.get(12).val.toString(), "Row " + row);
         } else {
-            assertNull("Row " + row, fieldList.get(12).val);
+            assertNull(fieldList.get(12).val, "Row " + row);
         }
 
         if (columnDescriptors.get(13).isProjected() && COL14[row] != null) {
             // Direct Parquet Resolver: assertBigDecimal("Row " + row, COL14[row], fieldList.get(13).val);
-            assertEquals("Row " + row, COL14[row], fieldList.get(13).val);
+            assertEquals(COL14[row], fieldList.get(13).val, "Row " + row);
         } else {
-            assertNull("Row " + row, fieldList.get(13).val);
+            assertNull(fieldList.get(13).val, "Row " + row);
         }
 
         if (columnDescriptors.get(14).isProjected() && COL15[row] != null) {
             // Direct Parquet Resolver: assertBigDecimal("Row " + row, COL15[row], fieldList.get(14).val);
-            assertEquals("Row " + row, COL15[row], fieldList.get(14).val);
+            assertEquals(COL15[row], fieldList.get(14).val, "Row " + row);
         } else {
-            assertNull("Row " + row, fieldList.get(14).val);
+            assertNull(fieldList.get(14).val, "Row " + row);
         }
 
         if (columnDescriptors.get(15).isProjected() && COL16[row] != null) {
             // Direct Parquet Resolver: assertBigDecimal("Row " + row, COL16[row], fieldList.get(15).val);
-            assertEquals("Row " + row, COL16[row], fieldList.get(15).val);
+            assertEquals(COL16[row], fieldList.get(15).val, "Row " + row);
         } else {
-            assertNull("Row " + row, fieldList.get(15).val);
+            assertNull(fieldList.get(15).val, "Row " + row);
         }
 
         if (columnDescriptors.get(16).isProjected() && COL17[row] != null) {
-            assertEquals("Row " + row, COL17[row], fieldList.get(16).val);
+            assertEquals(COL17[row], fieldList.get(16).val, "Row " + row);
         } else {
-            assertNull("Row " + row, fieldList.get(16).val);
+            assertNull(fieldList.get(16).val, "Row " + row);
         }
     }
 

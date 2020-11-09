@@ -20,20 +20,19 @@ package org.greenplum.pxf.plugins.hbase;
  */
 
 
-import org.greenplum.pxf.api.BadRecordException;
-import org.greenplum.pxf.api.OneField;
-import org.greenplum.pxf.api.OneRow;
-import org.greenplum.pxf.api.UnsupportedTypeException;
-import org.greenplum.pxf.api.io.DataType;
-import org.greenplum.pxf.api.model.RequestContext;
-import org.greenplum.pxf.api.model.Resolver;
-import org.greenplum.pxf.api.model.BasePlugin;
-import org.greenplum.pxf.plugins.hbase.utilities.HBaseColumnDescriptor;
-import org.greenplum.pxf.plugins.hbase.utilities.HBaseTupleDescription;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.greenplum.pxf.api.OneField;
+import org.greenplum.pxf.api.OneRow;
+import org.greenplum.pxf.api.error.BadRecordException;
+import org.greenplum.pxf.api.error.UnsupportedTypeException;
+import org.greenplum.pxf.api.io.DataType;
+import org.greenplum.pxf.api.model.BasePlugin;
+import org.greenplum.pxf.api.model.Resolver;
+import org.greenplum.pxf.plugins.hbase.utilities.HBaseColumnDescriptor;
+import org.greenplum.pxf.plugins.hbase.utilities.HBaseTupleDescription;
 
 import java.sql.Timestamp;
 import java.util.LinkedList;
@@ -52,8 +51,7 @@ public class HBaseResolver extends BasePlugin implements Resolver {
     private HBaseTupleDescription tupleDescription;
 
     @Override
-    public void initialize(RequestContext requestContext) {
-        super.initialize(requestContext);
+    public void afterPropertiesSet() {
         tupleDescription = new HBaseTupleDescription(context);
     }
 

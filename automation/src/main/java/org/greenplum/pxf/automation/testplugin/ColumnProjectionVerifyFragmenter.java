@@ -13,15 +13,15 @@ import java.util.stream.Collectors;
  * Return it as UserData
  */
 public class ColumnProjectionVerifyFragmenter extends BaseFragmenter {
+
     /**
      * Returns one fragment with incoming column projection column names as CSV in the user data.
      * If no incoming column projection info available, then return "No Column Projection" as user data.
      *
      * @return one data fragment
-     * @throws Exception
      */
     @Override
-    public List<Fragment> getFragments() throws Exception {
+    public List<Fragment> getFragments() {
 
         String columnProjection = "No Column Projection";
 
@@ -34,11 +34,8 @@ public class ColumnProjectionVerifyFragmenter extends BaseFragmenter {
 
         String[] hosts = {"localhost", "localhost", "localhost"};
         // Set filter value as returned user data.
-        Fragment fragment = new Fragment(
-                "dummy_file_path",
-                hosts,
-                "".getBytes(),
-                columnProjection.getBytes());
+        Fragment fragment = new Fragment("dummy_file_path", hosts,
+                new ColumnProjectionVerifyFragmentMetadata(columnProjection));
         fragments.add(fragment);
 
         return fragments;

@@ -22,35 +22,35 @@
     <file>
         <class>org.greenplum.pxf.automation.components.hdfs.Hdfs</class>
         <workingDirectory>${base.path}/tmp/pxf_automation_data/__UUID__</workingDirectory>
-        <hadoopRoot>/home/gpadmin/pxf/servers/file</hadoopRoot>
+        <hadoopRoot>${pxf.base}/servers/file</hadoopRoot>
         <scheme>file</scheme>
     </file>
 
     <s3>
         <class>org.greenplum.pxf.automation.components.hdfs.Hdfs</class>
         <workingDirectory>gpdb-ud-scratch/tmp/pxf_automation_data/__UUID__</workingDirectory>
-        <hadoopRoot>/home/gpadmin/pxf/servers/s3</hadoopRoot>
+        <hadoopRoot>${pxf.base}/servers/s3</hadoopRoot>
         <scheme>s3a</scheme>
     </s3>
 
     <adl>
         <class>org.greenplum.pxf.automation.components.hdfs.Hdfs</class>
         <workingDirectory>pxfdev.azuredatalakestore.net/tmp/pxf_automation_data/__UUID__</workingDirectory>
-        <hadoopRoot>/home/gpadmin/pxf/servers/adl</hadoopRoot>
+        <hadoopRoot>${pxf.base}/servers/adl</hadoopRoot>
         <scheme>adl</scheme>
     </adl>
 
     <gs>
         <class>org.greenplum.pxf.automation.components.hdfs.Hdfs</class>
         <workingDirectory>data-gpdb-ud-tpch/tmp/pxf_automation_data/__UUID__</workingDirectory>
-        <hadoopRoot>/home/gpadmin/pxf/servers/gs</hadoopRoot>
+        <hadoopRoot>${pxf.base}/servers/gs</hadoopRoot>
         <scheme>gs</scheme>
     </gs>
 
     <wasbs>
         <class>org.greenplum.pxf.automation.components.hdfs.Hdfs</class>
         <workingDirectory>pxf-container@pxfdev.blob.core.windows.net/tmp/pxf_automation_data/__UUID__</workingDirectory>
-        <hadoopRoot>/home/gpadmin/pxf/servers/wasbs</hadoopRoot>
+        <hadoopRoot>${pxf.base}/servers/wasbs</hadoopRoot>
         <scheme>wasbs</scheme>
     </wasbs>
 

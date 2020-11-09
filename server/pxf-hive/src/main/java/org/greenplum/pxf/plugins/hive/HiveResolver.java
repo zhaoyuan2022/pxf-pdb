@@ -51,17 +51,19 @@ import org.apache.hadoop.hive.serde2.objectinspector.primitive.TimestampObjectIn
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapred.JobConf;
-import org.greenplum.pxf.api.BadRecordException;
 import org.greenplum.pxf.api.OneField;
 import org.greenplum.pxf.api.OneRow;
-import org.greenplum.pxf.api.UnsupportedTypeException;
+import org.greenplum.pxf.api.error.BadRecordException;
+import org.greenplum.pxf.api.error.UnsupportedTypeException;
 import org.greenplum.pxf.api.io.DataType;
 import org.greenplum.pxf.api.model.BasePlugin;
 import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.api.model.Resolver;
 import org.greenplum.pxf.api.utilities.ColumnDescriptor;
+import org.greenplum.pxf.api.utilities.SpringContext;
 import org.greenplum.pxf.api.utilities.Utilities;
 import org.greenplum.pxf.plugins.hdfs.utilities.HdfsUtilities;
+import org.greenplum.pxf.plugins.hive.utilities.HiveUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -97,21 +99,29 @@ public class HiveResolver extends BasePlugin implements Resolver {
     protected String serdeClassName;
     protected List<Integer> hiveIndexes;
     protected HiveMetadata metadata;
+    protected HiveUtilities hiveUtilities;
 
     private int numberOfPartitions;
     private Map<String, OneField> partitionColumnNames;
     private String hiveDefaultPartName;
 
+    public HiveResolver() {
+        this(SpringContext.getBean(HiveUtilities.class));
+    }
+
+    HiveResolver(HiveUtilities hiveUtilities) {
+        this.hiveUtilities = hiveUtilities;
+    }
+
     /**
      * Initializes the HiveResolver by parsing the request context and
      * obtaining the serde class name, the serde properties string and the
      * partition keys.
-     *
-     * @param context request context
      */
     @Override
-    public void initialize(RequestContext context) {
-        super.initialize(context);
+    public void afterPropertiesSet() {
+        super.afterPropertiesSet();
+
         hiveDefaultPartName = HiveConf.getVar(configuration, HiveConf.ConfVars.DEFAULTPARTITIONNAME);
 
         try {

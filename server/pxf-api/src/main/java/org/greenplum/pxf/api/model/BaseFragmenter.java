@@ -15,9 +15,5 @@ public class BaseFragmenter extends BasePlugin implements Fragmenter {
     @Override
     public FragmentStats getFragmentStats() throws Exception {
         throw new UnsupportedOperationException("Operation getFragmentStats is not supported");
-//        long fragmentsNumber = fragments.size();
-//        return new FragmentStats(fragmentsNumber,
-//                FragmentStats.DEFAULT_FRAGMENT_SIZE, fragmentsNumber
-//                        * FragmentStats.DEFAULT_FRAGMENT_SIZE);
     }
 }

@@ -23,7 +23,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hive.serde.serdeConstants;
 import org.greenplum.pxf.api.utilities.ColumnDescriptor;
-import org.greenplum.pxf.plugins.hive.utilities.HiveUtilities;
 
 import java.util.Properties;
 
@@ -56,7 +55,7 @@ public class HiveORCSerdeResolver extends HiveResolver {
             if (i == null) continue;
 
             String columnName = column.columnName();
-            String columnType = HiveUtilities.toCompatibleHiveType(column.getDataType(), column.columnTypeModifiers());
+            String columnType = hiveUtilities.toCompatibleHiveType(column.getDataType(), column.columnTypeModifiers());
             //Complex Types will have a mismatch between Hive and Gpdb type
             if (!columnType.equals(hiveColTypes[i])) {
                 columnType = hiveColTypes[i];

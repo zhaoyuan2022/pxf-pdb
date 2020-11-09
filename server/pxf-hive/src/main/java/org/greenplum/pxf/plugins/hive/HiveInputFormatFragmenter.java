@@ -22,8 +22,8 @@ package org.greenplum.pxf.plugins.hive;
 
 import org.apache.hadoop.hive.metastore.api.FieldSchema;
 import org.apache.hadoop.hive.metastore.api.Table;
+import org.greenplum.pxf.api.error.PxfRuntimeException;
 import org.greenplum.pxf.api.utilities.ColumnDescriptor;
-import org.greenplum.pxf.plugins.hive.utilities.HiveUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,13 +86,14 @@ public class HiveInputFormatFragmenter extends HiveDataFragmenter {
         for (ColumnDescriptor cd : context.getTupleDescription()) {
             if ((fieldSchema = columnNameToFieldSchema.get(cd.columnName())) == null &&
                     (fieldSchema = columnNameToFieldSchema.get(cd.columnName().toLowerCase())) == null) {
-                throw new IllegalArgumentException(
-                        String.format("Column '%s' does not exist in the Hive schema or Hive Partition. " +
-                                        "Ensure the column or partition exists and check the name spelling and case",
-                                cd.columnName()));
+                throw new PxfRuntimeException(
+                        String.format("column '%s' does not exist in the Hive schema or Hive Partition",
+                                cd.columnName()),
+                        "Ensure the column or partition exists and check the name spelling and case."
+                );
             }
 
-            HiveUtilities.validateTypeCompatible(
+            hiveUtilities.validateTypeCompatible(
                     cd.getDataType(),
                     cd.columnTypeModifiers(),
                     fieldSchema.getType(),

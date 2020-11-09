@@ -14,7 +14,7 @@ import org.apache.hadoop.hive.metastore.api.MetaException;
 import org.apache.hadoop.hive.metastore.api.Table;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.thrift.TException;
-import org.greenplum.pxf.api.UnsupportedTypeException;
+import org.greenplum.pxf.api.error.UnsupportedTypeException;
 import org.greenplum.pxf.api.model.Metadata;
 import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.api.security.SecureLogin;
@@ -23,6 +23,8 @@ import org.greenplum.pxf.plugins.hive.utilities.EnumHiveToGpdbType;
 import org.greenplum.pxf.plugins.hive.utilities.HiveUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -38,11 +40,9 @@ import static org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.META_
 import static org.greenplum.pxf.api.model.ConfigurationFactory.PXF_CONFIG_RESOURCE_PATH_PROPERTY;
 import static org.greenplum.pxf.plugins.hive.HiveDataFragmenter.HIVE_PARTITIONS_DELIM;
 import static org.greenplum.pxf.plugins.hive.HiveDataFragmenter.PXF_META_TABLE_PARTITION_COLUMN_VALUES;
-import static org.greenplum.pxf.plugins.hive.utilities.HiveUtilities.toKryo;
 
+@Component
 public class HiveClientWrapper {
-
-    private static final HiveClientWrapper instance = new HiveClientWrapper();
 
     private static final Logger LOG = LoggerFactory.getLogger(HiveClientWrapper.class);
 
@@ -51,23 +51,39 @@ public class HiveClientWrapper {
     private static final String STR_RC_FILE_INPUT_FORMAT = "org.apache.hadoop.hive.ql.io.RCFileInputFormat";
     private static final String STR_TEXT_FILE_INPUT_FORMAT = "org.apache.hadoop.mapred.TextInputFormat";
     private static final String STR_ORC_FILE_INPUT_FORMAT = "org.apache.hadoop.hive.ql.io.orc.OrcInputFormat";
-    private final HiveClientFactory hiveClientFactory;
 
-    private HiveClientWrapper() {
-        this(HiveClientFactory.getInstance());
-    }
+    private HiveClientFactory hiveClientFactory;
+    private HiveUtilities hiveUtilities;
+    private SecureLogin secureLogin;
 
-    HiveClientWrapper(HiveClientFactory hiveClientFactory) {
+    /**
+     * Sets the {@link HiveClientFactory} object
+     *
+     * @param hiveClientFactory the hive client factory object
+     */
+    @Autowired
+    public void setHiveClientFactory(HiveClientFactory hiveClientFactory) {
         this.hiveClientFactory = hiveClientFactory;
     }
 
     /**
-     * Returns the static instance for this factory
+     * Sets the {@link HiveUtilities} object
      *
-     * @return the static instance for this factory
+     * @param hiveUtilities the hive utilities object
      */
-    public static HiveClientWrapper getInstance() {
-        return instance;
+    @Autowired
+    public void setHiveUtilities(HiveUtilities hiveUtilities) {
+        this.hiveUtilities = hiveUtilities;
+    }
+
+    /**
+     * Sets the {@link SecureLogin} object
+     *
+     * @param secureLogin the secure login object
+     */
+    @Autowired
+    public void setSecureLogin(SecureLogin secureLogin) {
+        this.secureLogin = secureLogin;
     }
 
     /**
@@ -80,7 +96,7 @@ public class HiveClientWrapper {
         HiveConf hiveConf = getHiveConf(configuration);
         try {
             if (Utilities.isSecurityEnabled(configuration)) {
-                UserGroupInformation loginUser = SecureLogin.getInstance().getLoginUser(context, configuration);
+                UserGroupInformation loginUser = secureLogin.getLoginUser(context, configuration);
                 LOG.debug("initialize HiveMetaStoreClient as login user '{}'", loginUser.getUserName());
                 // wrap in doAs for Kerberos to propagate kerberos tokens from login Subject
                 return loginUser.
@@ -128,12 +144,12 @@ public class HiveClientWrapper {
         try {
             List<FieldSchema> hiveColumns = tbl.getSd().getCols();
             for (FieldSchema hiveCol : hiveColumns) {
-                metadata.addField(HiveUtilities.mapHiveType(hiveCol));
+                metadata.addField(hiveUtilities.mapHiveType(hiveCol));
             }
             // check partition fields
             List<FieldSchema> hivePartitions = tbl.getPartitionKeys();
             for (FieldSchema hivePart : hivePartitions) {
-                metadata.addField(HiveUtilities.mapHiveType(hivePart));
+                metadata.addField(hiveUtilities.mapHiveType(hivePart));
             }
         } catch (UnsupportedTypeException e) {
             String errorMsg = "Failed to retrieve metadata for table " + metadata.getItem() + ". " +
@@ -147,10 +163,9 @@ public class HiveClientWrapper {
      *
      * @param fragmenterClassName fragmenter class name
      * @param partData            partition data
-     * @return serialized representation of fragment-related attributes
      * @throws ClassNotFoundException when the fragmenter class is not found
      */
-    public byte[] makeUserData(String fragmenterClassName, HiveTablePartition partData)
+    public byte[] buildFragmentMetadata(String fragmenterClassName, HiveTablePartition partData)
             throws ClassNotFoundException {
 
         if (fragmenterClassName == null) {
@@ -165,7 +180,7 @@ public class HiveClientWrapper {
         Properties properties = partData.properties;
         addPartitionValuesInformation(properties, partData);
         removeUnusedProperties(properties);
-        return toKryo(properties);
+        return hiveUtilities.toKryo(properties);
     }
 
     /**
@@ -343,18 +358,8 @@ public class HiveClientWrapper {
         }
     }
 
+    @Component
     public static class HiveClientFactory {
-        private static final HiveClientFactory instance = new HiveClientFactory();
-
-        /**
-         * Returns the static instance for this factory
-         *
-         * @return the static instance for this factory
-         */
-        static HiveClientFactory getInstance() {
-            return instance;
-        }
-
         IMetaStoreClient initHiveClient(HiveConf hiveConf) throws MetaException {
             try {
                 return RetryingMetaStoreClient.getProxy(hiveConf, new Class[]{HiveConf.class, HiveMetaHookLoader.class, Boolean.class},
