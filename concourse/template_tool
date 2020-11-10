@@ -57,8 +57,6 @@ def create_pipeline():
 
     pipeline_yml = render_template(ARGS.template_filename, context)
 
-    header = render_template('header.yml', context)
-    sys.stdout.write(header + '\n')
     sys.stdout.write(pipeline_yml)
 
     return True
