@@ -10,6 +10,7 @@ PXF_CLI_DIR := ${PXF_ROOT_DIR}/cli
 PXF_VERSION ?= $(shell cat $(PXF_ROOT_DIR)/version)
 
 LDFLAGS := -ldflags "-X ${TARGET}/cmd.version=${PXF_VERSION}"
+GO_MOD_CACHE := ${PXF_ROOT_DIR}/cli/go/pkg
 GOPATH := ${PXF_ROOT_DIR}/cli/go
 
 help:
@@ -25,12 +26,16 @@ help:
 all: test stage install
 
 build:
-	go build -v ${LDFLAGS}
-	go install ${LDFLAGS}
+	@if [ -d ${HOME}/.go-dep-cached-sources ] && [ ! -d $(GO_MOD_CACHE)/mod ]; then \
+		mkdir -p $(GO_MOD_CACHE); \
+		ln -s ${HOME}/.go-dep-cached-sources $(GO_MOD_CACHE)/mod; \
+	fi
+	go build -v $(LDFLAGS)
+	go install $(LDFLAGS)
 
 stage: test
-	mkdir -p ${PXF_CLI_DIR}/build/stage/pxf/bin
-	cp ${GOPATH}/bin/pxf-cli ${PXF_CLI_DIR}/build/stage/pxf/bin
+	mkdir -p $(PXF_CLI_DIR)/build/stage/pxf/bin
+	cp $(GOPATH)/bin/pxf-cli $(PXF_CLI_DIR)/build/stage/pxf/bin
 
 install: build
 	@if [ -z "$(PXF_HOME)" ]; then \
@@ -43,5 +48,5 @@ test: build
 	ginkgo cmd end_to_end
 
 clean:
-	rm -rf ${PXF_CLI_DIR}/build
+	rm -rf $(PXF_CLI_DIR)/build
 	go clean -i
