@@ -9,6 +9,7 @@ import org.apache.hadoop.mapred.Reporter;
 import org.greenplum.pxf.api.io.DataType;
 import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.api.utilities.ColumnDescriptor;
+import org.greenplum.pxf.api.utilities.SerializationService;
 import org.greenplum.pxf.plugins.hive.utilities.HiveUtilities;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,7 +39,7 @@ class HiveAccessorTest {
     private static final String COLUMN_TYPES = "int:string:decimal(38,18)";
 
     @Mock
-    private HiveUtilities mockHiveUtilities;
+    HiveUtilities mockHiveUtilities;
 
     @Mock
     @SuppressWarnings("raw")
@@ -50,14 +51,12 @@ class HiveAccessorTest {
     Configuration configuration;
     RequestContext context;
     HiveAccessor accessor;
-    HiveUtilities hiveUtilities;
     Properties properties;
+    SerializationService serializationService;
     List<ColumnDescriptor> columnDescriptors;
 
     @BeforeEach
     public void setup() {
-
-        hiveUtilities = new HiveUtilities();
 
         properties = new Properties();
         properties.put("columns", COLUMN_NAMES);
@@ -81,6 +80,8 @@ class HiveAccessorTest {
         columnDescriptors.add(new ColumnDescriptor("name", DataType.TEXT.getOID(), 1, "", null));
         columnDescriptors.add(new ColumnDescriptor("dec1", DataType.NUMERIC.getOID(), 2, "", null, false));
         context.setTupleDescription(columnDescriptors);
+
+        serializationService = new SerializationService();
     }
 
     // ---------- skip header tests ----------
@@ -89,10 +90,10 @@ class HiveAccessorTest {
         prepareReaderMocks();
 
         properties.put("skip.header.line.count", "2");
-        HiveFragmentMetadata metadata = new HiveFragmentMetadata(0, 0, hiveUtilities.toKryo(properties));
+        HiveFragmentMetadata metadata = new HiveFragmentMetadata(0, 0, properties);
         context.setFragmentMetadata(metadata);
 
-        accessor = new HiveAccessor(null, mockHiveUtilities);
+        accessor = new HiveAccessor(null, mockHiveUtilities, serializationService);
         accessor.setRequestContext(context);
         accessor.afterPropertiesSet();
         accessor.openForRead();
@@ -106,11 +107,11 @@ class HiveAccessorTest {
         prepareReaderMocks();
 
         properties.put("skip.header.line.count", "2");
-        HiveFragmentMetadata metadata = new HiveFragmentMetadata(0, 0, hiveUtilities.toKryo(properties));
+        HiveFragmentMetadata metadata = new HiveFragmentMetadata(0, 0, properties);
         context.setFragmentIndex(0);
         context.setFragmentMetadata(metadata);
 
-        accessor = new HiveAccessor(null, mockHiveUtilities);
+        accessor = new HiveAccessor(null, mockHiveUtilities, serializationService);
         accessor.setRequestContext(context);
         accessor.afterPropertiesSet();
         accessor.openForRead();
@@ -125,11 +126,11 @@ class HiveAccessorTest {
 
         properties.put("skip.header.line.count", "2");
         context.setFragmentIndex(2);
-        HiveFragmentMetadata metadata = new HiveFragmentMetadata(0, 0, hiveUtilities.toKryo(properties));
+        HiveFragmentMetadata metadata = new HiveFragmentMetadata(0, 0, properties);
         context.setFragmentIndex(2);
         context.setFragmentMetadata(metadata);
 
-        accessor = new HiveAccessor(null, mockHiveUtilities);
+        accessor = new HiveAccessor(null, mockHiveUtilities, serializationService);
         accessor.setRequestContext(context);
         accessor.afterPropertiesSet();
         accessor.openForRead();
@@ -142,11 +143,11 @@ class HiveAccessorTest {
     public void testSkipHeaderCountZeroFirstFragment() throws Exception {
         prepareReaderMocks();
 
-        HiveFragmentMetadata metadata = new HiveFragmentMetadata(0, 0, hiveUtilities.toKryo(properties));
+        HiveFragmentMetadata metadata = new HiveFragmentMetadata(0, 0, properties);
         context.setFragmentIndex(0);
         context.setFragmentMetadata(metadata);
 
-        accessor = new HiveAccessor(null, mockHiveUtilities);
+        accessor = new HiveAccessor(null, mockHiveUtilities, serializationService);
         accessor.setRequestContext(context);
         accessor.afterPropertiesSet();
         accessor.openForRead();
@@ -160,11 +161,11 @@ class HiveAccessorTest {
         prepareReaderMocks();
 
         properties.put("skip.header.line.count", "-1");
-        HiveFragmentMetadata metadata = new HiveFragmentMetadata(0, 0, hiveUtilities.toKryo(properties));
+        HiveFragmentMetadata metadata = new HiveFragmentMetadata(0, 0, properties);
         context.setFragmentIndex(0);
         context.setFragmentMetadata(metadata);
 
-        accessor = new HiveAccessor(null, mockHiveUtilities);
+        accessor = new HiveAccessor(null, mockHiveUtilities, serializationService);
         accessor.setRequestContext(context);
         accessor.afterPropertiesSet();
         accessor.openForRead();
@@ -176,10 +177,10 @@ class HiveAccessorTest {
     // ---------- Column Projection Setup tests ----------
     @Test
     public void testColumnProjection() throws Exception {
-        HiveFragmentMetadata metadata = new HiveFragmentMetadata(0, 0, hiveUtilities.toKryo(properties));
+        HiveFragmentMetadata metadata = new HiveFragmentMetadata(0, 0, properties);
         context.setFragmentMetadata(metadata);
 
-        accessor = new HiveAccessor(null, hiveUtilities);
+        accessor = new HiveAccessor(null, new HiveUtilities(), serializationService);
         accessor.setRequestContext(context);
         accessor.afterPropertiesSet();
 
@@ -202,10 +203,10 @@ class HiveAccessorTest {
         properties.put(META_TABLE_PARTITION_COLUMNS, "id");
         properties.put(META_TABLE_PARTITION_COLUMN_TYPES, "int");
         properties.put("pxf.pcv", "1");
-        HiveFragmentMetadata metadata = new HiveFragmentMetadata(0, 0, hiveUtilities.toKryo(properties));
+        HiveFragmentMetadata metadata = new HiveFragmentMetadata(0, 0, properties);
         context.setFragmentMetadata(metadata);
 
-        accessor = new HiveAccessor(null, hiveUtilities);
+        accessor = new HiveAccessor(null, new HiveUtilities(), serializationService);
         accessor.setRequestContext(context);
         accessor.afterPropertiesSet();
 
@@ -224,10 +225,10 @@ class HiveAccessorTest {
     // ---------- Predicate Pushdown Setup tests ----------
     @Test
     public void testPPDEnabledNoFilter() throws Exception {
-        HiveFragmentMetadata metadata = new HiveFragmentMetadata(0, 0, hiveUtilities.toKryo(properties));
+        HiveFragmentMetadata metadata = new HiveFragmentMetadata(0, 0, properties);
         context.setFragmentMetadata(metadata);
 
-        accessor = new HiveAccessor(null, hiveUtilities);
+        accessor = new HiveAccessor(null, new HiveUtilities(), serializationService);
         accessor.setRequestContext(context);
         accessor.afterPropertiesSet();
 
@@ -244,11 +245,11 @@ class HiveAccessorTest {
 
     @Test
     public void testPPDEnabledWithFilter() throws Exception {
-        HiveFragmentMetadata metadata = new HiveFragmentMetadata(0, 0, hiveUtilities.toKryo(properties));
+        HiveFragmentMetadata metadata = new HiveFragmentMetadata(0, 0, properties);
         context.setFragmentMetadata(metadata);
         context.setFilterString("a0c20s1d1o5");
 
-        accessor = new HiveAccessor(null, hiveUtilities);
+        accessor = new HiveAccessor(null, new HiveUtilities(), serializationService);
         accessor.setRequestContext(context);
         accessor.afterPropertiesSet();
 
@@ -266,11 +267,11 @@ class HiveAccessorTest {
     @Test
     public void testPPDDisabledWithFilter() throws Exception {
         configuration.set("pxf.ppd.hive", "false");
-        HiveFragmentMetadata metadata = new HiveFragmentMetadata(0, 0, hiveUtilities.toKryo(properties));
+        HiveFragmentMetadata metadata = new HiveFragmentMetadata(0, 0, properties);
         context.setFragmentMetadata(metadata);
         context.setFilterString("a0c20s1d1o5");
 
-        accessor = new HiveAccessor(null, hiveUtilities);
+        accessor = new HiveAccessor(null, new HiveUtilities(), serializationService);
         accessor.setRequestContext(context);
         accessor.afterPropertiesSet();
 
@@ -288,7 +289,6 @@ class HiveAccessorTest {
 
     @SuppressWarnings("unchecked")
     private void prepareReaderMocks() throws Exception {
-        when(mockHiveUtilities.getKryo()).thenReturn(hiveUtilities.getKryo());
         when(mockHiveUtilities.makeInputFormat(any(), any())).thenReturn(mockInputFormat);
         when(mockInputFormat.getRecordReader(any(InputSplit.class), any(JobConf.class), any(Reporter.class))).thenReturn(mockReader);
     }

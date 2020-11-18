@@ -19,7 +19,8 @@ package org.greenplum.pxf.plugins.hive;
  * under the License.
  */
 
-import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Output;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.hive.common.type.HiveDecimal;
@@ -43,8 +44,9 @@ import org.greenplum.pxf.api.filter.SupportedDataTypePruner;
 import org.greenplum.pxf.api.filter.SupportedOperatorPruner;
 import org.greenplum.pxf.api.filter.ToStringTreeVisitor;
 import org.greenplum.pxf.api.filter.TreeTraverser;
-import org.greenplum.pxf.api.utilities.ColumnDescriptor;
 import org.greenplum.pxf.api.io.DataType;
+import org.greenplum.pxf.api.utilities.ColumnDescriptor;
+import org.greenplum.pxf.api.utilities.SerializationService;
 import org.greenplum.pxf.api.utilities.SpringContext;
 import org.greenplum.pxf.plugins.hdfs.HdfsSplittableDataAccessor;
 import org.greenplum.pxf.plugins.hive.utilities.HiveUtilities;
@@ -96,11 +98,13 @@ public class HiveAccessor extends HdfsSplittableDataAccessor {
 
     private List<HivePartition> partitions;
     private int skipHeaderCount;
-    protected HiveUtilities hiveUtilities;
-    protected List<Integer> hiveIndexes;
+    private final SerializationService serializationService;
     private String hiveColumnsString;
     private String hiveColumnTypesString;
     private boolean isPredicatePushdownAllowed;
+
+    protected HiveUtilities hiveUtilities;
+    protected List<Integer> hiveIndexes;
 
     // ----- members for predicate pushdown handling -----
     static final EnumSet<Operator> PARQUET_SUPPORTED_OPERATORS =
@@ -179,23 +183,21 @@ public class HiveAccessor extends HdfsSplittableDataAccessor {
      * Constructs a HiveAccessor
      */
     public HiveAccessor() {
-        /*
-         * Unfortunately, Java does not allow us to call a function before
-         * calling the base constructor, otherwise it would have been:
-         * super(input, createInputFormat(input))
-         */
-        this(null, SpringContext.getBean(HiveUtilities.class));
+        this(null, SpringContext.getBean(HiveUtilities.class),
+                SpringContext.getBean(SerializationService.class));
     }
 
     /**
      * Creates an instance of HiveAccessor using specified input format and hive utilities
      *
-     * @param inputFormat input format
-     * @param hiveUtilities the hive utilities
+     * @param inputFormat          input format
+     * @param hiveUtilities        the hive utilities
+     * @param serializationService the service that provides kryo objects
      */
-    HiveAccessor(InputFormat<?, ?> inputFormat, HiveUtilities hiveUtilities) {
+    HiveAccessor(InputFormat<?, ?> inputFormat, HiveUtilities hiveUtilities, SerializationService serializationService) {
         super(inputFormat);
         this.hiveUtilities = hiveUtilities;
+        this.serializationService = serializationService;
     }
 
     /**
@@ -232,7 +234,7 @@ public class HiveAccessor extends HdfsSplittableDataAccessor {
         Properties properties;
         try {
             HiveFragmentMetadata metadata = context.getFragmentMetadata();
-            properties = getSerdeProperties(metadata.getKryoProperties());
+            properties = metadata.getProperties();
             if (inputFormat == null) {
                 String inputFormatClassName = properties.getProperty(FILE_INPUT_FORMAT);
                 this.inputFormat = hiveUtilities.makeInputFormat(inputFormatClassName, jobConf);
@@ -343,6 +345,7 @@ public class HiveAccessor extends HdfsSplittableDataAccessor {
     /**
      * Specifies whether column projection and predicate pushdown information should be added to
      * the JobConfig so that it is accessible to the RecordReader.
+     *
      * @return true if CP / PPD information should be added, false if not
      */
     protected boolean shouldAddProjectionsAndFilters() {
@@ -633,9 +636,7 @@ public class HiveAccessor extends HdfsSplittableDataAccessor {
                 new SupportedOperatorPruner(getSupportedOperatorsForPushdown()),
                 searchArgumentBuilder);
 
-        String kryoString = Base64.encodeBase64String(
-                hiveUtilities.toKryo(searchArgumentBuilder.getFilterBuilder().build())
-        );
+        String kryoString = toKryoString(searchArgumentBuilder.getFilterBuilder().build());
         jobConf.set(ConvertAstToSearchArg.SARG_PUSHDOWN, kryoString);
         LOG.debug("Added SARG={}", kryoString);
     }
@@ -657,9 +658,23 @@ public class HiveAccessor extends HdfsSplittableDataAccessor {
         return jobConf;
     }
 
-    protected Properties getSerdeProperties(byte[] userData) {
-        if (userData == null)
-            throw new IllegalArgumentException("propsString is mandatory to initialize serde.");
-        return hiveUtilities.getKryo().readObject(new Input(userData), Properties.class);
+
+    /**
+     * Serializes an object into a Base64 encoded String using Kryo serialization
+     *
+     * @param object the object to serialize
+     * @return the serialized object as a String
+     */
+    private String toKryoString(Object object) {
+        Output out = new Output(4 * 1024, 10 * 1024 * 1024);
+
+        Kryo kryo = serializationService.borrowKryo();
+        try {
+            kryo.writeObject(out, object);
+        } finally {
+            serializationService.releaseKryo(kryo);
+        }
+        out.close();
+        return Base64.encodeBase64String(out.toBytes());
     }
 }

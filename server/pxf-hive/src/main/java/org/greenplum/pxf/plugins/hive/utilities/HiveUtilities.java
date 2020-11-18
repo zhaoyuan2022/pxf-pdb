@@ -19,9 +19,6 @@ package org.greenplum.pxf.plugins.hive.utilities;
  * under the License.
  */
 
-
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.io.Output;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.common.JavaUtils;
@@ -51,15 +48,6 @@ import java.util.Map;
 public class HiveUtilities {
 
     private static final int DEFAULT_DELIMITER_CODE = 44;
-
-    // The Kryo instance is not thread safe, and quite expensive to build,
-    // storing it on a ThreadLocal is a recommended way to make sure that the
-    // serializer is thread safe.
-    private final ThreadLocal<Kryo> kryo = ThreadLocal.withInitial(() -> {
-        Kryo k = new Kryo();
-        k.addDefaultSerializer(Map.class, PropertiesSerializer.class);
-        return k;
-    });
 
     /**
      * Checks if hive type is supported, and if so return its matching GPDB
@@ -250,29 +238,6 @@ public class HiveUtilities {
         }
 
         return DEFAULT_DELIMITER_CODE;
-    }
-
-    /**
-     * Returns a new Kryo from ThreadLocal
-     *
-     * @return a new Kryo from ThreadLocal
-     */
-    public Kryo getKryo() {
-        return kryo.get();
-    }
-
-
-    /**
-     * Serializer an object into a byte array using Kryo serialization
-     *
-     * @param object the object to serialize
-     * @return the serialized object as a byte array
-     */
-    public byte[] toKryo(Object object) {
-        Output out = new Output(4 * 1024, 10 * 1024 * 1024);
-        getKryo().writeObject(out, object);
-        out.close();
-        return out.toBytes();
     }
 
     /**
