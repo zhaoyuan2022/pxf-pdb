@@ -37,18 +37,18 @@ steps:
     args:
       - '-c'
       - |
-        mkdir -p ./.go-dep-cached-sources
-        cp -r ./.go-dep-cached-sources ./cli/go/pkg/mod
+        mkdir -p ./.go-mod-cached-sources
+        cp -r ./.go-mod-cached-sources ./cli/go/pkg/mod
         go get github.com/onsi/ginkgo/ginkgo
         make -C ./cli/go/src/pxf-cli build
-        rm -rf ./.go-dep-cached-sources
-        mv ./cli/go/pkg/mod ./.go-dep-cached-sources
+        rm -rf ./.go-mod-cached-sources
+        mv ./cli/go/pkg/mod ./.go-mod-cached-sources
     waitFor: [ 'untar-pxf-build-dependencies' ]
 
   # create an updated tarball with build dependencies and upload it
   - name: 'gcr.io/$PROJECT_ID/tar'
     id: tar-pxf-build-dependencies
-    args: [ '-czf', 'pxf-build-dependencies.tar.gz', '.gradle', '.go-dep-cached-sources' ]
+    args: [ '-czf', 'pxf-build-dependencies.tar.gz', '.gradle', '.go-mod-cached-sources' ]
     waitFor: [ 'gradle-build', 'golang-build' ]
   # Push the pxf-build-dependencies.tar.gz tarball to Google Cloud Storage
   - name: 'gcr.io/cloud-builders/gsutil'

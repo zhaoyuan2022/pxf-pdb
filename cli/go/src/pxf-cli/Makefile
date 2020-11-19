@@ -26,9 +26,9 @@ help:
 all: test stage install
 
 build:
-	@if [ -d ${HOME}/.go-dep-cached-sources ] && [ ! -d $(GO_MOD_CACHE)/mod ]; then \
+	@if [ -d ${HOME}/.go-mod-cached-sources ] && [ ! -d $(GO_MOD_CACHE)/mod ]; then \
 		mkdir -p $(GO_MOD_CACHE); \
-		ln -s ${HOME}/.go-dep-cached-sources $(GO_MOD_CACHE)/mod; \
+		ln -s ${HOME}/.go-mod-cached-sources $(GO_MOD_CACHE)/mod; \
 	fi
 	go build -v $(LDFLAGS)
 	go install $(LDFLAGS)
