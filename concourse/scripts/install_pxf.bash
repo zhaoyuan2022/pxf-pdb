@@ -202,9 +202,11 @@ function run_pxf_installer_scripts() {
 			gpscp -f ~gpadmin/hostfile_init -v -r -u gpadmin ~/dataproc_env_files =:
 		fi &&
 		~gpadmin/configure_pxf.sh &&
+		source ~gpadmin/.bashrc &&
 		gpssh -f ~gpadmin/hostfile_all -v -u centos -s -e \"sudo sed -i -e 's/edw0/edw0 hadoop/' /etc/hosts\" &&
-		PXF_BASE=${PXF_BASE_DIR} ${PXF_HOME}/bin/pxf cluster sync &&
-		PXF_BASE=${PXF_BASE_DIR} ${PXF_HOME}/bin/pxf cluster start &&
+		echo \"PXF_BASE=\${PXF_BASE}\" &&
+		${PXF_HOME}/bin/pxf cluster sync &&
+		${PXF_HOME}/bin/pxf cluster start &&
 		if [[ $INSTALL_GPHDFS == true ]]; then
 			gpssh -f ~gpadmin/hostfile_all -v -u centos -s -e '
 				sudo cp ${PXF_BASE_DIR}/servers/default/{core,hdfs}-site.xml /etc/hadoop/conf
