@@ -1,4 +1,3 @@
-**Master FDW** [![Concourse Build Status](http://ud.ci.gpdb.pivotal.io/api/v1/teams/main/pipelines/pg_regress/badge)](https://ud.ci.gpdb.pivotal.io/teams/main/pipelines/pg_regress) |
 **PXF Build** [![Concourse Build Status](http://ud.ci.gpdb.pivotal.io/api/v1/teams/main/pipelines/pxf-build/badge)](https://ud.ci.gpdb.pivotal.io/teams/main/pipelines/pxf-build) |
 **PXF Certification** [![Concourse Build Status](http://ud.ci.gpdb.pivotal.io/api/v1/teams/main/pipelines/pxf-certification/badge)](https://ud.ci.gpdb.pivotal.io/teams/main/pipelines/pxf-certification)
 
@@ -71,7 +70,7 @@ To build PXF, you must have:
     source /usr/local/greenplum-db/greenplum_path.sh
     ```
 
-3. JDK 1.8 to compile (PXF runs on Java 8 and Java 11)
+3. JDK 1.8 or JDK 11 to compile/run
 
     Export your `JAVA_HOME`:
     ```
