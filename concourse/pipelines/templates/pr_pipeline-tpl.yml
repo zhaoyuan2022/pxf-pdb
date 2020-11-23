@@ -123,7 +123,7 @@ resources:
   icon: google-drive
   source:
     bucket: pivotal-gpdb-concourse-resources-prod
-    json_key: {{concourse-gcs-resources-service-account-key}}
+    json_key: ((concourse-gcs-resources-service-account-key))
     regexp: server/published/master/greenplum-db-(7.*)-rhel7-x86_64.rpm
 
 ## ======================================================================

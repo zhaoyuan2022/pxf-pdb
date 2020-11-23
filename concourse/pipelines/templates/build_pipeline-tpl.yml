@@ -13,8 +13,10 @@ groups:
   - Build PXF-GP[[gp_ver]] on RHEL6
   - Test PXF-GP[[gp_ver]]-HDP2 on RHEL6
 {% set gp_ver = None %}
-{% for gp_ver in range(5, 7) %}
+{% for gp_ver in range(5, 8) %}
   - Build PXF-GP[[gp_ver]] on RHEL7
+{% endfor %}
+{% for gp_ver in range(5, 7) %}
   - Test PXF-GP[[gp_ver]]-HDP2 on RHEL7
 {% endfor %}
   - Test PXF-GP6-HDP2 on OEL7
@@ -61,6 +63,10 @@ groups:
   - Build PXF-GP[[gp_ver]] on RHEL7
   - Test PXF-GP[[gp_ver]]-HDP2 on RHEL7
 {% endfor %}
+{% set gp_ver = 7 %}
+- name: GP[[gp_ver]] on RHEL7
+  jobs:
+  - Build PXF-GP[[gp_ver]] on RHEL7
 - name: GP6 on OEL7
   jobs:
   - Build PXF-GP6 on RHEL7

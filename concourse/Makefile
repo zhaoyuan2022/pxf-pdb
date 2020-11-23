@@ -149,6 +149,7 @@ set-pr-build-pipeline:
 		--check-creds \
 		--pipeline=$(PR_BUILD_PIPELINE_NAME) \
 		--config "$${PIPELINE_FILE}" \
+		--load-vars-from=$(SECRETS_HOME)/gpdb_common-ci-secrets.yml \
 		--load-vars-from=$(SECRETS_HOME)/pxf-secrets.yml \
 		--load-vars-from=$(SECRETS_HOME)/pxf-common.yml \
 		--load-vars-from=$(SECRETS_HOME)/pxf-prod.yml \
