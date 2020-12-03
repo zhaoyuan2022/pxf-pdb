@@ -486,6 +486,14 @@ resources:
     json_key: ((concourse-gcs-resources-service-account-key))
     regexp: server/published/master/greenplum-db-(7.*)-rhel7-x86_64.rpm
 
+## ---------- PXF 5 Artifact ---------------
+- name: pxf5_gp6_rhel7_released
+  type: gcs
+  source:
+    bucket: ((pxf-releng-gp6-drop-bucket))
+    json_key: ((concourse-gcs-resources-service-account-key))
+    regexp: ((pxf-releng-gp6-drop-path))/pxf-gp6-5.(.*)-2.el7.x86_64.rpm
+
 ## ---------- PXF Build Artifacts ----------
 {% set gp_ver = 5 %}
 - name: pxf_gp[[gp_ver]]_tarball_rhel6
