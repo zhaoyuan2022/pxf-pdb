@@ -43,8 +43,11 @@ function inflate_dependencies() {
 		files_to_link+=(~gpadmin/.{go-mod-cached-sources,gradle})
 	fi
 	if [[ -f pxf-automation-dependencies/pxf-automation-dependencies.tar.gz ]]; then
-		tarballs+=pxf-automation-dependencies/pxf-automation-dependencies.tar.gz
+		tarballs+=(pxf-automation-dependencies/pxf-automation-dependencies.tar.gz)
 		files_to_link+=(~gpadmin/.m2)
+	fi
+	if [[ -f regression-tools/regression-tools.tar.gz ]]; then
+		tarballs+=(regression-tools/regression-tools.tar.gz)
 	fi
 	(( ${#tarballs[@]} == 0 )) && return
 	for t in "${tarballs[@]}"; do
