@@ -30,11 +30,11 @@ import org.apache.hadoop.mapred.TextInputFormat;
  */
 public class ProfileFactory {
 
-    private static final String HIVE_TEXT_PROFILE = "HiveText";
-    private static final String HIVE_RC_PROFILE = "HiveRC";
-    private static final String HIVE_ORC_PROFILE = "HiveORC";
-    private static final String HIVE_PROFILE = "Hive";
-    private static final String HIVE_ORC_VECTORIZED_PROFILE = "HiveVectorizedORC";
+    private static final String HIVE_PROFILE = "hive";
+    private static final String HIVE_TEXT_PROFILE = "hive:text";
+    private static final String HIVE_RC_PROFILE = "hive:rc";
+    private static final String HIVE_ORC_PROFILE = "hive:orc";
+    private static final String HIVE_ORC_VECTORIZED_PROFILE_OLD = "HiveVectorizedORC";
 
     /**
      * The method which returns optimal profile
@@ -45,9 +45,11 @@ public class ProfileFactory {
      * @return name of optimal profile
      */
     public static String get(InputFormat inputFormat, boolean hasComplexTypes, String userProfileName) {
-        String profileName = null;
-        if (HIVE_ORC_VECTORIZED_PROFILE.equals(userProfileName))
-            return userProfileName;
+        String profileName;
+        if (HIVE_ORC_VECTORIZED_PROFILE_OLD.equals(userProfileName))
+            // specialized Vectorized ORC profile is deprecated, fallback onto hive:orc profile
+            // that will apply vectorized execution logic if appropriate
+            return HIVE_ORC_PROFILE;
         if (inputFormat instanceof TextInputFormat && !hasComplexTypes) {
             profileName = HIVE_TEXT_PROFILE;
         } else if (inputFormat instanceof RCFileInputFormat) {
