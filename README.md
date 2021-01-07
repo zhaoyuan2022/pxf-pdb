@@ -124,7 +124,7 @@ make -C ~/workspace/pxf install
 
 ## How to demonstrate Hadoop Integration
 In order to demonstrate end to end functionality you will need Hadoop installed. We have all the related hadoop components (hdfs, hive, hbase, zookeeper, etc) mapped into simple artifact named singlecluster.
-You can [download from here](http://storage.googleapis.com/pxf-public/singlecluster-HDP.tar.gz) and untar the `singlecluster-HDP.tar.gz` file, which contains everything needed to run Hadoop.
+You can [download from here](https://storage.googleapis.com/pxf-public/singlecluster-HDP.tar.gz) and untar the `singlecluster-HDP.tar.gz` file, which contains everything needed to run Hadoop.
 
 ```bash
 mv singlecluster-HDP.tar.gz ~/workspace/
