@@ -12,10 +12,12 @@ mkdir -p "${dirs[@]}"
 
 # cdw is the new name for the coordinator host (previously master)
 sed -e "s/MASTER_HOSTNAME=mdw/MASTER_HOSTNAME=\$(hostname -f)/g" \
-	-e "s/MASTER_HOSTNAME=cdw/MASTER_HOSTNAME=\$(hostname -f)/g" \
+	-e "s/COORDINATOR_HOSTNAME=cdw/COORDINATOR_HOSTNAME=\$(hostname -f)/g" \
 	-e "s|declare -a DATA_DIRECTORY.*|declare -a DATA_DIRECTORY=( ${data_dirs[*]} )|g" \
 	-e "s|MASTER_DIRECTORY=.*|MASTER_DIRECTORY=~gpadmin/data/master|g" \
+	-e "s|COORDINATOR_DIRECTORY=.*|COORDINATOR_DIRECTORY=~gpadmin/data/master|g" \
 	-e "s|MASTER_PORT=.*|MASTER_PORT=${PGPORT:-5432}|g" \
+	-e "s|COORDINATOR_PORT=.*|COORDINATOR_PORT=${PGPORT:-5432}|g" \
 	"${GPHOME}/docs/cli_help/gpconfigs/gpinitsystem_config" >~gpadmin/gpconfigs/gpinitsystem_config
 chmod +w ~gpadmin/gpconfigs/gpinitsystem_config
 
