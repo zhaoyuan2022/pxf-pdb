@@ -145,6 +145,24 @@ public class HdfsWritableTextTest extends BaseWritableFeature {
     }
 
     @Test(groups = {"features", "gpdb", "hcfs", "security"})
+    public void textFormatInsertDefaultCodecShortName() throws Exception {
+
+        String hdfsPath = hdfsWritePath + "/text_format_default_codec_shortname_using_insert";
+        writableExTable = prepareWritableTable("pxf_text_format_default_codec_shortname_using_insert_w", hdfsPath, null, "default");
+        insertData(dataTable, writableExTable, InsertionMethod.INSERT);
+
+        // for HCFS on Cloud, wait a bit for async write in previous steps to finish
+        if (protocol != ProtocolEnum.HDFS && protocol != ProtocolEnum.FILE) {
+            sleep(10000);
+        }
+
+        readableExTable = prepareReadableTable("pxf_text_format_default_codec_using_insert_r", hdfsPath);
+        gpdb.queryResults(readableExTable,
+                "SELECT * FROM " + readableExTable.getName() + " ORDER BY bi");
+        ComparisonUtils.compareTables(dataTable, readableExTable, null, "\\\\");
+    }
+
+    @Test(groups = {"features", "gpdb", "hcfs", "security"})
     public void textFormatCopyDefaultCodec() throws Exception {
 
         String hdfsPath = hdfsWritePath + "/text_format_default_codec_using_copy";
@@ -300,6 +318,25 @@ public class HdfsWritableTextTest extends BaseWritableFeature {
     }
 
     /**
+     * Insert plain text data using GZip codec with shortname
+     *
+     * @throws Exception if test fails to run
+     */
+    @Test(groups = {"features", "gpdb", "hcfs", "security"})
+    public void textFormatGZipInsertShortname() throws Exception {
+
+        String hdfsPath = hdfsWritePath + "/gzip_shortname_format_using_insert";
+        writableExTable = new WritableExternalTable("pxf_gzip_shortname_format_using_insert", gpdbTableFields,
+                protocol.getExternalTablePath(hdfs.getBasePath(), hdfsPath), "Text");
+        writableExTable.setProfile(ProtocolUtils.getProtocol().value() + ":text");
+        writableExTable.setDelimiter(",");
+        writableExTable.setCompressionCodec("gzip");
+        createTable(writableExTable);
+        insertData(dataTable, writableExTable, InsertionMethod.INSERT);
+        verifyResult(hdfsPath, dataTable, EnumCompressionTypes.GZip);
+    }
+
+    /**
      * Copy plain text data using GZip codec
      *
      * @throws Exception if test fails to run
@@ -358,6 +395,25 @@ public class HdfsWritableTextTest extends BaseWritableFeature {
         String hdfsPath = hdfsWritePath + "/copy_from_stdin_bzip2";
         writableExTable = prepareWritableBZip2Table("pxf_copy_from_stdin_bzip2", hdfsPath, null);
 
+        insertData(dataTable, writableExTable, InsertionMethod.COPY);
+        verifyResult(hdfsPath, dataTable, EnumCompressionTypes.BZip2);
+    }
+
+    /**
+     * Copy plain text data using Bzip2 codec with shortname
+     *
+     * @throws Exception if test fails to run
+     */
+    @Test(groups = {"features", "gpdb", "hcfs", "security"})
+    public void textFormatBZip2CopyFromStdinShortname() throws Exception {
+
+        String hdfsPath = hdfsWritePath + "/copy_from_stdin_bzip2_shortname";
+        writableExTable = new WritableExternalTable("pxf_copy_from_stdin_bzip2_shortname", gpdbTableFields,
+                protocol.getExternalTablePath(hdfs.getBasePath(), hdfsPath), "Text");
+        writableExTable.setProfile(ProtocolUtils.getProtocol().value() + ":text");
+        writableExTable.setDelimiter(",");
+        writableExTable.setCompressionCodec("bzip2");
+        createTable(writableExTable);
         insertData(dataTable, writableExTable, InsertionMethod.COPY);
         verifyResult(hdfsPath, dataTable, EnumCompressionTypes.BZip2);
     }

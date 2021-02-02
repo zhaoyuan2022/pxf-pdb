@@ -14,7 +14,7 @@ public class ParquetFileAccessorTest {
 
     @BeforeEach
     public void setup() {
-        accessor = new ParquetFileAccessor(new CodecFactory());
+        accessor = new ParquetFileAccessor();
         context = new RequestContext();
         context.setConfig("default");
         context.setUser("test-user");

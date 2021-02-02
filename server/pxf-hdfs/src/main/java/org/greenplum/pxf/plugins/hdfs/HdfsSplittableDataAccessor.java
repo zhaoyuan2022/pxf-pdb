@@ -20,6 +20,8 @@ package org.greenplum.pxf.plugins.hdfs;
  */
 
 
+import org.apache.hadoop.io.compress.CompressionCodec;
+import org.apache.hadoop.io.compress.CompressionCodecFactory;
 import org.apache.hadoop.mapred.FileSplit;
 import org.apache.hadoop.mapred.InputFormat;
 import org.apache.hadoop.mapred.InputSplit;
@@ -125,5 +127,21 @@ public abstract class HdfsSplittableDataAccessor extends BasePlugin implements A
         if (reader != null) {
             reader.close();
         }
+    }
+
+    /**
+     * Helper routine to get compression codec by class name or alias.
+     *
+     * @param name codec name
+     * @return generated CompressionCodec
+     */
+    protected CompressionCodec getCodec(String name) {
+        CompressionCodecFactory factory = new CompressionCodecFactory(configuration);
+        CompressionCodec codec = factory.getCodecByName(name);
+        if (codec == null) {
+            throw new IllegalArgumentException(
+                    String.format("Compression codec %s was not found.", name));
+        }
+        return codec;
     }
 }

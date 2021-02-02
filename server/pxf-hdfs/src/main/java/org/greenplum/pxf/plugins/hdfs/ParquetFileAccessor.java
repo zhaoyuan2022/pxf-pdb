@@ -59,7 +59,6 @@ import org.greenplum.pxf.api.io.DataType;
 import org.greenplum.pxf.api.model.Accessor;
 import org.greenplum.pxf.api.model.BasePlugin;
 import org.greenplum.pxf.api.utilities.ColumnDescriptor;
-import org.greenplum.pxf.api.utilities.SpringContext;
 import org.greenplum.pxf.plugins.hdfs.filter.BPCharOperatorTransformer;
 import org.greenplum.pxf.plugins.hdfs.parquet.ParquetOperatorPruner;
 import org.greenplum.pxf.plugins.hdfs.parquet.ParquetRecordFilterBuilder;
@@ -143,16 +142,6 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
     private long rowsRead, totalRowsRead, totalRowsWritten;
     private WriterVersion parquetVersion;
     private long totalReadTimeInNanos;
-
-    private final CodecFactory codecFactory;
-
-    public ParquetFileAccessor() {
-        this(SpringContext.getBean(CodecFactory.class));
-    }
-
-    public ParquetFileAccessor(CodecFactory codecFactory) {
-        this.codecFactory = codecFactory;
-    }
 
     /**
      * Opens the resource for read.
@@ -238,7 +227,7 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
         // skip codec extension in filePrefix, because we add it in this accessor
         filePrefix = hcfsType.getUriForWrite(context);
         String compressCodec = context.getOption("COMPRESSION_CODEC");
-        codecName = codecFactory.getCodec(compressCodec, DEFAULT_COMPRESSION);
+        codecName = getCodecName(compressCodec, DEFAULT_COMPRESSION);
 
         // Options for parquet write
         pageSize = context.getOption("PAGE_SIZE", DEFAULT_PAGE_SIZE);
@@ -526,5 +515,26 @@ public class ParquetFileAccessor extends BasePlugin implements Accessor {
         }
 
         return new MessageType("hive_schema", fields);
+    }
+
+    /**
+     * Returns the {@link CompressionCodecName} for the given name, or default if name is null
+     *
+     * @param name         the name or class name of the compression codec
+     * @param defaultCodec the default codec
+     * @return the {@link CompressionCodecName} for the given name, or default if name is null
+     */
+    private CompressionCodecName getCodecName(String name, CompressionCodecName defaultCodec) {
+        if (name == null) return defaultCodec;
+
+        try {
+            return CompressionCodecName.fromConf(name);
+        } catch (IllegalArgumentException ie) {
+            try {
+                return CompressionCodecName.fromCompressionCodec(Class.forName(name));
+            } catch (ClassNotFoundException ce) {
+                throw new IllegalArgumentException(String.format("Invalid codec: %s ", name));
+            }
+        }
     }
 }

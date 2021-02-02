@@ -37,7 +37,6 @@ import org.apache.hadoop.mapred.SequenceFileInputFormat;
 import org.apache.hadoop.mapred.SequenceFileRecordReader;
 import org.greenplum.pxf.api.OneRow;
 import org.greenplum.pxf.api.model.RequestContext;
-import org.greenplum.pxf.api.utilities.SpringContext;
 
 import java.io.IOException;
 import java.util.EnumSet;
@@ -53,18 +52,12 @@ public class SequenceFileAccessor extends HdfsSplittableDataAccessor {
     private CompressionType compressionType;
     private SequenceFile.Writer writer;
     private LongWritable defaultKey; // used when recordkey is not defined
-    private final CodecFactory codecFactory;
 
     /**
      * Constructs a SequenceFileAccessor.
      */
     public SequenceFileAccessor() {
-        this(SpringContext.getBean(CodecFactory.class));
-    }
-
-    SequenceFileAccessor(CodecFactory codecFactory) {
         super(new SequenceFileInputFormat<Writable, Writable>());
-        this.codecFactory = codecFactory;
     }
 
     /**
@@ -122,7 +115,7 @@ public class SequenceFileAccessor extends HdfsSplittableDataAccessor {
         compressionType = CompressionType.NONE;
         CompressionCodec codec = null;
         if (userCompressCodec != null) {
-            codec = codecFactory.getCodec(userCompressCodec, configuration);
+            codec = getCodec(userCompressCodec);
 
             try {
                 compressionType = CompressionType.valueOf(parsedCompressType);

@@ -20,7 +20,6 @@ package org.greenplum.pxf.plugins.hdfs;
  */
 
 
-import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -32,7 +31,6 @@ import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.LineRecordReader;
 import org.apache.hadoop.mapred.TextInputFormat;
 import org.greenplum.pxf.api.OneRow;
-import org.greenplum.pxf.api.utilities.SpringContext;
 import org.greenplum.pxf.plugins.hdfs.utilities.HdfsUtilities;
 
 import java.io.DataOutputStream;
@@ -54,19 +52,12 @@ public class LineBreakAccessor extends HdfsSplittableDataAccessor {
     private FSDataOutputStream fsdos;
     private FileSystem fs;
     private Path file;
-    private final CodecFactory codecFactory;
 
     /**
      * Constructs a LineBreakAccessor.
      */
     public LineBreakAccessor() {
-        this(SpringContext.getBean(CodecFactory.class));
-    }
-
-    @VisibleForTesting
-    LineBreakAccessor(CodecFactory codecFactory) {
         super(new TextInputFormat());
-        this.codecFactory = codecFactory;
     }
 
     @Override
@@ -113,7 +104,7 @@ public class LineBreakAccessor extends HdfsSplittableDataAccessor {
         String compressCodec = context.getOption("COMPRESSION_CODEC");
         // get compression codec
         CompressionCodec codec = compressCodec != null ?
-                codecFactory.getCodec(compressCodec, configuration) : null;
+                getCodec(compressCodec) : null;
         String fileName = hcfsType.getUriForWrite(context, codec);
 
         file = new Path(fileName);

@@ -134,7 +134,7 @@ public class SequenceFileAccessorTest {
             context.addOption("COMPRESSION_TYPE", type);
         }
 
-        accessor = new SequenceFileAccessor(new CodecFactory());
+        accessor = new SequenceFileAccessor();
         accessor.setRequestContext(context);
         accessor.afterPropertiesSet();
         accessor.openForWrite();

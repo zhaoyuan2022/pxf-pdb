@@ -76,7 +76,7 @@ public class ParquetWriteTest {
 
         columnDescriptors = new ArrayList<>();
 
-        accessor = new ParquetFileAccessor(new CodecFactory());
+        accessor = new ParquetFileAccessor();
         resolver = new ParquetResolver();
         context = new RequestContext();
         configuration = new Configuration();
