@@ -85,7 +85,7 @@ public class HdfsSplittableDataAccessorTest {
     }
 
     @Test
-    public void getCodeDefaultShortName() {
+    public void getCodecDefaultShortName() {
         String name = "default";
         CompressionCodec codec = accessor.getCodecName(name);
         assertNotNull(codec);
@@ -93,10 +93,17 @@ public class HdfsSplittableDataAccessorTest {
     }
 
     @Test
-    public void getCodeSnappyShortName() {
+    public void getCodecSnappyShortName() {
         String name = "snappy";
         CompressionCodec codec = accessor.getCodecName(name);
         assertNotNull(codec);
         assertTrue(codec instanceof SnappyCodec);
+    }
+
+    @Test
+    public void getCodecUncompressed() {
+        String name = "uncompressed";
+        CompressionCodec codec = accessor.getCodecName(name);
+        assertNull(codec);
     }
 }
