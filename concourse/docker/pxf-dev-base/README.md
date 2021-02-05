@@ -16,6 +16,9 @@ directory. The `cloudbuild.yaml` file produces the following docker images:
 
 ## Greenplum 5 Images
 
+* Note: Greenplum 5 on CentOS 6 support has been deprecated, but images are
+  still available for testing.
+
 ### Docker gpdb5-centos7-test-pxf-image image
 
 Build this image for Greenplum 5 running on CentOS 7. Run the following
