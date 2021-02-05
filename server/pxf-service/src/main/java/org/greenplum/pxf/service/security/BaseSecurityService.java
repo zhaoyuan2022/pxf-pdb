@@ -6,8 +6,6 @@ import org.apache.hadoop.security.UserGroupInformation;
 import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.api.security.SecureLogin;
 import org.greenplum.pxf.api.utilities.Utilities;
-import org.greenplum.pxf.service.SessionId;
-import org.greenplum.pxf.service.UGICache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -26,11 +24,11 @@ public class BaseSecurityService implements SecurityService {
 
     private final SecureLogin secureLogin;
 
-    private final UGICache ugiCache;
+    private final UGIProvider ugiProvider;
 
-    public BaseSecurityService(SecureLogin secureLogin, UGICache ugiCache) {
+    public BaseSecurityService(SecureLogin secureLogin, UGIProvider ugiProvider) {
         this.secureLogin = secureLogin;
-        this.ugiCache = ugiCache;
+        this.ugiProvider = ugiProvider;
     }
 
     /**
@@ -38,7 +36,7 @@ public class BaseSecurityService implements SecurityService {
      * presence of the expected security headers and create a proxy user to
      * execute further request chain. If security is enabled for the
      * configuration server used for the requests, makes sure that a login
-     * UGI for the the Kerberos principal is created and cached for future use.
+     * UGI for the the Kerberos principal is created.
      *
      * <p>Responds with an HTTP error if the header is missing or the chain
      * processing throws an exception.
@@ -47,11 +45,9 @@ public class BaseSecurityService implements SecurityService {
      * @param action  the action to be executed
      * @throws IOException when an IO error occurs
      */
-    public <T> T doAs(RequestContext context, final boolean lastCallForSegment, PrivilegedExceptionAction<T> action) throws IOException {
+    public <T> T doAs(RequestContext context, PrivilegedExceptionAction<T> action) throws IOException {
         // retrieve user header and make sure header is present and is not empty
         final String gpdbUser = context.getUser();
-        final String transactionId = context.getTransactionId();
-        final Integer segmentId = context.getSegmentId();
         final String serverName = context.getServerName();
         final String configDirectory = context.getConfig();
         final Configuration configuration = context.getConfiguration();
@@ -76,22 +72,21 @@ public class BaseSecurityService implements SecurityService {
         }
 
         String remoteUser = (isUserImpersonation ? gpdbUser : serviceUser);
-
-        SessionId session = new SessionId(
-                segmentId,
-                transactionId,
-                remoteUser,
-                serverName,
-                isSecurityEnabled,
-                loginUser);
+        String contextId = context.getId();
 
         boolean exceptionDetected = false;
+        UserGroupInformation userGroupInformation = null;
         try {
             // Retrieve proxy user UGI from the UGI of the logged in user
-            UserGroupInformation userGroupInformation = ugiCache
-                    .getUserGroupInformation(session, isUserImpersonation);
+            if (isUserImpersonation) {
+                LOG.debug("{} Creating proxy user = {}", contextId, remoteUser);
+                userGroupInformation = ugiProvider.createProxyUser(remoteUser, loginUser);
+            } else {
+                LOG.debug("{} Creating remote user = {}", contextId, remoteUser);
+                userGroupInformation = ugiProvider.createRemoteUser(remoteUser, loginUser, isSecurityEnabled);
+            }
 
-            LOG.debug("Retrieved proxy user {} for server {} and session {}", userGroupInformation, serverName, session);
+            LOG.debug("{} Retrieved proxy user {} for server {}", contextId, userGroupInformation, serverName);
             LOG.debug("Performing request for gpdb_user = {} as [remote_user = {} service_user = {} login_user ={}] with{} impersonation",
                     gpdbUser, remoteUser, serviceUser, loginUser.getUserName(), isUserImpersonation ? "" : "out");
             // Execute the servlet chain as that user
@@ -104,19 +99,14 @@ public class BaseSecurityService implements SecurityService {
             exceptionDetected = true;
             throw new IOException(ie);
         } finally {
-            // Optimization to cleanup the cache if it is the last fragment
-            boolean releaseUgi = lastCallForSegment || exceptionDetected;
-            LOG.debug("Releasing UGI from cache for session: {}. {}",
-                    session, exceptionDetected
-                            ? " Exception while processing"
-                            : (lastCallForSegment ? " Processed last fragment for segment" : ""));
+            LOG.debug("{} Releasing UGI resources. {}",
+                    contextId, exceptionDetected ? " Exception while processing" : "");
             try {
-                ugiCache.release(session, releaseUgi);
+                if (userGroupInformation != null) {
+                    ugiProvider.destroy(userGroupInformation);
+                }
             } catch (Throwable t) {
-                LOG.error("Error releasing UGI from cache for session: {}", session, t);
-            }
-            if (releaseUgi) {
-                LOG.info("Finished processing {}", session);
+                LOG.error("{} Error releasing UGI resources", contextId, t);
             }
         }
     }

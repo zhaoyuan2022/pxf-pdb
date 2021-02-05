@@ -20,7 +20,7 @@ package org.greenplum.pxf.service.rest;
  */
 
 import org.greenplum.pxf.api.model.RequestContext;
-import org.greenplum.pxf.service.bridge.Bridge;
+import org.greenplum.pxf.service.FragmenterService;
 import org.greenplum.pxf.service.bridge.BridgeFactory;
 import org.greenplum.pxf.service.security.SecurityService;
 import org.springframework.http.HttpStatus;
@@ -32,9 +32,6 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
-
-import java.io.IOException;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /*
  * This class handles the subpath /<version>/Bridge/ of this
@@ -48,10 +45,13 @@ public class BridgeResource extends BaseResource {
 
     private final SecurityService securityService;
 
-    public BridgeResource(BridgeFactory bridgeFactory, SecurityService securityService) {
+    private final FragmenterService fragmenterService;
+
+    public BridgeResource(BridgeFactory bridgeFactory, SecurityService securityService, FragmenterService fragmenterService) {
         super(RequestContext.RequestType.READ_BRIDGE);
         this.bridgeFactory = bridgeFactory;
         this.securityService = securityService;
+        this.fragmenterService = fragmenterService;
     }
 
     /**
@@ -65,16 +65,14 @@ public class BridgeResource extends BaseResource {
      */
     @GetMapping(value = "/Bridge", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     public ResponseEntity<StreamingResponseBody> read(
-            @RequestHeader MultiValueMap<String, String> headers) throws IOException, InterruptedException {
+            @RequestHeader MultiValueMap<String, String> headers) throws Throwable {
 
         RequestContext context = parseRequest(headers);
-        Bridge bridge = securityService.doAs(context, false,
-                () -> bridgeFactory.getBridge(context));
 
         // Create a streaming class which will iterate over the records and put
         // them on the output stream
         StreamingResponseBody response =
-                new BridgeResponse(securityService, bridge, context);
+                new BridgeResponse(bridgeFactory, securityService, fragmenterService, context);
 
         return new ResponseEntity<>(response, HttpStatus.OK);
     }

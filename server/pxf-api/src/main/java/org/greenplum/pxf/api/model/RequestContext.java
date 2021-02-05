@@ -62,12 +62,17 @@ public class RequestContext {
     }
 
     public enum RequestType {
-        FRAGMENTER,
         READ_BRIDGE,
         WRITE_BRIDGE,
     }
 
     // ----- NAMED PROPERTIES -----
+
+    /**
+     * A unique identifier for the RequestContext. The identifier is a
+     * combination of the user:transactionId:segmentId:serverName
+     */
+    private String id;
 
     /**
      * The fully-qualified class name for the java class that was defined as
@@ -121,13 +126,6 @@ public class RequestContext {
     private String filterString;
 
     /**
-     * A boolean that indicates whether this is the last fragment being
-     * processed by the segment. True if this is the last fragment, false
-     * otherwise.
-     */
-    private boolean lastFragment;
-
-    /**
      * Profile-centric metadata
      */
     private Object metadata;
@@ -137,6 +135,16 @@ public class RequestContext {
      * {@link OutputFormat#GPDBWritable}.
      */
     private OutputFormat outputFormat;
+
+    /**
+     * The Greenplum command count
+     */
+    private int gpCommandCount;
+
+    /**
+     * The Greenplum session ID
+     */
+    private int gpSessionId;
 
     /**
      * The server name providing the service.
@@ -513,8 +521,8 @@ public class RequestContext {
             fail("Missing parameter: STATS-SAMPLE-RATIO and STATS-MAX-FRAGMENTS must be set together");
         }
 
-        if (requestType == RequestType.FRAGMENTER) {
-            // fragmenter is required for fragmentation call only (PXF write
+        if (requestType == RequestType.READ_BRIDGE) {
+            // fragmenter is required for PXF read call only (PXF write
             // does not require a fragmenter)
             ensureNotNull("FRAGMENTER", fragmenter);
         }

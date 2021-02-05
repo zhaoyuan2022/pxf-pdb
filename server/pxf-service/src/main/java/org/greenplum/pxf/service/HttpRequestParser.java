@@ -7,11 +7,9 @@ import org.greenplum.pxf.api.model.ProtocolHandler;
 import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.api.utilities.ColumnDescriptor;
 import org.greenplum.pxf.api.utilities.EnumAggregationType;
-import org.greenplum.pxf.api.utilities.FragmentMetadata;
-import org.greenplum.pxf.api.utilities.FragmentMetadataSerDe;
+import org.greenplum.pxf.api.utilities.Utilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.MultiValueMap;
 
@@ -41,7 +39,6 @@ public class HttpRequestParser implements RequestParser<MultiValueMap<String, St
     private static final String PROFILE_SCHEME = "PROFILE-SCHEME";
 
     private final PluginConf pluginConf;
-    protected FragmentMetadataSerDe metadataSerDe;
 
     /**
      * Create a new instance of the HttpRequestParser with the given PluginConf
@@ -50,11 +47,6 @@ public class HttpRequestParser implements RequestParser<MultiValueMap<String, St
      */
     public HttpRequestParser(PluginConf pluginConf) {
         this.pluginConf = pluginConf;
-    }
-
-    @Autowired
-    public void setMetadataSerDe(FragmentMetadataSerDe metadataSerDe) {
-        this.metadataSerDe = metadataSerDe;
     }
 
     @Override
@@ -104,21 +96,6 @@ public class HttpRequestParser implements RequestParser<MultiValueMap<String, St
 
         context.setFragmenter(params.removeUserProperty("FRAGMENTER"));
 
-        String fragmentIndexStr = params.removeOptionalProperty("FRAGMENT-INDEX");
-        if (StringUtils.isNotBlank(fragmentIndexStr)) {
-            context.setFragmentIndex(Integer.parseInt(fragmentIndexStr));
-        }
-
-        String base64FragmentMetadata = params.removeOptionalProperty("FRAGMENT-METADATA");
-        FragmentMetadata fragmentMetadata;
-        try {
-            fragmentMetadata = deserializeFragmentMetadata(base64FragmentMetadata);
-        } catch (RuntimeException e) {
-            throw new IllegalArgumentException(String.format("unable to deserialize fragment meta '%s'", base64FragmentMetadata), e);
-        }
-        context.setFragmentMetadata(fragmentMetadata);
-
-        context.setLastFragment(params.removeOptionalBoolProperty("LAST-FRAGMENT"));
         context.setHost(params.removeProperty("URL-HOST"));
         context.setMetadata(params.removeUserProperty("METADATA"));
         context.setPort(params.removeIntProperty("URL-PORT"));
@@ -161,6 +138,8 @@ public class HttpRequestParser implements RequestParser<MultiValueMap<String, St
             }
         }
 
+        context.setGpSessionId(params.removeIntProperty("SESSION-ID"));
+        context.setGpCommandCount(params.removeIntProperty("COMMAND-COUNT"));
         context.setUser(params.removeProperty("USER"));
 
         // Store alignment for global use as a system property
@@ -214,36 +193,19 @@ public class HttpRequestParser implements RequestParser<MultiValueMap<String, St
         // Call the protocol handler for any protocol-specific logic handling
         if (StringUtils.isNotBlank(profile)) {
             String handlerClassName = pluginConf.getHandler(profile);
-            if (StringUtils.isNotBlank(handlerClassName)) {
-                Class<?> clazz;
-                try {
-                    clazz = Class.forName(handlerClassName);
-                    ProtocolHandler handler = (ProtocolHandler) clazz.getDeclaredConstructor().newInstance();
-                    context.setFragmenter(handler.getFragmenterClassName(context));
-                    context.setAccessor(handler.getAccessorClassName(context));
-                    context.setResolver(handler.getResolverClassName(context));
-                } catch (ClassNotFoundException | NoSuchMethodException | InvocationTargetException |
-                        InstantiationException | IllegalAccessException e) {
-                    throw new RuntimeException(String.format("Error when invoking handlerClass '%s' : %s", handlerClassName, e), e);
-                }
-            }
+            Utilities.updatePlugins(context, handlerClassName);
         }
+
+        context.setId(String.format("%s:%s:%s:%s",
+                context.getUser(),
+                context.getTransactionId(),
+                context.getSegmentId(),
+                context.getServerName()));
 
         // validate that the result has all required fields, and values are in valid ranges
         context.validate();
 
         return context;
-    }
-
-    /**
-     * Deserializes the Base64 encoded Kryo string into a {@link FragmentMetadata}
-     *
-     * @param metadata the fragment metadata
-     * @return the {@link FragmentMetadata}
-     */
-    private FragmentMetadata deserializeFragmentMetadata(String metadata) {
-        return StringUtils.isBlank(metadata) ? null :
-                metadataSerDe.deserialize(metadata);
     }
 
     /**
