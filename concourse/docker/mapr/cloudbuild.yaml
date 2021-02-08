@@ -1,8 +1,8 @@
 # In this directory, run the following command to build this builder.
 # $ gcloud builds submit . --config=cloudbuild.yaml
 
-# Increase timeout to 20 minutes
-timeout: 1200s
+# Increase timeout to 40 minutes
+timeout: 2400s
 
 steps:
 # Builds the gpdb5-centos7-test-pxf-mapr-image image
