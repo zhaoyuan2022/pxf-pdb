@@ -24,6 +24,12 @@
    make install
    ```
 
+1. There is also end to end testing for the pxf-cli located at `../../../../concourse/scripts/cli`. These tests can be run by flying the following pipeline:
+```sh
+MULTINODE=true make -C ~/workspace/pxf/concourse dev
+```
+To make iteration times faster, feel free to comment out the task `Test PXF-GP[[gp_ver]]-HDP2-SECURE-MULTI-IMPERS on RHEL7` in the `dev_build_pipeline-tpl.yml` file.
+
 ## Debugging the CLI on a live system
 
 Because it's hard to mock out a Greenplum cluster, it's useful to debug on a real live cluster. We can do this using the [`delve`](https://github.com/go-delve/delve) project.
@@ -51,3 +57,9 @@ GPHOME=/usr/local/greenplum-db dlv debug pxf-cli -- cluster restart
 ```
 
 The [help page for dlv](https://github.com/go-delve/delve/tree/master/Documentation/cli) is useful.
+
+## IDE Setup (GoLand)
+* Start GoLand. Click "Open" and select the cli folder inside the pxf repo.
+* Open preferences/settings and set under GO > GoPath, set Project GoPath to ~/workspace/pxf/cli/go or the equivalent.
+* Under GO > Go Modules, select the enable button and leave the environment field empty.
+* Check that it worked by running a test file (ex: go test pxf-cli/cmd)

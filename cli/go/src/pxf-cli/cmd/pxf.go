@@ -155,23 +155,25 @@ var (
 		name: start,
 		messages: map[messageType]string{
 			success: "PXF started successfully on %d out of %d host%s\n",
-			status:  "Starting PXF on %d segment host%s...\n",
+			status:  "Starting PXF on master host%s and %d segment host%s...\n",
+			standby: ", standby master host,",
 			err:     "PXF failed to start on %d out of %d host%s\n",
 		},
 		warn:       false,
 		envVars:    []envVar{pxfHome, pxfBase},
-		whereToRun: cluster.ON_REMOTE | cluster.ON_HOSTS | cluster.EXCLUDE_MASTER | cluster.EXCLUDE_MIRRORS,
+		whereToRun: cluster.ON_REMOTE | cluster.ON_HOSTS | cluster.INCLUDE_MASTER | cluster.INCLUDE_MIRRORS,
 	}
 	StopCommand = command{
 		name: stop,
 		messages: map[messageType]string{
 			success: "PXF stopped successfully on %d out of %d host%s\n",
-			status:  "Stopping PXF on %d segment host%s...\n",
+			status:  "Stopping PXF on master host%s and %d segment host%s...\n",
+			standby: ", standby master host,",
 			err:     "PXF failed to stop on %d out of %d host%s\n",
 		},
 		warn:       false,
 		envVars:    []envVar{pxfHome, pxfBase},
-		whereToRun: cluster.ON_REMOTE | cluster.ON_HOSTS | cluster.EXCLUDE_MASTER | cluster.EXCLUDE_MIRRORS,
+		whereToRun: cluster.ON_REMOTE | cluster.ON_HOSTS | cluster.INCLUDE_MASTER | cluster.INCLUDE_MIRRORS,
 	}
 	SyncCommand = command{
 		name: sync,
@@ -184,19 +186,21 @@ var (
 		warn:    false,
 		envVars: []envVar{pxfBase},
 		// cluster.ON_LOCAL | cluster.ON_HOSTS: the command will target host%s, but be run from master
-		// this is ideal for rsync from master to segment host%s. also exclude master but include standby master
+		// this is ideal for copying files from master to segment host(s) using rsync.
+		// since the files are already on master, we exclude master but include standby master
 		whereToRun: cluster.ON_LOCAL | cluster.ON_HOSTS | cluster.EXCLUDE_MASTER | cluster.INCLUDE_MIRRORS,
 	}
 	StatusCommand = command{
 		name: statuses,
 		messages: map[messageType]string{
 			success: "PXF is running on %d out of %d host%s\n",
-			status:  "Checking status of PXF servers on %d segment host%s...\n",
+			status:  "Checking status of PXF servers on master host%s and %d segment host%s...\n",
+			standby: ", standby master host,",
 			err:     "PXF is not running on %d out of %d host%s\n",
 		},
 		warn:       false,
 		envVars:    []envVar{pxfHome, pxfBase},
-		whereToRun: cluster.ON_REMOTE | cluster.ON_HOSTS | cluster.EXCLUDE_MASTER | cluster.EXCLUDE_MIRRORS,
+		whereToRun: cluster.ON_REMOTE | cluster.ON_HOSTS | cluster.INCLUDE_MASTER | cluster.INCLUDE_MIRRORS,
 	}
 	RegisterCommand = command{
 		name: register,
@@ -231,12 +235,13 @@ var (
 		name: restart,
 		messages: map[messageType]string{
 			success: "PXF restarted successfully on %d out of %d host%s\n",
-			status:  "Restarting PXF on %d segment host%s...\n",
+			status:  "Restarting PXF on master host%s and %d segment host%s...\n",
+			standby: ", standby master host,",
 			err:     "PXF failed to restart on %d out of %d host%s\n",
 		},
 		warn:       false,
 		envVars:    []envVar{pxfHome, pxfBase},
-		whereToRun: cluster.ON_REMOTE | cluster.ON_HOSTS | cluster.EXCLUDE_MASTER | cluster.EXCLUDE_MIRRORS,
+		whereToRun: cluster.ON_REMOTE | cluster.ON_HOSTS | cluster.INCLUDE_MASTER | cluster.INCLUDE_MIRRORS,
 	}
 	PrepareCommand = command{
 		name: prepare,
