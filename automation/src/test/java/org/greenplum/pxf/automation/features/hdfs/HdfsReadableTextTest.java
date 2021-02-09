@@ -612,7 +612,7 @@ public class HdfsReadableTextTest extends BaseFeature {
         Table smallDataTable = getSmallData("foo", 3);
         List<String> secondRow = smallDataTable.getData().get(1);
         // add a quote to the first field of the second row without closing the quote
-        firstRow.set(0, firstRow.get(0) + "\"");
+        secondRow.set(0, secondRow.get(0) + "\"");
 
         String path = hdfs.getWorkingDirectory() + "/unterminated_quoted_field";
         hdfs.writeTableToFile(path, smallDataTable, ",");
