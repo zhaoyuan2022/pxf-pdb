@@ -1,0 +1,132 @@
+---
+title: Logging
+---
+
+PXF provides two categories of message logging: service-level and client-level.
+
+PXF manages its service-level logging, and supports the following log levels (more to less severe):
+
+- fatal
+- error
+- warn
+- info
+- debug
+- trace
+
+The default configuration for the PXF Service logs at the `info` and more severe levels. For some third-party libraries, the PXF Service logs at the `warn` or `error` and more severe levels to reduce verbosity. Log messages are written to the `$PXF_LOGDIR/pxf-service.log` file. You can change the PXF log directory if you choose.
+
+Client-level logging is managed by the Greenplum Database client; this topic details configuring logging for a `psql` client.
+
+Enabling more verbose service- or client-level logging for PXF may aid troubleshooting efforts.
+
+## <a id="cfglogdir"></a>Configuring the Log Directory
+
+The default PXF logging configuration writes log messages to `$PXF_LOGDIR/pxf-service.log`, where the default log directory is `PXF_LOGDIR=$PXF_BASE/logs`.
+
+To change the PXF log directory, you must update the `$PXF_LOGDIR` property in the `pxf-env.sh` configuration file, synchronize the configuration change to the Greenplum Database cluster, and then restart PXF:
+
+1. Log in to your Greenplum Database master node:
+
+    ``` shell
+    $ ssh gpadmin@<gpmaster>
+    ```
+
+1. Use a text editor to uncomment the `export PXF_LOGDIR` line in `$PXF_BASE/conf/pxf-env.sh`, and replace the value with the new PXF log directory. For example:
+
+    ``` xml
+    # Path to Log directory
+    export PXF_LOGDIR="/new/log/dir"
+    ```
+
+2. Use the `pxf cluster sync` command to copy the updated `pxf-env.sh` file to all hosts in the Greenplum Database cluster:
+
+    ``` shell
+    gpadmin@gpmaster$ pxf cluster sync
+    ```
+
+3. Restart PXF on each Greenplum Database segment host as described in [Restarting PXF](cfginitstart_pxf.html#restart_pxf).
+
+## <a id="pxfsvclogmsg"></a>Configuring Service-Level Logging
+
+PXF utilizes Apache Log4j 2 for service-level logging. PXF Service-related log messages are captured in a log file specified by the PXF Log4j 2 configuration file, `$PXF_BASE/conf/pxf-log4j2.xml`. The default configuration for the PXF Service logs at the `info` and more severe levels.
+
+PXF provides more detailed logging when the `debug` log level is enabled.
+
+**Note**: `debug` logging is quite verbose and has a performance impact.  Remember to turn off PXF Service `debug` level logging after you have collected the desired information.
+
+To configure PXF `debug` logging and examine the output:
+
+1. Log in to your Greenplum Database master node:
+
+    ``` shell
+    $ ssh gpadmin@<gpmaster>
+    ```
+
+1. Use a text editor to uncomment the following line in `$PXF_BASE/conf/pxf-log4j2.xml`:
+
+    ``` xml
+    <Logger name="org.greenplum.pxf" level="debug"/>
+    ```
+
+2. Use the `pxf cluster sync` command to copy the updated `pxf-log4j2.xml` file to all hosts in the Greenplum Database cluster:
+
+    ``` shell
+    gpadmin@gpmaster$ pxf cluster sync
+    ```
+
+3. Restart PXF on each Greenplum Database segment host as described in [Restarting PXF](cfginitstart_pxf.html#restart_pxf).
+
+4. With `debug` level logging enabled, now perform PXF operations. Be sure to make note of the time; this will direct you to the relevant log messages in `$PXF_BASE/logs/pxf-service.log`.
+
+    ``` shell
+    $ date
+    Wed Oct  4 09:30:06 MDT 2017
+    $ psql -d <dbname>
+    ```
+
+4. Create and query an external table. For example:
+
+    ``` sql
+    dbname=> CREATE EXTERNAL TABLE hdfstest(id int, newid int)
+        LOCATION ('pxf://data/dir/hdfsfile?PROFILE=hdfs:text')
+        FORMAT 'TEXT' (delimiter='E',');
+    dbname=> SELECT * FROM hdfstest;
+    <select output>
+    ```
+
+5. Finally, collect and examine the log messages from `pxf-service.log`.
+
+
+## <a id="pxfdblogmsg"></a>Configuring Client-Level Logging
+
+Database-level client session logging may provide insight into internal PXF Service operations.
+
+Enable Greenplum Database client debug message logging by setting the `client_min_messages` server configuration parameter to `DEBUG2` in your `psql` session. This logging configuration writes messages to `stdout`, and will apply to all operations that you perform in the session, including operations on PXF external tables. For example:
+
+``` shell
+$ psql -d <dbname>
+```
+
+``` sql
+dbname=# SET client_min_messages=DEBUG2;
+dbname=# SELECT * FROM hdfstest;
+...
+DEBUG2:  churl http header: cell #19: X-GP-URL-HOST: seghost1  (seg0 slice1 127.0.0.1:40000 pid=3981)
+CONTEXT:  External table hdfstest
+DEBUG2:  churl http header: cell #20: X-GP-URL-PORT: 5888  (seg0 slice1 127.0.0.1:40000 pid=3981)
+CONTEXT:  External table hdfstest
+DEBUG2:  churl http header: cell #21: X-GP-DATA-DIR: data/dir/hdfsfile  (seg0 slice1 127.0.0.1:40000 pid=3981)
+CONTEXT:  External table hdfstest
+DEBUG2:  churl http header: cell #22: X-GP-OPTIONS-PROFILE: hdfs:text  (seg0 slice1 127.0.0.1:40000 pid=3981)
+CONTEXT:  External table hdfstest
+...
+```
+
+Collect and examine the log messages written to `stdout`.
+
+**Note**: `DEBUG2` database client session logging has a performance impact.  Remember to turn off `DEBUG2` logging after you have collected the desired information.
+
+``` sql
+dbname=# SET client_min_messages=NOTICE;
+```
+
