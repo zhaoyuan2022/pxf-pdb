@@ -6,7 +6,6 @@ import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.service.RequestParser;
 import org.greenplum.pxf.service.controller.ReadService;
 import org.greenplum.pxf.service.controller.WriteService;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,11 +49,6 @@ public class PxfResourceIT {
 
     @Mock
     private RequestContext mockContext;
-
-    @BeforeAll
-    public static void init() {
-        System.setProperty("pxf.logdir", "/tmp");
-    }
 
     @Test
     public void testReadEndpoint() throws Exception {
