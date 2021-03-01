@@ -394,18 +394,18 @@ ValidateCopyOptions(List *options_list, Oid catalog)
 PxfOptions *
 PxfGetOptions(Oid foreigntableid)
 {
-	char				*encoding = NULL;
-	Node *wireFormat;
-	UserMapping *user;
-	ForeignTable *table;
-	ForeignServer *server;
-	ForeignDataWrapper *wrapper;
-	List	   *options;
-	PxfOptions *opt;
-	ListCell   *lc;
-	List	   *copy_options,
-			   *other_options,
-			   *other_option_name_strings = NULL;
+	const char			 *encoding = NULL;
+	Node				 *wireFormat;
+	UserMapping			 *user;
+	ForeignTable		 *table;
+	ForeignServer		 *server;
+	ForeignDataWrapper	 *wrapper;
+	List				 *options;
+	PxfOptions			 *opt;
+	ListCell			 *lc;
+	List				 *copy_options,
+						 *other_options,
+						 *other_option_name_strings = NULL;
 
 	opt = (PxfOptions *) palloc(sizeof(PxfOptions));
 	memset(opt, 0, sizeof(PxfOptions));

@@ -58,7 +58,11 @@ build_http_headers(PxfInputData *input)
 	char           *data_encoding = NULL;
 	char           long_number[sizeof(int32) * 8];
 	ProjectionInfo *proj_info = input->proj_info;
+	const char	   *relname;
+	char		   *relnamespace = NULL;
+	char		   *traceId;
 
+	relname = gphduri->data;
 	if (rel != NULL)
 	{
 		/* format */
@@ -97,6 +101,9 @@ build_http_headers(PxfInputData *input)
 
 		/* Record fields - name and type of each field */
 		add_tuple_desc_httpheader(headers, rel);
+
+		relname = RelationGetRelationName(rel);
+		relnamespace = GetNamespaceName(RelationGetNamespace(rel));
 	}
 
 	if (proj_info != NULL)
@@ -144,6 +151,8 @@ build_http_headers(PxfInputData *input)
 	churl_headers_append(headers, "X-GP-URL-HOST", gphduri->host);
 	churl_headers_append(headers, "X-GP-URL-PORT", gphduri->port);
 	churl_headers_append(headers, "X-GP-DATA-DIR", gphduri->data);
+	churl_headers_append(headers, "X-GP-TABLE-NAME", relname);
+	churl_headers_append(headers, "X-GP-SCHEMA-NAME", relnamespace);
 
 	/* encoding options */
 	churl_headers_append(headers, "X-GP-DATA-ENCODING", data_encoding);
@@ -164,6 +173,15 @@ build_http_headers(PxfInputData *input)
 	else
 		churl_headers_append(headers, "X-GP-HAS-FILTER", "0");
 
+	// Add trace id = xid : filterstr : schema : tablename : user
+	traceId = GetTraceId(ev.GP_XID, filterstr, relnamespace, relname, ev.GP_USER);
+	churl_headers_append(headers, "X-B3-TraceId", traceId);
+
+	// Add span id = traceId : segId
+	churl_headers_append(headers, "X-B3-SpanId", GetSpanId(traceId, ev.GP_SEGMENT_ID));
+
+	// Since we only establish a single connection per segment, we can safely close the connection after
+	// the segment completes streaming data.
 	churl_headers_override(headers, "Connection", "close");
 }
 

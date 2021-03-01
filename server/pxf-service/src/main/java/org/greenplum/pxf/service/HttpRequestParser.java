@@ -111,6 +111,8 @@ public class HttpRequestParser implements RequestParser<MultiValueMap<String, St
         context.setResolver(params.removeUserProperty("RESOLVER"));
         context.setSegmentId(params.removeIntProperty("SEGMENT-ID"));
         context.setServerName(params.removeUserProperty("SERVER"));
+        context.setSchemaName(params.removeProperty("SCHEMA-NAME"));
+        context.setTableName(params.removeProperty("TABLE-NAME"));
 
         // An optional CONFIG value specifies the name of the server
         // configuration directory, if not provided the config is the server name
