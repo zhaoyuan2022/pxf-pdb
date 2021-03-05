@@ -27,7 +27,6 @@ import static org.greenplum.pxf.api.model.RequestContext.RequestType;
 @RequestMapping("/pxf/v15")
 public class PxfLegacyResource {
 
-    //TODO: this is temporary, very soon this will return exception one new API version logic is developed.
     private static final String ERROR_MESSAGE_HINT =
             "upgrade PXF extension (run 'pxf [cluster] register' and then 'ALTER EXTENSION pxf UPDATE')";
     private static final String ERROR_MESSAGE_TEMPLATE =
@@ -60,7 +59,7 @@ public class PxfLegacyResource {
      */
     @GetMapping(value = "/Fragmenter/getFragments", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> getFragments(@RequestHeader MultiValueMap<String, String> headers) {
-        throw new PxfRuntimeException(String.format(ERROR_MESSAGE_TEMPLATE, "getFragments"), ERROR_MESSAGE_HINT);
+        throw new PxfRuntimeException(String.format(ERROR_MESSAGE_TEMPLATE, "/Fragmenter/getFragments"), ERROR_MESSAGE_HINT);
     }
 
     /**
@@ -71,15 +70,7 @@ public class PxfLegacyResource {
      */
     @GetMapping(value = "/Bridge", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     public ResponseEntity<StreamingResponseBody> read(@RequestHeader MultiValueMap<String, String> headers) {
-
-        // parse incoming HTTP request
-        RequestContext context = parser.parseRequest(headers, RequestType.READ_BRIDGE);
-
-        // create a streaming class that will iterate over the records and write them to the output stream
-        StreamingResponseBody response = os -> readService.readData(context, os);
-
-        // return response entity that will use streaming response asynchronously
-        return new ResponseEntity<>(response, HttpStatus.OK);
+        throw new PxfRuntimeException(String.format(ERROR_MESSAGE_TEMPLATE, "/Bridge"), ERROR_MESSAGE_HINT);
     }
 
     /**
@@ -93,14 +84,6 @@ public class PxfLegacyResource {
     @PostMapping(value = "/Writable/stream", consumes = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     public ResponseEntity<String> stream(@RequestHeader MultiValueMap<String, String> headers,
                                          HttpServletRequest request) throws Exception {
-
-        // parse incoming HTTP request
-        RequestContext context = parser.parseRequest(headers, RequestType.WRITE_BRIDGE);
-
-        // write data and get a response message
-        String returnMsg = writeService.writeData(context, request.getInputStream());
-
-        // send the response to the client
-        return new ResponseEntity<>(returnMsg, HttpStatus.OK);
+        throw new PxfRuntimeException(String.format(ERROR_MESSAGE_TEMPLATE, "/Writable/stream"), ERROR_MESSAGE_HINT);
     }
 }

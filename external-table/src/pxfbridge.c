@@ -135,7 +135,7 @@ static void
 build_uri_for_read(gphadoop_context *context)
 {
 	resetStringInfo(&context->uri);
-	appendStringInfo(&context->uri, "http://%s/%s/v15/Bridge/",
+	appendStringInfo(&context->uri, "http://%s/%s/read",
 					 get_authority(), PXF_SERVICE_PREFIX);
 
 	if ((LOG >= log_min_messages) || (LOG >= client_min_messages))
@@ -152,7 +152,7 @@ build_uri_for_read(gphadoop_context *context)
 static void
 build_uri_for_write(gphadoop_context *context)
 {
-	appendStringInfo(&context->uri, "http://%s/%s/v15/Writable/stream",
+	appendStringInfo(&context->uri, "http://%s/%s/write",
 					 get_authority(), PXF_SERVICE_PREFIX);
 
 	if ((LOG >= log_min_messages) || (LOG >= client_min_messages))

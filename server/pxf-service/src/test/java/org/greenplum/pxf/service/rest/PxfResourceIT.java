@@ -78,32 +78,28 @@ public class PxfResourceIT {
         ResultActions result = mvc.perform(
                 get("/pxf/v15/Fragmenter/getFragments").contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isInternalServerError());
-        Thread.sleep(200);
         result.andExpect(r -> assertTrue(r.getResolvedException() instanceof PxfRuntimeException))
-                .andExpect(r -> assertEquals("getFragments API (v15) is no longer supported by the server, upgrade PXF extension (run 'pxf [cluster] register' and then 'ALTER EXTENSION pxf UPDATE')",
+                .andExpect(r -> assertEquals("/Fragmenter/getFragments API (v15) is no longer supported by the server, upgrade PXF extension (run 'pxf [cluster] register' and then 'ALTER EXTENSION pxf UPDATE')",
                         r.getResolvedException().getMessage()));
         result.andExpect(content().string("upgrade PXF extension (run 'pxf [cluster] register' and then 'ALTER EXTENSION pxf UPDATE')"));
     }
 
     @Test
     public void testLegacyBridgeEndpoint() throws Exception {
-        //TODO: legacy endpoint should throw 500 exception with a hint, validate error message
         when(mockParser.parseRequest(any(), eq(RequestContext.RequestType.READ_BRIDGE))).thenReturn(mockContext);
 
-        ResultActions result = mvc.perform(get("/pxf/v15/Bridge")).andExpect(status().isOk());
-        Thread.sleep(200);
-        result.andExpect(content().string("Hello from read!"));
+        ResultActions result = mvc.perform(get("/pxf/v15/Bridge")).andExpect(status().isInternalServerError());
+        result.andExpect(content().string("upgrade PXF extension (run 'pxf [cluster] register' and then 'ALTER EXTENSION pxf UPDATE')"));
     }
 
     @Test
     public void testLegacyWritableEndpoint() throws Exception {
-        //TODO: legacy endpoint should throw 500 exception with a hint, validate error message
         when(mockParser.parseRequest(any(), eq(RequestContext.RequestType.WRITE_BRIDGE))).thenReturn(mockContext);
         when(mockWriteService.writeData(same(mockContext), any())).thenReturn("Hello from write!");
 
         mvc.perform(post("/pxf/v15/Writable/stream"))
-                .andExpect(status().isOk())
-                .andExpect(content().string("Hello from write!"));
+                .andExpect(status().isInternalServerError())
+                .andExpect(content().string("upgrade PXF extension (run 'pxf [cluster] register' and then 'ALTER EXTENSION pxf UPDATE')"));
     }
 
     @TestConfiguration
