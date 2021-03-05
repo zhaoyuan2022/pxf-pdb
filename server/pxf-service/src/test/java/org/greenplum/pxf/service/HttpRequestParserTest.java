@@ -20,6 +20,7 @@ package org.greenplum.pxf.service;
  */
 
 
+import org.greenplum.pxf.api.error.PxfRuntimeException;
 import org.greenplum.pxf.api.examples.DemoFragmentMetadata;
 import org.greenplum.pxf.api.model.OutputFormat;
 import org.greenplum.pxf.api.model.PluginConf;
@@ -31,6 +32,7 @@ import org.greenplum.pxf.api.utilities.FragmentMetadata;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.info.BuildProperties;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
@@ -50,6 +52,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -58,10 +61,17 @@ public class HttpRequestParserTest {
     private HttpRequestParser parser;
     private MultiValueMap<String, String> parameters;
     private PluginConf mockPluginConf;
+    private BuildProperties mockBuildProperties;
+    private PxfApiVersionChecker mockApiVersionChecker;
 
     @BeforeEach
     public void setUp() {
         mockPluginConf = mock(PluginConf.class);
+        mockBuildProperties = mock(BuildProperties.class);
+        when(mockBuildProperties.get("pxfApiVersion")).thenReturn("16");
+
+        mockApiVersionChecker = mock(PxfApiVersionChecker.class);
+        when(mockApiVersionChecker.isCompatible(anyString(), anyString())).thenReturn(true);
 
         parameters = new LinkedMultiValueMap<>();
         parameters.add("X-GP-ALIGNMENT", "all");
@@ -72,6 +82,7 @@ public class HttpRequestParserTest {
         parameters.add("X-GP-URL-HOST", "my://bags");
         parameters.add("X-GP-URL-PORT", "-8020");
         parameters.add("X-GP-ATTRS", "-1");
+        parameters.add("X-GP-PXF-API-VERSION", "16");
         parameters.add("X-GP-OPTIONS-FRAGMENTER", "we");
         parameters.add("X-GP-OPTIONS-ACCESSOR", "are");
         parameters.add("X-GP-OPTIONS-RESOLVER", "packed");
@@ -87,7 +98,8 @@ public class HttpRequestParserTest {
         parameters.add("X-GP-SCHEMA-NAME", "public");
         parameters.add("X-GP-TABLE-NAME", "foobar");
 
-        parser = new HttpRequestParser(mockPluginConf, new CharsetUtils(), new HttpHeaderDecoder());
+        parser = new HttpRequestParser(mockPluginConf, new CharsetUtils(), new HttpHeaderDecoder(), mockBuildProperties, mockApiVersionChecker);
+
     }
 
     @AfterEach
@@ -623,6 +635,30 @@ public class HttpRequestParserTest {
         e = assertThrows(IllegalArgumentException.class,
                 () -> parser.parseRequest(parameters, RequestType.WRITE_BRIDGE));
         assertEquals("Property RESOLVER has no value in the current request", e.getMessage());
+    }
+
+    @Test
+    public void testPxfApiVersion() {
+        RequestContext context = parser.parseRequest(parameters, RequestType.READ_BRIDGE);
+        assertEquals("16", context.getClientApiVersion());
+    }
+
+    @Test
+    public void testMisingPxfApiVersion() {
+        parameters.remove("X-GP-PXF-API-VERSION");
+        PxfRuntimeException e = assertThrows(PxfRuntimeException.class,
+                () -> parser.parseRequest(parameters, RequestType.READ_BRIDGE));
+        assertEquals("Property PXF-API-VERSION has no value in the current request", e.getMessage());
+        assertEquals("upgrade PXF extension (run 'pxf [cluster] register' and then 'ALTER EXTENSION pxf UPDATE')", e.getHint());
+    }
+
+    @Test
+    public void testDifferentPxfApiVersions() {
+        parameters.set("X-GP-PXF-API-VERSION", "15");
+        when(mockApiVersionChecker.isCompatible("16", "15")).thenReturn(false);
+        Exception e = assertThrows(PxfRuntimeException.class,
+                () -> parser.parseRequest(parameters, RequestType.READ_BRIDGE));
+        assertEquals("API version mismatch; server implements v16 and client implements v15", e.getMessage());
     }
 
     public static class TestHandler implements ProtocolHandler {

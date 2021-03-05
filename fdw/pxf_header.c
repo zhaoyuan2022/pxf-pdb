@@ -94,6 +94,7 @@ BuildHttpHeaders(CHURL_HEADERS headers,
 	churl_headers_append(headers, "X-GP-SEGMENT-ID", ev.GP_SEGMENT_ID);
 	churl_headers_append(headers, "X-GP-SEGMENT-COUNT", ev.GP_SEGMENT_COUNT);
 	churl_headers_append(headers, "X-GP-XID", ev.GP_XID);
+	churl_headers_append(headers, "X-GP-PXF-API-VERSION", PXF_API_VERSION);
 
 	pg_ltoa(gp_session_id, long_number);
 	churl_headers_append(headers, "X-GP-SESSION-ID", long_number);

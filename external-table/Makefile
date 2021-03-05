@@ -7,6 +7,9 @@ REGRESS    = setup pxf pxfinvalid
 PG_CONFIG = pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 
+PXF_API_VERSION := $(shell cat ../api_version)
+PG_CPPFLAGS := -DPXF_API_VERSION=\"$(PXF_API_VERSION)\"
+
 ifndef PGXS
     $(error Make sure the Greenplum installation binaries are in your PATH. i.e. export PATH=<path to your greenplum installation>/bin:$$PATH)
 endif

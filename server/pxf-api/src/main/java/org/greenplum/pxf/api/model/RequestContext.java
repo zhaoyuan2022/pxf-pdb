@@ -305,6 +305,11 @@ public class RequestContext {
     private Charset databaseEncoding;
 
     /**
+     * The version of the PXF API the client implements
+     */
+    private String clientApiVersion;
+
+    /**
      * Additional Configuration Properties to be added to configuration for
      * the request
      */

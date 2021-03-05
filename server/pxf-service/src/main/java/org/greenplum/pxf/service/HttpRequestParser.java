@@ -1,6 +1,7 @@
 package org.greenplum.pxf.service;
 
 import org.apache.commons.lang.StringUtils;
+import org.greenplum.pxf.api.error.PxfRuntimeException;
 import org.greenplum.pxf.api.model.OutputFormat;
 import org.greenplum.pxf.api.model.PluginConf;
 import org.greenplum.pxf.api.model.RequestContext;
@@ -10,6 +11,7 @@ import org.greenplum.pxf.api.utilities.EnumAggregationType;
 import org.greenplum.pxf.api.utilities.Utilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.info.BuildProperties;
 import org.springframework.stereotype.Component;
 import org.springframework.util.MultiValueMap;
 
@@ -28,15 +30,23 @@ import java.util.stream.Collectors;
 @Component
 public class HttpRequestParser implements RequestParser<MultiValueMap<String, String>> {
 
+    private static final String ERROR_MESSAGE_HINT =
+            "upgrade PXF extension (run 'pxf [cluster] register' and then 'ALTER EXTENSION pxf UPDATE')";
+
+    private static final String ERROR_MESSAGE_TEMPLATE = "API version mismatch; server implements v%s and client implements v%s";
+
     private static final Logger LOG = LoggerFactory.getLogger(HttpRequestParser.class);
 
     private static final String TRUE_LCASE = "true";
     private static final String FALSE_LCASE = "false";
     private static final String PROFILE_SCHEME = "PROFILE-SCHEME";
+    private static final String PXF_API_VERSION = "pxfApiVersion";
 
     private final CharsetUtils charsetUtils;
     private final PluginConf pluginConf;
     private final HttpHeaderDecoder headerDecoder;
+    private final BuildProperties buildProperties;
+    private final PxfApiVersionChecker apiVersionChecker;
 
     /**
      * Create a new instance of the HttpRequestParser with the given PluginConf
@@ -44,11 +54,15 @@ public class HttpRequestParser implements RequestParser<MultiValueMap<String, St
      * @param pluginConf    the plugin conf
      * @param charsetUtils  utilities for Charset
      * @param headerDecoder decoder of http headers
+     * @param buildProperties   Spring Boot build info
+     * @param apiVersionChecker component for comparing versions
      */
-    public HttpRequestParser(PluginConf pluginConf, CharsetUtils charsetUtils, HttpHeaderDecoder headerDecoder) {
+    public HttpRequestParser(PluginConf pluginConf, CharsetUtils charsetUtils, HttpHeaderDecoder headerDecoder, BuildProperties buildProperties, PxfApiVersionChecker apiVersionChecker) {
         this.pluginConf = pluginConf;
         this.charsetUtils = charsetUtils;
         this.headerDecoder = headerDecoder;
+        this.buildProperties = buildProperties;
+        this.apiVersionChecker = apiVersionChecker;
     }
 
     /**
@@ -76,6 +90,14 @@ public class HttpRequestParser implements RequestParser<MultiValueMap<String, St
         RequestContext context = new RequestContext();
 
         // fill the Request-scoped RequestContext with parsed values
+
+        context.setClientApiVersion(
+                params.removeProperty("PXF-API-VERSION", ERROR_MESSAGE_HINT));
+
+        if (!apiVersionChecker.isCompatible(getServerApiVersion(), context.getClientApiVersion())) {
+            throw new PxfRuntimeException(
+                    String.format(ERROR_MESSAGE_TEMPLATE, getServerApiVersion(), context.getClientApiVersion()), ERROR_MESSAGE_HINT);
+        }
 
         // whether we are in a fragmenter, read_bridge, or write_bridge scenario
         context.setRequestType(requestType);
@@ -225,6 +247,10 @@ public class HttpRequestParser implements RequestParser<MultiValueMap<String, St
         context.validate();
 
         return context;
+    }
+
+    String getServerApiVersion() {
+        return buildProperties.get(PXF_API_VERSION);
     }
 
     private void parseGreenplumCSV(RequestMap params, RequestContext context) {
@@ -424,6 +450,22 @@ public class HttpRequestParser implements RequestParser<MultiValueMap<String, St
             }
 
             return result;
+        }
+
+        /**
+         * Returns the value to which the specified property is mapped and
+         * removes it from the map
+         *
+         * @param property the lookup property key
+         * @param errMsgHint hint for user to include in error message
+         * @throws PxfRuntimeException if property key is missing
+         */
+        private String removeProperty(String property, String errMsgHint) {
+            try {
+                return removeProperty(property);
+            } catch (IllegalArgumentException e) {
+                throw new PxfRuntimeException(e.getMessage(), errMsgHint, e);
+            }
         }
 
         /**

@@ -77,7 +77,13 @@ bootJar {
 
 springBoot {
     mainClass = "org.greenplum.pxf.service.PxfServiceApplication"
-    buildInfo()
+    buildInfo {
+        properties {
+            additional = [
+                    "pxfApiVersion" : "${apiVersion}"
+            ]
+        }
+    }
 }
 
 test {
