@@ -31,7 +31,7 @@ Perform this procedure before you upgrade to a new version of PXF:
 
 1. Identify the file system location of the `$PXF_CONF` setting in your PXF 5.x PXF installation; you will need this later.
 
-1. Stop PXF on each segment host as described in [Stopping PXF](cfginitstart_pxf.html#stop_pxf).
+1. Stop PXF on each Greenplum host as described in [Stopping PXF](cfginitstart_pxf.html#stop_pxf).
 
 1. [Install PXF 6.x](installing.html), identify and note the new PXF version number, and then continue your PXF upgrade with [Step 3: Complete the Upgrade to PXF 6.x](#pxfup).
 
@@ -158,13 +158,15 @@ After you install the new version of PXF, perform the following procedure:
     1. Add the location of this JAR to `$HBASE_CLASSPATH` on each HBase node.
     1. Restart HBase on each node.
 
+1. In PXF 6.x, the PXF Service runs on all Greenplum Database hosts. If you used PXF 5.x to access Kerberos-secured HDFS, you must now generate principals and keytabs for the Greenplum master and standby master hosts, and distribute these to the hosts as described in [Configuring PXF for Secure HDFS](pxf_kerbhdfs.html#procedure).
+
 4. Synchronize the PXF 6.x configuration from the master host to the standby master and each Greenplum Database segment host. For example:
 
     ``` shell
     gpadmin@gpmaster$ pxf cluster sync
     ```
  
-5. Start PXF on each segment host as described in [Starting PXF](cfginitstart_pxf.html#start_pxf).
+5. Start PXF on each Greenplum host as described in [Starting PXF](cfginitstart_pxf.html#start_pxf).
 
 1. Verify that PXF can access each external data source by querying external tables that specify each PXF server.
 
