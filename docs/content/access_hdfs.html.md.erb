@@ -103,23 +103,23 @@ The PXF Hadoop connectors provide built-in profiles to support the following dat
 
 The PXF Hadoop connectors expose the following profiles to read, and in many cases write, these supported data formats:
 
-| Data Source | Data Format | Profile Name(s) | Deprecated Profile Name |
-|-------------|------|---------|-----|
-| HDFS | delimited single line [text](hdfs_text.html#profile_text) | hdfs:text | n/a |
-| HDFS | delimited [text with quoted linefeeds](hdfs_text.html#profile_textmulti) | hdfs:text:multi | n/a |
-| HDFS | [Avro](hdfs_avro.html) | hdfs:avro | n/a |
-| HDFS | [JSON](hdfs_json.html) | hdfs:json | n/a |
-| HDFS | [ORC](hdfs_orc.html) | hdfs:orc | n/a |
-| HDFS | [Parquet](hdfs_parquet.html) | hdfs:parquet | n/a |
-| HDFS | AvroSequenceFile | hdfs:AvroSequenceFile | n/a |
-| HDFS | [SequenceFile](hdfs_seqfile.html) | hdfs:SequenceFile | n/a |
-| [Hive](hive_pxf.html) | stored as TextFile | hive, [hive:text](hive_pxf.html#hive_text) | Hive, HiveText |
-| [Hive](hive_pxf.html) | stored as SequenceFile | hive | Hive |
-| [Hive](hive_pxf.html) | stored as RCFile | hive, [hive:rc](hive_pxf.html#hive_hiverc) | Hive, HiveRC |
-| [Hive](hive_pxf.html) | stored as ORC | hive, [hive:orc](hive_pxf.html#hive_orc) | Hive, HiveORC, HiveVectorizedORC |
-| [Hive](hive_pxf.html) | stored as Parquet | hive | Hive |
-| [Hive](hive_pxf.html) | stored as Avro | hive | Hive |
-| [HBase](hbase_pxf.html) | Any | hbase | HBase |
+| Data Source | Data Format | Profile Name(s) | Deprecated Profile Name | Supported Operations |
+|-------------|------|---------|-----|-----|
+| HDFS | delimited single line [text](hdfs_text.html#profile_text) | hdfs:text | n/a | Read, Write |
+| HDFS | delimited [text with quoted linefeeds](hdfs_text.html#profile_textmulti) | hdfs:text:multi | n/a | Read |
+| HDFS | [Avro](hdfs_avro.html) | hdfs:avro | n/a | Read, Write |
+| HDFS | [JSON](hdfs_json.html) | hdfs:json | n/a | Read |
+| HDFS | [ORC](hdfs_orc.html) | hdfs:orc | n/a | Read |
+| HDFS | [Parquet](hdfs_parquet.html) | hdfs:parquet | n/a | Read, Write |
+| HDFS | AvroSequenceFile | hdfs:AvroSequenceFile | n/a | Read, Write |
+| HDFS | [SequenceFile](hdfs_seqfile.html) | hdfs:SequenceFile | n/a | Read, Write |
+| [Hive](hive_pxf.html) | stored as TextFile | hive, [hive:text] (hive_pxf.html#hive_text) | Hive, HiveText | Read |
+| [Hive](hive_pxf.html) | stored as SequenceFile | hive | Hive | Read |
+| [Hive](hive_pxf.html) | stored as RCFile | hive, [hive:rc](hive_pxf.html#hive_hiverc) | Hive, HiveRC | Read |
+| [Hive](hive_pxf.html) | stored as ORC | hive, [hive:orc](hive_pxf.html#hive_orc) | Hive, HiveORC, HiveVectorizedORC | Read |
+| [Hive](hive_pxf.html) | stored as Parquet | hive | Hive | Read |
+| [Hive](hive_pxf.html) | stored as Avro | hive | Hive | Read |
+| [HBase](hbase_pxf.html) | Any | hbase | HBase | Read |
 
 ### <a id="choose_profile"></a>Choosing the Profile
 
