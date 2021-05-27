@@ -23,28 +23,86 @@ public class JsonTest extends BaseFeature {
     private final String FILENAME_PRETTY_PRINT_W_DELETE = "tweets-pp-with-delete";
     private final String FILENAME_BROKEN = "tweets-broken";
     private final String FILENAME_MISMATCHED_TYPES = "supported_primitive_mismatched_types";
+    private final String FILENAME_JSON_ARRAY = "simple_array";
 
-    private final String[] tweetsFields = new String[]{
-            "created_at text",
-            "id bigint",
-            "text text",
-            "\"user.screen_name\" text",
-            "\"entities.hashtags[0]\" text",
+    private static final String[] TWEETS_FIELDS = new String[]{
+            "created_at                     text",
+            "id                             bigint",
+            "text                           text",
+            "\"user.screen_name\"           text",
+            "\"entities.hashtags[0]\"       text",
             "\"coordinates.coordinates[0]\" float8",
             "\"coordinates.coordinates[1]\" float8",
     };
 
-    private final String[] supportedPrimitiveFields = new String[]{
-            "type_int int",
-            "type_bigint bigint",
+    private static final String[] SUPPORTED_PRIMITIVE_FIELDS = new String[]{
+            "type_int      int",
+            "type_bigint   bigint",
             "type_smallint smallint",
-            "type_float real",
-            "type_double float8",
-            "type_string1 text",
-            "type_string2 varchar",
-            "type_string3 bpchar",
-            "type_char char",
-            "type_boolean bool",
+            "type_float    real",
+            "type_double   float8",
+            "type_string1  text",
+            "type_string2  varchar",
+            "type_string3  bpchar",
+            "type_char     char",
+            "type_boolean  bool",
+    };
+
+    private static final String[] ARRAYS_AS_TEXT_FIELDS = new String[]{
+            "id       int",
+            "emp_arr  text",
+            "emp_obj  text",
+            "num_arr  text",
+            "bool_arr text",
+            "str_arr  text",
+            "arr_arr  text",
+            "obj_arr  text",
+            "obj      text"
+    };
+
+    private static final String[] ARRAYS_AS_VARCHAR_FIELDS = new String[]{
+            "id       int",
+            "emp_arr  varchar",      // unlimited
+            "emp_obj  varchar(10)",  // more than actual
+            "num_arr  varchar(40)",  // actual size
+            "bool_arr varchar(255)", // way more than actual
+            "str_arr  varchar",
+            "arr_arr  varchar",
+            "obj_arr  varchar",
+            "obj      varchar"
+    };
+
+    private static final String[] ARRAYS_AS_BPCHAR_FIELDS = new String[]{
+            "id       int",
+            "emp_arr  bpchar(4)",
+            "emp_obj  bpchar(10)",
+            "num_arr  bpchar(42)", // 2 more than actual size of data
+            "bool_arr bpchar(17)", // actual size
+            "str_arr  bpchar(25)", // 1 more than actual
+            "arr_arr  bpchar(25)", // 3 more than actual
+            "obj_arr  bpchar(23)", // 1 more than actual
+            "obj      bpchar(100)" // actual size
+    };
+
+    private static final String[] ARRAYS_AS_TEXT_PROJECTIONS_FIELDS = new String[]{
+            "id                        int",
+            "\"emp_arr[0]\"            text",
+            "\"emp_arr[1]\"            text",     // out of bounds
+            "\"num_arr[0]\"            real",
+            "\"num_arr[1]\"            real",
+            "\"num_arr[100]\"          real",     // out of bounds
+            "\"bool_arr[0]\"           boolean",
+            "\"str_arr[2]\"            text",     // quoted value
+            "\"arr_arr[0]\"            text",
+            "\"arr_arr[1]\"            text",
+            "\"arr_arr[100]\"          text",     // out of bounds
+            "\"obj_arr[0]\"            text",
+            "\"obj_arr[1]\"            text",
+            "\"obj_arr[100]\"          text",     // out of bounds
+            "\"obj_arr[0].a\"          text",     // this returns NULL now, not the actual value
+            "\"obj.data.data.data\"    text",
+            "\"obj.data.data.data[0]\" text",
+            "\"obj.data.data\"         text"
     };
 
     @Override
@@ -74,6 +132,8 @@ public class JsonTest extends BaseFeature {
                 hdfsPath + FILENAME_BROKEN + SUFFIX_JSON);
         hdfs.copyFromLocal(resourcePath + FILENAME_MISMATCHED_TYPES + SUFFIX_JSON,
                 hdfsPath + FILENAME_MISMATCHED_TYPES + SUFFIX_JSON);
+        hdfs.copyFromLocal(resourcePath + FILENAME_JSON_ARRAY + SUFFIX_JSON,
+                hdfsPath + FILENAME_JSON_ARRAY + SUFFIX_JSON);
     }
 
     /**
@@ -96,7 +156,7 @@ public class JsonTest extends BaseFeature {
      */
     @Test(groups = {"features", "gpdb", "security", "hcfs"})
     public void jsonSupportedPrimitives() throws Exception {
-        prepareExternalTable("jsontest_supported_primitive_types", supportedPrimitiveFields, hdfsPath + FILENAME_TYPES + SUFFIX_JSON, "custom");
+        prepareExternalTable("jsontest_supported_primitive_types", SUPPORTED_PRIMITIVE_FIELDS, hdfsPath + FILENAME_TYPES + SUFFIX_JSON, "custom");
         gpdb.createTableAndVerify(exTable);
         // Verify results
         runTincTest("pxf.features.hdfs.readable.json.supported_primitive_types.runTest");
@@ -109,7 +169,7 @@ public class JsonTest extends BaseFeature {
      */
     @Test(groups = {"features", "gpdb", "security", "hcfs"})
     public void jsonSupportedPrimitivesWithCsvWireFormat() throws Exception {
-        prepareExternalTable("jsontest_supported_primitive_types", supportedPrimitiveFields, hdfsPath + FILENAME_TYPES + SUFFIX_JSON, "CSV");
+        prepareExternalTable("jsontest_supported_primitive_types", SUPPORTED_PRIMITIVE_FIELDS, hdfsPath + FILENAME_TYPES + SUFFIX_JSON, "CSV");
         gpdb.createTableAndVerify(exTable);
         // Verify results
         runTincTest("pxf.features.hdfs.readable.json.supported_primitive_types.runTest");
@@ -124,7 +184,7 @@ public class JsonTest extends BaseFeature {
      */
     @Test(groups = {"features", "gpdb", "security", "hcfs"})
     public void jsonPrettyPrint() throws Exception {
-        prepareExternalTable("jsontest_pretty_print", tweetsFields, hdfsPath + FILENAME_PRETTY_PRINT + SUFFIX_JSON, "custom");
+        prepareExternalTable("jsontest_pretty_print", TWEETS_FIELDS, hdfsPath + FILENAME_PRETTY_PRINT + SUFFIX_JSON, "custom");
         exTable.setUserParameters(new String[]{"IDENTIFIER=created_at"});
         gpdb.createTableAndVerify(exTable);
         // Verify results
@@ -139,7 +199,7 @@ public class JsonTest extends BaseFeature {
      */
     @Test(groups = {"features", "gpdb", "security", "hcfs"})
     public void missingIdentifier() throws Exception {
-        prepareExternalTable("jsontest_missing_identifier", tweetsFields, hdfsPath + FILENAME_PRETTY_PRINT_W_DELETE + SUFFIX_JSON, "custom");
+        prepareExternalTable("jsontest_missing_identifier", TWEETS_FIELDS, hdfsPath + FILENAME_PRETTY_PRINT_W_DELETE + SUFFIX_JSON, "custom");
         exTable.setUserParameters(new String[]{"IDENTIFIER=created_at"});
         gpdb.createTableAndVerify(exTable);
         // Verify results
@@ -154,7 +214,7 @@ public class JsonTest extends BaseFeature {
      */
     @Test(groups = {"features", "gpdb", "security", "hcfs"})
     public void exceedsMaxSize() throws Exception {
-        prepareExternalTable("jsontest_max_size", tweetsFields, hdfsPath + FILENAME_PRETTY_PRINT + SUFFIX_JSON, "custom");
+        prepareExternalTable("jsontest_max_size", TWEETS_FIELDS, hdfsPath + FILENAME_PRETTY_PRINT + SUFFIX_JSON, "custom");
         exTable.setUserParameters(new String[]{
                 "IDENTIFIER=created_at",
                 "MAXLENGTH=566"});
@@ -172,7 +232,7 @@ public class JsonTest extends BaseFeature {
      */
     @Test(groups = {"features", "gpdb", "security", "hcfs"})
     public void malformedRecord() throws Exception {
-        prepareExternalTable("jsontest_malformed_record", tweetsFields, hdfsPath + FILENAME_BROKEN + SUFFIX_JSON, "custom");
+        prepareExternalTable("jsontest_malformed_record", TWEETS_FIELDS, hdfsPath + FILENAME_BROKEN + SUFFIX_JSON, "custom");
         exTable.setUserParameters(new String[]{"IDENTIFIER=created_at"});
         gpdb.createTableAndVerify(exTable);
         // Verify results
@@ -188,7 +248,7 @@ public class JsonTest extends BaseFeature {
      */
     @Test(groups = {"features", "gpdb", "security"})
     public void malformedRecordWithCsvWireFormat() throws Exception {
-        prepareExternalTable("jsontest_malformed_record", tweetsFields, hdfsPath + FILENAME_BROKEN + SUFFIX_JSON, "CSV");
+        prepareExternalTable("jsontest_malformed_record", TWEETS_FIELDS, hdfsPath + FILENAME_BROKEN + SUFFIX_JSON, "CSV");
         exTable.setUserParameters(new String[]{"IDENTIFIER=created_at"});
         gpdb.createTableAndVerify(exTable);
         // Verify results
@@ -203,7 +263,7 @@ public class JsonTest extends BaseFeature {
      */
     @Test(groups = {"features", "gpdb", "security", "hcfs"})
     public void malformedRecordWithRejectLimit() throws Exception {
-        prepareExternalTable("jsontest_malformed_record_with_reject_limit", tweetsFields, hdfsPath + FILENAME_BROKEN + SUFFIX_JSON, "custom");
+        prepareExternalTable("jsontest_malformed_record_with_reject_limit", TWEETS_FIELDS, hdfsPath + FILENAME_BROKEN + SUFFIX_JSON, "custom");
         exTable.setUserParameters(new String[]{"IDENTIFIER=created_at"});
         exTable.setSegmentRejectLimit(2);
         exTable.setErrorTable("true");
@@ -220,7 +280,7 @@ public class JsonTest extends BaseFeature {
      */
     @Test(groups = {"features", "gpdb", "security", "hcfs"})
     public void malformedRecordWithRejectLimitWithCsvWireFormat() throws Exception {
-        prepareExternalTable("jsontest_malformed_record_with_reject_limit", tweetsFields, hdfsPath + FILENAME_BROKEN + SUFFIX_JSON, "CSV");
+        prepareExternalTable("jsontest_malformed_record_with_reject_limit", TWEETS_FIELDS, hdfsPath + FILENAME_BROKEN + SUFFIX_JSON, "CSV");
         exTable.setUserParameters(new String[]{"IDENTIFIER=created_at"});
         exTable.setSegmentRejectLimit(2);
         exTable.setErrorTable("true");
@@ -239,7 +299,7 @@ public class JsonTest extends BaseFeature {
      */
     @Test(groups = {"features", "gpdb", "security", "hcfs"})
     public void mismatchedTypes() throws Exception {
-        prepareExternalTable("jsontest_mismatched_types", supportedPrimitiveFields, hdfsPath + FILENAME_MISMATCHED_TYPES + SUFFIX_JSON, "custom");
+        prepareExternalTable("jsontest_mismatched_types", SUPPORTED_PRIMITIVE_FIELDS, hdfsPath + FILENAME_MISMATCHED_TYPES + SUFFIX_JSON, "custom");
         gpdb.createTableAndVerify(exTable);
         // Verify results
         runTincTest("pxf.features.hdfs.readable.json.mismatched_types.runTest");
@@ -256,12 +316,31 @@ public class JsonTest extends BaseFeature {
      */
     @Test(groups = {"features", "gpdb", "security", "hcfs"})
     public void mismatchedTypesWithRejectLimit() throws Exception {
-        prepareExternalTable("jsontest_mismatched_types_with_reject_limit", supportedPrimitiveFields, hdfsPath + FILENAME_MISMATCHED_TYPES + SUFFIX_JSON, "custom");
+        prepareExternalTable("jsontest_mismatched_types_with_reject_limit", SUPPORTED_PRIMITIVE_FIELDS, hdfsPath + FILENAME_MISMATCHED_TYPES + SUFFIX_JSON, "custom");
         exTable.setSegmentRejectLimit(7);
         exTable.setErrorTable("true");
         gpdb.createTableAndVerify(exTable);
         // Verify results
         runTincTest("pxf.features.hdfs.readable.json.mismatched_types_with_reject_limit.runTest");
+    }
+
+    @Test(groups = {"features", "gpdb", "security", "hcfs"})
+    public void jsonStringArrayAsGpdbText() throws Exception {
+        // tables where columns do not reference inside JSON arrays
+        prepareExternalTable("jsontest_array_as_text", ARRAYS_AS_TEXT_FIELDS, hdfsPath + FILENAME_JSON_ARRAY + SUFFIX_JSON, "custom");
+        gpdb.createTableAndVerify(exTable);
+
+        prepareExternalTable("jsontest_array_as_varchar", ARRAYS_AS_VARCHAR_FIELDS, hdfsPath + FILENAME_JSON_ARRAY + SUFFIX_JSON, "custom");
+        gpdb.createTableAndVerify(exTable);
+
+        prepareExternalTable("jsontest_array_as_bpchar", ARRAYS_AS_BPCHAR_FIELDS, hdfsPath + FILENAME_JSON_ARRAY + SUFFIX_JSON, "custom");
+        gpdb.createTableAndVerify(exTable);
+
+        // table where columns reference inside JSON arrays
+        prepareExternalTable("jsontest_array_as_text_projections", ARRAYS_AS_TEXT_PROJECTIONS_FIELDS, hdfsPath + FILENAME_JSON_ARRAY + SUFFIX_JSON, "custom");
+        gpdb.createTableAndVerify(exTable);
+
+        runTincTest("pxf.features.hdfs.readable.json.array_as_text.runTest");
     }
 
     private void prepareExternalTable(String name, String[] fields, String path, String format) {
