@@ -8,6 +8,7 @@ import org.greenplum.pxf.automation.utils.jsystem.report.ReportUtils;
 import org.springframework.util.Assert;
 
 import java.io.File;
+import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,14 +17,14 @@ import java.util.List;
  */
 public class Gpdb extends DbSystemObject {
 
-	private String sshUserName;
-
-	private String sshPassword;
-
 	private static final String DEFAULT_PORT = "5432";
+	private static final String GREENPLUM_DATABASE_PREFIX = "Greenplum Database ";
+
+	private String sshUserName;
+	private String sshPassword;
+	private int version;
 
 	public Gpdb() {
-
 	}
 
 	public Gpdb(boolean silenceReport) {
@@ -50,6 +51,7 @@ public class Gpdb extends DbSystemObject {
 		address = "jdbc:postgresql://" + getHost() + ":" + getPort() + "/template1";
 
 		connect();
+		version = determineVersion();
 
 		if (!checkDataBaseExists(getDb())) {
 			String encoding = getEncoding();
@@ -72,6 +74,10 @@ public class Gpdb extends DbSystemObject {
 		connect();
 
 		ReportUtils.stopLevel(report);
+	}
+
+	public int getVersion() {
+		return version;
 	}
 
 	/**
@@ -115,7 +121,7 @@ public class Gpdb extends DbSystemObject {
 	public void createDataBase(String schemaName, boolean ignoreFail, String encoding, String localeCollate, String localeCollateType) throws Exception {
 
 		String createStatement;
-		if (StringUtils.equals(dbConnection.getMetaData().getDatabaseProductVersion(), "8.3.23")) {
+		if (version == 5) {
 			// Greenplum 5
 			ReportUtils.startLevel(report, getClass(), "Unable to create database with encoding that does not match server's locale in Greenplum 5");
 			createStatement = String.format("CREATE DATABASE %s", schemaName);
@@ -385,4 +391,21 @@ public class Gpdb extends DbSystemObject {
 	public void setSshPassword(String sshPassword) {
 		this.sshPassword = sshPassword;
 	}
+
+	private int determineVersion() throws Exception {
+		String query = "SELECT version()";
+		ReportUtils.report(report, getClass(), "Determining Greenplum version - query: " + query);
+
+		ResultSet res = stmt.executeQuery(query);
+		res.next();
+		String fullVersion = res.getString(1);
+		ReportUtils.report(report, getClass(), "Retrieved from Greenplum: [" + fullVersion + "]");
+		int gpIndex = fullVersion.indexOf(GREENPLUM_DATABASE_PREFIX); // where the version prefix starts
+		int dotIndex = fullVersion.indexOf(".", gpIndex);             // where the first dot of GP version starts
+		String versionStr = fullVersion.substring(gpIndex + GREENPLUM_DATABASE_PREFIX.length(), dotIndex);
+		int versionInt = Integer.valueOf(versionStr);
+		ReportUtils.report(report, getClass(), "Determined Greenplum version: " + versionInt);
+		return versionInt;
+	}
+
 }
