@@ -60,12 +60,21 @@ user.id
 user.location
 ```
 
-`coordinates` is an object composed of a text field named `type` and an array of integers named `values`. Use `[]` to identify specific elements of the `values` array as Greenplum Database external table columns:
+`coordinates` is an object composed of a text field named `type` and an array of integers named `values`. 
+
+In order to retrieve all the values of the `values` array within a single column, define the corresponding Greenplum Database external table column with one of the following types: `TEXT`, `VARCHAR`, or `BPCHAR`.
+
+``` pre
+coordinates.values
+```
+
+Alternatively, use <code>[<i>n</i>]</code> to identify specific elements of the `values` array as separate Greenplum Database external table columns:
 
 ``` pre
 coordinates.values[0]
 coordinates.values[1]
 ```
+
 
 Refer to [Introducing JSON](http://www.json.org/) for detailed information on JSON syntax.
 
@@ -82,7 +91,7 @@ The following table summarizes external mapping rules for JSON data.
 | JSON Data Type                                                    | PXF/Greenplum Data Type                                                                                                                                                                                            |
 |-------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Primitive type (integer, float, string, boolean, null) | Use the corresponding Greenplum Database built-in data type; see [Greenplum Database Data Types](https://gpdb.docs.pivotal.io/latest/ref_guide/data_types.html). |
-| Array                         | Use `[]` brackets to identify a specific array index to a member of primitive type.                                                                                            |
+| Array                         | Use `TEXT`, `VARCHAR`, or `BPCHAR` to retrieve the contents of the array in one column.<br>Use <code>[<i>n</i>]</code> brackets to identify a specific array index to a member of primitive type.<br>                                                                                           |
 | Object                | Use dot `.` notation to specify each level of projection (nesting) to a member of a primitive type.                                                                                         |
 
 ### <a id="topic_jsonreadmodes"></a>JSON Data Read Modes
@@ -106,14 +115,10 @@ In upcoming examples, you will use both read modes to operate on a sample data s
 The single-JSON-record-per-line data set follows:
 
 ``` pre
-{"created_at":"FriJun0722:45:03+00002013","id_str":"343136551322136576","user":{
-"id":395504494,"location":"NearCornwall"},"coordinates":{"type":"Point","values"
-: [ 6, 50 ]}},
-{"created_at":"FriJun0722:45:02+00002013","id_str":"343136547115253761","user":{
-"id":26643566,"location":"Austin,Texas"}, "coordinates": null},
-{"created_at":"FriJun0722:45:02+00002013","id_str":"343136547136233472","user":{
-"id":287819058,"location":""}, "coordinates": null}
-```  
+{"created_at":"FriJun0722:45:03+00002013","id_str":"343136551322136576","user":{"id":395504494,"location":"NearCornwall"},"coordinates":{"type":"Point","values": [ 6, 50 ]}},
+{"created_at":"FriJun0722:45:02+00002013","id_str":"343136547115253761","user":{"id":26643566,"location":"Austin,Texas"}, "coordinates": null},
+{"created_at":"FriJun0722:45:02+00002013","id_str":"343136547136233472","user":{"id":287819058,"location":""}, "coordinates": null}
+```
 
 This is the data set for the multi-line JSON record data set:
 
@@ -207,7 +212,21 @@ The `hdfs:json` profile supports the following \<custom-option\>s:
 
 Use the following [CREATE EXTERNAL TABLE](https://gpdb.docs.pivotal.io/latest/ref_guide/sql_commands/CREATE_EXTERNAL_TABLE.html) SQL command to create a readable external table that references the single-line-per-record JSON data file and uses the PXF default server.
 
-``` sql 
+```sql
+CREATE EXTERNAL TABLE singleline_json_tbl(
+  created_at TEXT,
+  id_str TEXT,
+  "user.id" INTEGER,
+  "user.location" TEXT,
+  "coordinates.values" TEXT
+)
+LOCATION('pxf://data/pxf_examples/singleline.json?PROFILE=hdfs:json')
+FORMAT 'CUSTOM' (FORMATTER='pxfwritable_import');
+```
+
+If you need to identify specific elements of the `coordinates.values` array in different columns, use `[]` brackets to identify the JSON array:
+
+``` sql
 CREATE EXTERNAL TABLE singleline_json_tbl(
   created_at TEXT,
   id_str TEXT,
@@ -219,7 +238,6 @@ CREATE EXTERNAL TABLE singleline_json_tbl(
 LOCATION('pxf://data/pxf_examples/singleline.json?PROFILE=hdfs:json')
 FORMAT 'CUSTOM' (FORMATTER='pxfwritable_import');
 ```
-
 Notice the use of `.` projection to access the nested fields in the `user` and `coordinates` objects.  Also notice the use of `[]` to access specific elements of the `coordinates.values[]` array.
 
 To query the JSON data in the external table:
@@ -228,9 +246,35 @@ To query the JSON data in the external table:
 SELECT * FROM singleline_json_tbl;
 ```
 
-## <a id="jsonexample2" class="no-quick-link"></a>Example: Reading a JSON file with Multi-Line Records
+If you have used the first option to retrieve the JSON array in a single `TEXT` column and wish to convert the JSON array serialized as `TEXT` back into a native Greenplum array type, you can use the example below:
+
+```sql
+SELECT user.id, 
+       ARRAY(SELECT json_array_elements_text(coordinates.values::json))::int[] AS coords 
+FROM singleline_json_tbl;
+```
+
+Note that this is only possible when using Greenplum Database 6.x, as the function `json_array_elements_text()` is not available with 5.x versions of Greenplum.
+
+## <a id="jsonexample2"></a>Example: Reading a JSON file with Multi-Line Records
 
 The SQL command to create a readable external table from the multi-line-per-record JSON file is very similar to that of the single line data set above. You must additionally specify the `LOCATION` clause `IDENTIFIER` keyword and an associated value when you want to read multi-line JSON records. For example:
+
+``` sql
+CREATE EXTERNAL TABLE multiline_json_tbl(
+  created_at TEXT,
+  id_str TEXT,
+  "user.id" INTEGER,
+  "user.location" TEXT,
+  "coordinates.values" TEXT
+)
+LOCATION('pxf://data/pxf_examples/multiline.json?PROFILE=hdfs:json&IDENTIFIER=created_at')
+FORMAT 'CUSTOM' (FORMATTER='pxfwritable_import');
+```
+
+`created_at` identifies the member name of the first field in the JSON record `record_obj` in the sample data schema.
+
+If you need to identify specific elements of the `coordinates.values` array in different columns, use `[]` brackets to define the JSON array:
 
 ``` sql
 CREATE EXTERNAL TABLE multiline_json_tbl(
@@ -244,8 +288,6 @@ CREATE EXTERNAL TABLE multiline_json_tbl(
 LOCATION('pxf://data/pxf_examples/multiline.json?PROFILE=hdfs:json&IDENTIFIER=created_at')
 FORMAT 'CUSTOM' (FORMATTER='pxfwritable_import');
 ```
-
-`created_at` identifies the member name of the first field in the JSON record `record_obj` in the sample data schema.
 
 To query the JSON data in this external table:
 

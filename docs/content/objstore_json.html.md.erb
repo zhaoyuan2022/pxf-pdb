@@ -85,10 +85,25 @@ Refer to [Loading the Sample JSON Data to HDFS](hdfs_json.html#jsontohdfs) and [
       id_str TEXT,
       "user.id" INTEGER,
       "user.location" TEXT,
-      "coordinates.values[0]" INTEGER,
-      "coordinates.values[1]" INTEGER
+      "coordinates.values" TEXT
     )
       LOCATION('pxf://BUCKET/pxf_examples/singleline.json?PROFILE=s3:json&SERVER=s3srvcfg')
     FORMAT 'CUSTOM' (FORMATTER='pxfwritable_import');
     ```
+
+- If you need to identify specific elements of the `coordinates.values` array in different columns, use `[]` brackets to identify the JSON array:
+
+    ``` sql
+    CREATE EXTERNAL TABLE singleline_json_s3(
+      created_at TEXT,
+      id_str TEXT,
+      "user.id" INTEGER,
+      "user.location" TEXT,
+      "coordinates.values[0]" INTEGER,
+      "coordinates.values[1]" INTEGER
+    )
+    LOCATION('pxf://BUCKET/pxf_examples/singleline.json?PROFILE=s3:json&SERVER=s3srvcfg')
+    FORMAT 'CUSTOM' (FORMATTER='pxfwritable_import');
+    ``` 
+
 
