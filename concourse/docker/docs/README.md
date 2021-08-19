@@ -29,14 +29,21 @@ Once inside the container run the following commands:
 
 ```shell script
 bundle install
-bundle update nokogiri
-bundle update kramdown
-bundle update bookbindery
 bundle exec bookbinder bind local
 cd final_app
-rackup
+bundle install
+bundle exec rackup --host=0.0.0.0
 ```
 
 At this point, you can go to a browser window and type
 http://localhost:9292 and you will see the formatted PXF open source
 documentation.
+
+NOTE:  If you perform multiple successive doc builds, remove the generated
+Gemfile.lock and final_app/ and output/ directories before each build:
+
+```shell script
+cd ..
+rm -rf Gemfile.lock final_app output
+... build again ...
+```
