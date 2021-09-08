@@ -197,6 +197,26 @@ public class HdfsReadableAvroTest extends BaseFeature {
         runTincTest("pxf.features.hdfs.readable.avro.complex_types.runTest");
     }
 
+    @Test(groups = {"features", "gpdb", "hcfs", "security"})
+    public void avroComplexTextFormat() throws Exception {
+        prepareReadableTable("avrotest_complex_text", AVRO_ALL_TYPES_FIELDS, hdfsPath + avroComplexFileName + SUFFIX_AVRO);
+        exTable.setFormatter(null);
+        exTable.setFormat("TEXT");
+        gpdb.createTableAndVerify(exTable);
+        // Verify results
+        runTincTest("pxf.features.hdfs.readable.avro.complex_types_text.runTest");
+    }
+
+    @Test(groups = {"features", "gpdb", "hcfs", "security"})
+    public void avroComplexCsvFormat() throws Exception {
+        prepareReadableTable("avrotest_complex_csv", AVRO_ALL_TYPES_FIELDS, hdfsPath + avroComplexFileName + SUFFIX_AVRO);
+        exTable.setFormatter(null);
+        exTable.setFormat("CSV");
+        gpdb.createTableAndVerify(exTable);
+        // Verify results
+        runTincTest("pxf.features.hdfs.readable.avro.complex_types_csv.runTest");
+    }
+
     /**
      * Read an Avro file that includes all supported complex types, reading the schema from another file.
      *

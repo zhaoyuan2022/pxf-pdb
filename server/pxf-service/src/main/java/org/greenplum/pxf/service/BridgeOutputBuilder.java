@@ -45,7 +45,6 @@ import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.greenplum.pxf.api.io.DataType.TEXT;
@@ -76,7 +75,7 @@ public class BridgeOutputBuilder {
     private final GreenplumCSV greenplumCSV;
     private final OutputFormat outputFormat;
     private final List<ColumnDescriptor> columnDescriptors;
-
+    private final String gpdbTableformat;
     /**
      * Constructs a BridgeOutputBuilder.
      *
@@ -93,6 +92,7 @@ public class BridgeOutputBuilder {
         outputList = new LinkedList<>();
         makeErrorRecord();
         samplingEnabled = (context.getStatsSampleRatio() > 0);
+        gpdbTableformat = context.getFormat();
     }
 
     /**
@@ -487,18 +487,24 @@ public class BridgeOutputBuilder {
     private String fieldListToCSVString(List<OneField> fields) {
         return fields.stream()
                 .map(field -> {
+                    // Check first if the field.val is null then using .toString() is safe in else branches.
                     if (field.val == null)
                         return greenplumCSV.getValueOfNull();
                     else if (field.type == DataType.BYTEA.getOID())
-                        return "\\x" + Hex.encodeHexString((byte[]) field.val);
+                    {
+                        // check for Format Type here. if the Format Type is CSV, we should escape using single \
+                        // for Text or Custom Format types, it should \\
+                        String hexPrepend = gpdbTableformat.equalsIgnoreCase("csv") ? "\\x"  : "\\\\x" ;
+                        return hexPrepend + Hex.encodeHexString((byte[]) field.val);
+                    }
                     else if (field.type == DataType.NUMERIC.getOID() || !DataType.isTextForm(field.type))
-                        return Objects.toString(field.val, null);
+                        return field.val.toString();
                     else if (field.type == DataType.TIMESTAMP.getOID())
                         return ((Timestamp) field.val).toLocalDateTime().format(GreenplumDateTime.DATETIME_FORMATTER);
                     else if (field.type == DataType.DATE.getOID())
                         return field.val.toString();
                     else
-                        return greenplumCSV.toCsvField((String) field.val, true, true, true);
+                        return greenplumCSV.toCsvField(field.val.toString(), true, true, true);
                 })
                 .collect(Collectors.joining(String.valueOf(greenplumCSV.getDelimiter()), "", newLine));
     }
