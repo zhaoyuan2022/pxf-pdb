@@ -32,12 +32,16 @@ public class MultiServerTest extends BaseFeature {
     };
     private static final String SERVER_NON_SECURE_HDFS = "hdfs-non-secure";
     private static final String SERVER_SECURE_HDFS_2 = "hdfs-secure";
+    private static final String SERVER_SECURE_HDFS_IPA = "hdfs-ipa";
     private Hdfs s3Server;
     private String s3Path;
     private String defaultPath;
 
     // and another kerberized hadoop environment
     private Hdfs hdfs2;
+
+    // Hadoop cluster with IPA-based Kerberos KDC, used for testing constrained delegation
+    private Hdfs hdfsIpa;
 
     /**
      * Prepare all server configurations and components
@@ -51,6 +55,14 @@ public class MultiServerTest extends BaseFeature {
         if (hdfs2 != null) {
             trySecureLogin(hdfs2, hdfs2.getTestKerberosPrincipal());
             initializeWorkingDirectory(hdfs2, gpdb.getUserName());
+        }
+
+        hdfsIpa = (Hdfs) systemManager.
+                getSystemObject("/sut", "hdfsIpa", -1, null, false, null, SutFactory.getInstance().getSutInstance());
+
+        if (hdfsIpa != null) {
+            trySecureLogin(hdfsIpa, hdfsIpa.getTestKerberosPrincipal());
+            initializeWorkingDirectory(hdfsIpa, gpdb.getUserName());
         }
 
         String hdfsWorkingDirectory = hdfs.getWorkingDirectory();
@@ -81,15 +93,14 @@ public class MultiServerTest extends BaseFeature {
     @Override
     protected void afterMethod() throws Exception {
         super.afterMethod();
-
         s3Server.removeDirectory(PROTOCOL_S3 + s3Path);
     }
 
     @Override
     protected void afterClass() throws Exception {
         super.afterClass();
-
         removeWorkingDirectory(hdfs2);
+        removeWorkingDirectory(hdfsIpa);
     }
 
     protected void prepareData() throws Exception {
@@ -114,6 +125,12 @@ public class MultiServerTest extends BaseFeature {
             // Prepare data for second HDFS table
             Table dataTableHdfs2 = getSmallData("second_hdfs");
             hdfs2.writeTableToFile(defaultPath, dataTableHdfs2, ",");
+        }
+
+        // IPA Hadoop cluster
+        if (hdfsIpa != null) {
+            Table dataTableHdfsIpa = getSmallData("ipa_hdfs");
+            hdfsIpa.writeTableToFile(defaultPath, dataTableHdfsIpa, ",");
         }
 
         // Create Data for s3Server
@@ -150,6 +167,13 @@ public class MultiServerTest extends BaseFeature {
                     TableFactory.getPxfReadableTextTable(
                             "pxf_multiserver_secure_2", PXF_MULTISERVER_COLS, defaultPath, ",");
             exTable.setServer("SERVER=" + SERVER_SECURE_HDFS_2);
+            gpdb.createTableAndVerify(exTable);
+        }
+
+        // IPA Hadoop cluster
+        if (hdfsIpa != null) {
+            exTable = TableFactory.getPxfReadableTextTable("pxf_multiserver_ipa", PXF_MULTISERVER_COLS, defaultPath, ",");
+            exTable.setServer("SERVER=" + SERVER_SECURE_HDFS_IPA);
             gpdb.createTableAndVerify(exTable);
         }
     }

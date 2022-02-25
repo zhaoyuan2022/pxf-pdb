@@ -22,6 +22,53 @@
     ipa_user: admin
     ipa_pass: "{{ ipa_password }}"
 
+- name: create testuser user
+  community.general.ipa_user:
+    name: testuser
+    state: present
+    krbpasswordexpiration: "20301231235959"
+    givenname: testuser
+    sn: testuser
+    password: pxf
+    update_password: on_create
+    ipa_host: ccp-{{ cluster_name }}-ipa.{{ ansible_domain }}
+    ipa_user: admin
+    ipa_pass: "{{ ipa_password }}"
+
+- name: create foobar user
+  community.general.ipa_user:
+    name: foobar
+    state: present
+    krbpasswordexpiration: "20301231235959"
+    givenname: foobar
+    sn: foobar
+    password: pxf
+    update_password: on_create
+    ipa_host: ccp-{{ cluster_name }}-ipa.{{ ansible_domain }}
+    ipa_user: admin
+    ipa_pass: "{{ ipa_password }}"
+
+- name: create pxf service user
+  community.general.ipa_user:
+    name: "{{ pxf_user }}"
+    state: present
+    krbpasswordexpiration: "20301231235959"
+    givenname: "{{ pxf_user }}"
+    sn: "{{ pxf_user }}"
+    password: "{{ pxf_user_password }}"
+    update_password: on_create
+    ipa_host: ccp-{{ cluster_name }}-ipa.{{ ansible_domain }}
+    ipa_user: admin
+    ipa_pass: "{{ ipa_password }}"
+
+- name: allow pxf service user to acquire forwardable tickets to itself from arbitrary users
+  ansible.builtin.shell:
+    cmd: |
+      set -o errexit
+      echo {{ ipa_password }} | kinit admin
+      kadmin.local -q "modify_principal +ok_to_auth_as_delegate +ok_as_delegate {{ pxf_user }}"
+      kdestroy
+
 - name: create hadoop user
   community.general.ipa_user:
     name: "{{ hadoop_user }}"
@@ -44,18 +91,27 @@
     ipa_user: admin
     ipa_pass: "{{ ipa_password }}"
 
-# This LDAP group represents users/principals that a service can impersonate
+# This LDAP group represents users/principals that a service can delegate to
 - name: create delegation targets group
   community.general.ldap_entry:
     dn: cn=test-pxf-delegation-targets,cn=s4u2proxy,cn=etc,dc=c,dc=data-gpdb-ud-ipa,dc=internal
     objectClass:
     - groupOfPrincipals
     - top
-    attributes:
-      memberPrincipal: gpadmin@{{ ansible_domain | upper }}
     server_uri: ldaps://{{ ansible_fqdn }}
     bind_dn: uid=admin,cn=users,cn=accounts,dc=c,dc=data-gpdb-ud-ipa,dc=internal
     bind_pw: "{{ ipa_password }}"
+
+- name: add service Hadoop service principals to delegation targets group
+  community.general.ldap_attrs:
+    dn: cn=test-pxf-delegation-targets,cn=s4u2proxy,cn=etc,dc=c,dc=data-gpdb-ud-ipa,dc=internal
+    attributes:
+      memberPrincipal: hdfs/{{ item }}.{{ ansible_domain }}@{{ ansible_domain | upper }}
+    server_uri: ldaps://{{ ansible_fqdn }}
+    bind_dn: uid=admin,cn=users,cn=accounts,dc=c,dc=data-gpdb-ud-ipa,dc=internal
+    bind_pw: "{{ ipa_password }}"
+  loop: "{{ groups['hdfs'] }}"
+
 
 # This LDAP group represents which services can obtain a Kerberos service
 # ticket on behalf of which users
@@ -69,11 +125,21 @@
     - groupOfPrincipals
     - top
     attributes:
-      memberPrincipal: "{{ hadoop_user }}@{{ ansible_domain | upper }}"
+      memberPrincipal: "{{ pxf_user }}@{{ ansible_domain | upper }}"
       ipaAllowedTarget: cn=test-pxf-delegation-targets,cn=s4u2proxy,cn=etc,dc=c,dc=data-gpdb-ud-ipa,dc=internal
     server_uri: ldaps://{{ ansible_fqdn }}
     bind_dn: uid=admin,cn=users,cn=accounts,dc=c,dc=data-gpdb-ud-ipa,dc=internal
     bind_pw: "{{ ipa_password }}"
+
+- name: export hadoop user keytab
+  become: false
+  ansible.builtin.shell:
+    cmd: |
+      set -o errexit
+      echo {{ ipa_password }} | kinit admin
+      /usr/sbin/ipa-getkeytab --principal={{ hadoop_user }} --keytab=hadoop.user.keytab
+      kdestroy
+    creates: hadoop.user.keytab
 
 - name: export pxf service keytab
   become: false
@@ -81,6 +147,6 @@
     cmd: |
       set -o errexit
       echo {{ ipa_password }} | kinit admin
-      /usr/sbin/ipa-getkeytab --principal={{ hadoop_user }} --keytab=pxf.service.keytab
+      /usr/sbin/ipa-getkeytab --principal={{ pxf_user }} --keytab=pxf.service.keytab
       kdestroy
     creates: pxf.service.keytab
