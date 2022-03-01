@@ -195,6 +195,12 @@ public class MultiServerTest extends BaseFeature {
 
     @Test(groups = {"features", "multiClusterSecurity"})
     public void testTwoSecuredServersNonSecureServerAndCloudServer() throws Exception {
-        runTincTest("pxf.features.multi_server.test_all.runTest");
+        if (hdfsIpa != null) {
+            // in an environment with an IPA hadoop cluster run the test that also queries that cluster
+            runTincTest("pxf.features.multi_server.test_all_ipa.runTest");
+        } else {
+            // in an environment without an IPA hadoop cluster run the test that does not include queries to IPA cluster
+            runTincTest("pxf.features.multi_server.test_all.runTest");
+        }
     }
 }
