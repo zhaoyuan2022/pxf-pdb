@@ -45,6 +45,7 @@ import org.greenplum.pxf.api.filter.SupportedOperatorPruner;
 import org.greenplum.pxf.api.filter.ToStringTreeVisitor;
 import org.greenplum.pxf.api.filter.TreeTraverser;
 import org.greenplum.pxf.api.io.DataType;
+import org.greenplum.pxf.api.model.RequestContext;
 import org.greenplum.pxf.api.utilities.ColumnDescriptor;
 import org.greenplum.pxf.api.utilities.SerializationService;
 import org.greenplum.pxf.api.utilities.SpringContext;
@@ -212,6 +213,10 @@ public class HiveAccessor extends HdfsSplittableDataAccessor {
     @Override
     public void afterPropertiesSet() {
         super.afterPropertiesSet();
+
+        // HiveAccessor requires fragment metadata which is available for read operations but not write operations
+        if (context.getRequestType() == RequestContext.RequestType.WRITE_BRIDGE)
+            throw new UnsupportedOperationException(UNSUPPORTED_ERR_MESSAGE);
 
         // determine if predicate pushdown is allowed by configuration
         isPredicatePushdownAllowed = configuration.get(PXF_PPD_HIVE, "true").equalsIgnoreCase("true");
