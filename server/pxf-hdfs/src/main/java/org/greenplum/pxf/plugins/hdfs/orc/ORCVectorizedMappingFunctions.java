@@ -31,12 +31,13 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.TimeZone;
+
 
 /**
  * Maps vectors of ORC types to a list of OneFields.
@@ -113,7 +114,7 @@ class ORCVectorizedMappingFunctions {
 
         OneField[] result = new OneField[batch.size];
         // if the row is repeated, then we only need to serialize the row once.
-        String repeatedRow = listColumnVector.isRepeating ? serializeListRow(listColumnVector,0, oid) : null;
+        String repeatedRow = listColumnVector.isRepeating ? serializeListRow(listColumnVector, 0, oid) : null;
         for (int rowIndex = 0; rowIndex < batch.size; rowIndex++) {
             String value = listColumnVector.isRepeating ? repeatedRow : serializeListRow(listColumnVector, rowIndex, oid);
             result[rowIndex] = new OneField(oid, value);
