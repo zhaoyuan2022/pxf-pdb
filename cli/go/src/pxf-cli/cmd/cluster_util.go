@@ -415,13 +415,13 @@ func getSegmentByRole(segmentList []*SegConfig, role ...string) *SegConfig {
 	return segmentList[0]
 }
 
-func (cluster *Cluster) GetDbidForContent(contentID int, role ...string) int {
-	segConfig := getSegmentByRole(cluster.ByContent[contentID], role...)
-	if segConfig == nil {
-		return -1
-	}
-	return segConfig.DbID
-}
+// func (cluster *Cluster) GetDbidForContent(contentID int, role ...string) int {
+// 	segConfig := getSegmentByRole(cluster.ByContent[contentID], role...)
+// 	if segConfig == nil {
+// 		return -1
+// 	}
+// 	return segConfig.DbID
+// }
 
 func (cluster *Cluster) GetPortForContent(contentID int, role ...string) int {
 	segConfig := getSegmentByRole(cluster.ByContent[contentID], role...)
@@ -447,13 +447,13 @@ func (cluster *Cluster) GetDirForContent(contentID int, role ...string) string {
 	return segConfig.DataDir
 }
 
-func (cluster *Cluster) GetDbidsForHost(hostname string) []int {
-	dbids := make([]int, len(cluster.ByHost[hostname]))
-	for i, seg := range cluster.ByHost[hostname] {
-		dbids[i] = seg.DbID
-	}
-	return dbids
-}
+// func (cluster *Cluster) GetDbidsForHost(hostname string) []int {
+// 	dbids := make([]int, len(cluster.ByHost[hostname]))
+// 	for i, seg := range cluster.ByHost[hostname] {
+// 		dbids[i] = seg.DbID
+// 	}
+// 	return dbids
+// }
 
 func (cluster *Cluster) GetContentsForHost(hostname string) []int {
 	contents := make([]int, len(cluster.ByHost[hostname]))

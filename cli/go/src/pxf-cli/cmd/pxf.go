@@ -7,8 +7,6 @@ import (
 	"io"
 	"os"
 	"strings"
-
-	"github.com/greenplum-db/gp-common-go-libs/cluster"
 )
 
 type envVar string
@@ -19,7 +17,7 @@ const (
 	pxfBase  envVar = "PXF_BASE"
 	javaHome envVar = "JAVA_HOME"
 	// For pxf migrate
-	pxfConf  envVar = "PXF_CONF"
+	pxfConf envVar = "PXF_CONF"
 )
 
 type messageType int
@@ -35,7 +33,7 @@ const (
 type command struct {
 	name       commandName
 	messages   map[messageType]string
-	whereToRun cluster.Scope
+	whereToRun Scope
 	envVars    []envVar
 	warn       bool // whether the command requires a warning/prompt
 }
@@ -135,21 +133,21 @@ var (
 		name: pxfInit,
 		messages: map[messageType]string{
 			success: "PXF initialized successfully on %d out of %d host%s\n",
-			status:  "*****************************************************************************\n" +
-				 "* DEPRECATION NOTICE:\n" +
-				 "* The \"pxf cluster init\" command is deprecated and will be removed\n" +
-				 "* in a future release of PXF.\n" +
-				 "*\n" +
-				 "* Use the \"pxf cluster register\" command instead.\n" +
-				 "*\n" +
-				 "*****************************************************************************\n\n" +
-				 "Initializing PXF on master host%s and %d segment host%s...\n",
+			status: "*****************************************************************************\n" +
+				"* DEPRECATION NOTICE:\n" +
+				"* The \"pxf cluster init\" command is deprecated and will be removed\n" +
+				"* in a future release of PXF.\n" +
+				"*\n" +
+				"* Use the \"pxf cluster register\" command instead.\n" +
+				"*\n" +
+				"*****************************************************************************\n\n" +
+				"Initializing PXF on master host%s and %d segment host%s...\n",
 			standby: ", standby master host,",
 			err:     "PXF failed to initialize on %d out of %d host%s\n",
 		},
 		warn:       false,
 		envVars:    []envVar{gpHome, pxfHome, javaHome},
-		whereToRun: cluster.ON_REMOTE | cluster.ON_HOSTS | cluster.INCLUDE_MASTER | cluster.INCLUDE_MIRRORS,
+		whereToRun: ON_REMOTE | ON_HOSTS | INCLUDE_MASTER | INCLUDE_MIRRORS,
 	}
 	StartCommand = command{
 		name: start,
@@ -161,7 +159,7 @@ var (
 		},
 		warn:       false,
 		envVars:    []envVar{pxfHome, pxfBase},
-		whereToRun: cluster.ON_REMOTE | cluster.ON_HOSTS | cluster.INCLUDE_MASTER | cluster.INCLUDE_MIRRORS,
+		whereToRun: ON_REMOTE | ON_HOSTS | INCLUDE_MASTER | INCLUDE_MIRRORS,
 	}
 	StopCommand = command{
 		name: stop,
@@ -173,7 +171,7 @@ var (
 		},
 		warn:       false,
 		envVars:    []envVar{pxfHome, pxfBase},
-		whereToRun: cluster.ON_REMOTE | cluster.ON_HOSTS | cluster.INCLUDE_MASTER | cluster.INCLUDE_MIRRORS,
+		whereToRun: ON_REMOTE | ON_HOSTS | INCLUDE_MASTER | INCLUDE_MIRRORS,
 	}
 	SyncCommand = command{
 		name: sync,
@@ -185,10 +183,10 @@ var (
 		},
 		warn:    false,
 		envVars: []envVar{pxfBase},
-		// cluster.ON_LOCAL | cluster.ON_HOSTS: the command will target host%s, but be run from master
+		// ON_LOCAL | ON_HOSTS: the command will target host%s, but be run from master
 		// this is ideal for copying files from master to segment host(s) using rsync.
 		// since the files are already on master, we exclude master but include standby master
-		whereToRun: cluster.ON_LOCAL | cluster.ON_HOSTS | cluster.EXCLUDE_MASTER | cluster.INCLUDE_MIRRORS,
+		whereToRun: ON_LOCAL | ON_HOSTS | EXCLUDE_MASTER | INCLUDE_MIRRORS,
 	}
 	StatusCommand = command{
 		name: statuses,
@@ -200,7 +198,7 @@ var (
 		},
 		warn:       false,
 		envVars:    []envVar{pxfHome, pxfBase},
-		whereToRun: cluster.ON_REMOTE | cluster.ON_HOSTS | cluster.INCLUDE_MASTER | cluster.INCLUDE_MIRRORS,
+		whereToRun: ON_REMOTE | ON_HOSTS | INCLUDE_MASTER | INCLUDE_MIRRORS,
 	}
 	RegisterCommand = command{
 		name: register,
@@ -212,24 +210,24 @@ var (
 		},
 		warn:       false,
 		envVars:    []envVar{gpHome, pxfHome},
-		whereToRun: cluster.ON_REMOTE | cluster.ON_HOSTS | cluster.INCLUDE_MASTER | cluster.INCLUDE_MIRRORS,
+		whereToRun: ON_REMOTE | ON_HOSTS | INCLUDE_MASTER | INCLUDE_MIRRORS,
 	}
 	ResetCommand = command{
 		name: reset,
 		messages: map[messageType]string{
 			success: "PXF has been reset on %d out of %d host%s\n",
-			status:  "*****************************************************************************\n" +
-				 "* DEPRECATION NOTICE:\n" +
-				 "* The \"pxf cluster reset\" command is deprecated and will be removed\n" +
-				 "* in a future release of PXF.\n" +
-				 "*****************************************************************************\n\n" +
-				 "Resetting PXF on master host%s and %d segment host%s...\n",
+			status: "*****************************************************************************\n" +
+				"* DEPRECATION NOTICE:\n" +
+				"* The \"pxf cluster reset\" command is deprecated and will be removed\n" +
+				"* in a future release of PXF.\n" +
+				"*****************************************************************************\n\n" +
+				"Resetting PXF on master host%s and %d segment host%s...\n",
 			standby: ", standby master host,",
 			err:     "Failed to reset PXF on %d out of %d host%s\n",
 		},
 		warn:       false,
 		envVars:    []envVar{pxfHome},
-		whereToRun: cluster.ON_REMOTE | cluster.ON_HOSTS | cluster.INCLUDE_MASTER | cluster.INCLUDE_MIRRORS,
+		whereToRun: ON_REMOTE | ON_HOSTS | INCLUDE_MASTER | INCLUDE_MIRRORS,
 	}
 	RestartCommand = command{
 		name: restart,
@@ -241,7 +239,7 @@ var (
 		},
 		warn:       false,
 		envVars:    []envVar{pxfHome, pxfBase},
-		whereToRun: cluster.ON_REMOTE | cluster.ON_HOSTS | cluster.INCLUDE_MASTER | cluster.INCLUDE_MIRRORS,
+		whereToRun: ON_REMOTE | ON_HOSTS | INCLUDE_MASTER | INCLUDE_MIRRORS,
 	}
 	PrepareCommand = command{
 		name: prepare,
@@ -253,7 +251,7 @@ var (
 		},
 		warn:       false,
 		envVars:    []envVar{pxfHome, pxfBase},
-		whereToRun: cluster.ON_REMOTE | cluster.ON_HOSTS | cluster.INCLUDE_MASTER | cluster.INCLUDE_MIRRORS,
+		whereToRun: ON_REMOTE | ON_HOSTS | INCLUDE_MASTER | INCLUDE_MIRRORS,
 	}
 	MigrateCommand = command{
 		name: migrate,
@@ -263,9 +261,9 @@ var (
 			standby: ", standby master host,",
 			err:     "PXF failed to migrate configuration on %d out of %d host%s\n",
 		},
-		warn: false,
-		envVars: []envVar{pxfHome, pxfConf, pxfBase},
-		whereToRun: cluster.ON_REMOTE | cluster.ON_HOSTS | cluster.INCLUDE_MASTER | cluster.INCLUDE_MIRRORS,
+		warn:       false,
+		envVars:    []envVar{pxfHome, pxfConf, pxfBase},
+		whereToRun: ON_REMOTE | ON_HOSTS | INCLUDE_MASTER | INCLUDE_MIRRORS,
 	}
 )
 
