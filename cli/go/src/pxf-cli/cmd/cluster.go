@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/greenplum-db/gp-common-go-libs/cluster"
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/spf13/cobra"
@@ -14,8 +13,8 @@ import (
 
 // ClusterData is exported for testing
 type ClusterData struct {
-	Cluster    *cluster.Cluster
-	Output     *cluster.RemoteOutput
+	Cluster    *Cluster
+	Output     *RemoteOutput
 	NumHosts   int
 	connection *dbconn.DBConn
 }
@@ -91,7 +90,7 @@ func GenerateStatusReport(cmd *command, clusterData *ClusterData) {
 	}
 	standbyMsg := ""
 	numHosts := clusterData.NumHosts
-	if cmd.whereToRun&cluster.INCLUDE_MASTER == cluster.INCLUDE_MASTER {
+	if cmd.whereToRun&INCLUDE_MASTER == INCLUDE_MASTER {
 		numHosts--
 	}
 	if isStandbyAloneOnHost(clusterData) {
@@ -141,12 +140,12 @@ func doSetup() (*ClusterData, error) {
 			"Please make sure that your Greenplum database is running and you are on the master node.", err.Error()))
 		return nil, err
 	}
-	segConfigs, err := cluster.GetSegmentConfiguration(connection, true)
+	segConfigs, err := GetSegmentConfiguration(connection, true)
 	if err != nil {
 		gplog.Error(fmt.Sprintf("ERROR: Could not retrieve segment information from GPDB.\n%s\n" + err.Error()))
 		return nil, err
 	}
-	clusterData := &ClusterData{Cluster: cluster.NewCluster(segConfigs), connection: connection}
+	clusterData := &ClusterData{Cluster: NewCluster(segConfigs), connection: connection}
 
 	return clusterData, nil
 }
