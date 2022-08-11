@@ -1,5 +1,6 @@
 package org.greenplum.pxf.plugins.hdfs.orc;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.hive.common.type.HiveDecimal;
 import org.apache.hadoop.hive.ql.exec.vector.BytesColumnVector;
 import org.apache.hadoop.hive.ql.exec.vector.ColumnVector;
@@ -31,10 +32,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 
@@ -68,16 +71,43 @@ class ORCVectorizedMappingFunctions {
     // we intentionally create a new instance of PgUtilities here due to unnecessary complexity
     // required for dependency injection
     private static final PgUtilities pgUtilities = new PgUtilities();
+    private static final OrcUtilities orcUtilities = new OrcUtilities(pgUtilities);
 
     private static final Map<TypeDescription.Category, TriConsumer<ColumnVector, Integer, Object>> writeFunctionsMap;
+    private static final Map<TypeDescription.Category, TriConsumer<ColumnVector, Integer, Object>> writeListFunctionsMap;
     private static final TriConsumer<ColumnVector, Integer, Object> timestampInLocalWriteFunction;
+    private static final TriConsumer<ColumnVector, Integer, Object> timestampInLocalWriteListFunction;
     private static final ZoneId TIMEZONE_UTC = ZoneId.of("UTC");
     private static final ZoneId TIMEZONE_LOCAL = TimeZone.getDefault().toZoneId();
+
+    private static final List<TypeDescription.Category> SUPPORTED_PRIMITIVE_CATEGORIES = Arrays.asList(
+            TypeDescription.Category.BOOLEAN,
+            // TypeDescription.Category.BYTE,
+            TypeDescription.Category.SHORT,
+            TypeDescription.Category.INT,
+            TypeDescription.Category.LONG,
+            TypeDescription.Category.FLOAT,
+            TypeDescription.Category.DOUBLE,
+            TypeDescription.Category.STRING,
+            TypeDescription.Category.DATE,
+            TypeDescription.Category.TIMESTAMP,
+            TypeDescription.Category.BINARY,
+            TypeDescription.Category.DECIMAL,
+            TypeDescription.Category.VARCHAR,
+            TypeDescription.Category.CHAR,
+            // TypeDescription.Category.MAP,
+            // TypeDescription.Category.STRUCT,
+            // TypeDescription.Category.UNION,
+            TypeDescription.Category.TIMESTAMP_INSTANT
+    );
 
     static {
         writeFunctionsMap = new EnumMap<>(TypeDescription.Category.class);
         initWriteFunctionsMap();
         timestampInLocalWriteFunction = getTimestampInLocalWriteFunction();
+        writeListFunctionsMap = new EnumMap<>(TypeDescription.Category.class);
+        initWriteListFunctionsMap();
+        timestampInLocalWriteListFunction = getListWriteFunction(TypeDescription.Category.TIMESTAMP, timestampInLocalWriteFunction);
     }
 
     public static OneField[] booleanReader(VectorizedRowBatch batch, ColumnVector columnVector, int oid) {
@@ -159,8 +189,23 @@ class ORCVectorizedMappingFunctions {
                         pgArrayBuilder.addElement(((BytesColumnVector) columnVector.child).toString(childRow));
                     }
                     break;
+                case LONG:
+                    // DateColumnVector extends LongColumnVector but does not override the stringifyValue function to print the
+                    // date in human-readable format (i.e. yyyy-MM-dd) so do that here
+                    if (columnVector.child instanceof DateColumnVector) {
+                        DateColumnVector childVector = (DateColumnVector) columnVector.child;
+                        pgArrayBuilder.addElement(stringifyDateColumnVectorValue(childVector, childRow));
+                    } else {
+                        pgArrayBuilder.addElement(buf -> columnVector.child.stringifyValue(buf, childRow));
+                    }
+                    break;
+                case TIMESTAMP:
+                    TimestampColumnVector childVector = (TimestampColumnVector) columnVector.child;
+                    pgArrayBuilder.addElement(stringifyTimestampColumnVectorValue(childVector, childRow, oid));
+                    break;
                 default:
                     pgArrayBuilder.addElement(buf -> columnVector.child.stringifyValue(buf, childRow));
+
             }
         }
         pgArrayBuilder.endArray();
@@ -182,6 +227,45 @@ class ORCVectorizedMappingFunctions {
         } else {
             return null;
         }
+    }
+
+    /**
+     * Returns a string representation of the date stored in the DateColumnVector at the given row
+     * DateColumnVector does not override LongColumnVector's stringifyValue, so we need to add that functionality here
+     * @param dateColumnVector the column vector from which to pull the data
+     * @param row the row to stringify
+     * @return the string representation of the date for the given row
+     */
+    private static String stringifyDateColumnVectorValue(DateColumnVector dateColumnVector, int row) {
+        if (dateColumnVector.isRepeating) {
+            row = 0;
+        }
+        return (dateColumnVector.noNulls || !dateColumnVector.isNull[row])
+                ? Date.valueOf(LocalDate.ofEpochDay(dateColumnVector.vector[row])).toString()
+                : null;
+    }
+
+    /**
+     * Returns a string representation of the timestamp stored in the TimestampColumnVector at the given row.
+     * This function handles both the timestamp and the timestamp with timezone cases.
+     * We do not use the TimestampColumnVector stringifyValue as we need to handle Greenplum Datetime formatting
+     * @param timestampColumnVector the column vector from which to pull the data
+     * @param row the row to stringify
+     * @param oid the oid to determine which date time formatter to use (with or without timezone)
+     * @return the string representation of the timestamp for the given row
+     */
+    private static String stringifyTimestampColumnVectorValue(TimestampColumnVector timestampColumnVector, int row, int oid) {
+        String val = null;
+        if (timestampColumnVector.isRepeating) {
+            row = 0;
+        }
+        if (timestampColumnVector.noNulls || !timestampColumnVector.isNull[row]) {
+            DateTimeFormatter formatter = (oid == DataType.TIMESTAMP_WITH_TIMEZONE_ARRAY.getOID())
+                    ? GreenplumDateTime.DATETIME_WITH_TIMEZONE_FORMATTER
+                    : GreenplumDateTime.DATETIME_FORMATTER;
+            val = timestampToString(timestampColumnVector.asScratchTimestamp(row), formatter);
+        }
+        return val;
     }
 
     public static OneField[] shortReader(VectorizedRowBatch batch, ColumnVector columnVector, int oid) {
@@ -400,7 +484,16 @@ class ORCVectorizedMappingFunctions {
         // if timestamps need to be written in local timezone (and not in UTC), get a special function not in the map
         if (columnTypeCategory.equals(TypeDescription.Category.TIMESTAMP) && !timestampsInUTC) {
             writeFunction = timestampInLocalWriteFunction;
-        } else {
+        } else if (columnTypeCategory.equals(TypeDescription.Category.LIST)) {
+            // pass along the underlying category of the list
+            TypeDescription childTypeDescription = typeDescription.getChildren().get(0);
+            if (childTypeDescription.equals(TypeDescription.Category.TIMESTAMP) && !timestampsInUTC) {
+                writeFunction = timestampInLocalWriteListFunction;
+            } else {
+                writeFunction = writeListFunctionsMap.get(childTypeDescription.getCategory());
+            }
+        }
+        else {
             writeFunction = writeFunctionsMap.get(columnTypeCategory);
         }
         if (writeFunction == null) {
@@ -449,7 +542,11 @@ class ORCVectorizedMappingFunctions {
         });
         writeFunctionsMap.put(TypeDescription.Category.BINARY, (columnVector, row, val) -> {
             // do not copy the contents of the byte array, just set as a reference
-            ((BytesColumnVector) columnVector).setRef(row, (byte[]) val, 0, ((byte[]) val).length);
+            if (val instanceof byte[]) {
+                ((BytesColumnVector) columnVector).setRef(row, (byte[]) val, 0, ((byte[]) val).length);
+            } else {
+                ((BytesColumnVector) columnVector).setRef(row, ((ByteBuffer) val).array(), 0, ((ByteBuffer) val).limit());
+            }
         });
         writeFunctionsMap.put(TypeDescription.Category.DECIMAL, (columnVector, row, val) -> {
             // also there is Decimal and Decimal64 column vectors, see TypeUtils.createColumn
@@ -470,7 +567,6 @@ class ORCVectorizedMappingFunctions {
         // TODO: do we need to right-trim CHAR values like we do in Parquet ?
         writeFunctionsMap.put(TypeDescription.Category.CHAR,  writeFunctionsMap.get(TypeDescription.Category.STRING));
 
-        // TODO: LIST collection types
         // MAP, STRUCT, UNION - not supported by our ORCSchemaBuilder, so we do not expect to see them
 
         writeFunctionsMap.put(TypeDescription.Category.TIMESTAMP_INSTANT, (columnVector, row, val) -> {
@@ -479,6 +575,14 @@ class ORCVectorizedMappingFunctions {
             // convert offset dateTime to an instant and then to a Timestamp and store in TimestampColumnVector
             ((TimestampColumnVector) columnVector).set(row, Timestamp.from(offsetDateTime.toInstant()));
         });
+    }
+
+    private static void initWriteListFunctionsMap() {
+        // the array write functions rely on the primitive write functions so they must be initialized first
+        // it is assumed that all arrays are one dimensional
+        for (TypeDescription.Category orcType : SUPPORTED_PRIMITIVE_CATEGORIES) {
+            writeListFunctionsMap.put(orcType, getListWriteFunction(orcType));
+        }
     }
 
     /**
@@ -493,7 +597,7 @@ class ORCVectorizedMappingFunctions {
         String timestampString = instant
                 .atZone(ZoneId.systemDefault())
                 .format(formatter);
-        LOG.debug("Converted timestamp: {} to date: {}", timestamp, timestampString);
+        LOG.trace("Converted timestamp: {} to date: {}", timestamp, timestampString);
         return timestampString;
     }
 
@@ -508,6 +612,78 @@ class ORCVectorizedMappingFunctions {
         return (columnVector, row, val) -> {
             // parse GP string timestamp to instant in local timezone, then to a Timestamp and store in TimestampColumnVector
             ((TimestampColumnVector) columnVector).set(row, Timestamp.from(getTimeStampAsInstant(val, TIMEZONE_LOCAL)));
+        };
+    }
+
+    /**
+     * A special function that writes lists to ORC file
+     * @param underlyingChildCategory the underlying primitive child category. As PXF currently only has the capability to infer
+     *                                an ORC schema from the GPDB schema, so all arrays will be one-dimensional, and this value
+     *                                will be the underlying primitive type. This category is used to determine the write
+     *                                function that will be used to write the primitive value in the child column vector
+     * @return a function setting the list column vector
+     */
+    private static TriConsumer<ColumnVector, Integer, Object> getListWriteFunction(TypeDescription.Category underlyingChildCategory) {
+        return getListWriteFunction(underlyingChildCategory, writeFunctionsMap.get(underlyingChildCategory));
+    }
+
+    /**
+     * A special function that writes lists to ORC file
+     * @param underlyingChildCategory the underlying primitive child category. As PXF currently only has the capability to infer
+     *                                an ORC schema from the GPDB schema, so all arrays will be one-dimensional, and this value
+     *                                will be the underlying primitive type
+     * @param childWriteFunction      the write function that will be used to write the primitive value in the child column vector
+     * @return a function setting the list column vector
+     */
+    private static TriConsumer<ColumnVector, Integer, Object> getListWriteFunction(TypeDescription.Category underlyingChildCategory, final TriConsumer<ColumnVector, Integer, Object> childWriteFunction) {
+        return (columnVector, row, val) -> {
+            // TODO: as all schemas right now are auto-generated, the columnVector will always be a ListColumnVector
+            // when we allow user-generated schemas, do we need to consider checking the type of the columnvector before casting?
+            ListColumnVector listColumnVector = (ListColumnVector) columnVector;
+
+            List<Object> data = orcUtilities.parsePostgresArray(val.toString(), underlyingChildCategory);
+
+            int length = data.size();
+            // the childCount refers to "the number of children slots used"
+            int offset = listColumnVector.childCount;
+
+            // set the offset, length and new childCount for this row
+            listColumnVector.offsets[row] = offset;
+            listColumnVector.lengths[row] = length;
+            listColumnVector.childCount += length;
+            // if the number of children slots needed is greater than the current size
+            if (listColumnVector.childCount > listColumnVector.child.isNull.length) {
+                // reallocate to ensure that the columnvector can hold the data
+                // use the average row size to calculate what the new size should be
+                double averageChildrenPerRow = (double) listColumnVector.childCount / (row + 1);
+                int batchSize = listColumnVector.isNull.length;
+                int newChildArraySize = (int) Math.ceil(averageChildrenPerRow * batchSize);
+                listColumnVector.child.ensureSize(newChildArraySize, true);
+                LOG.debug("Increasing the child size to {} [childCount={}, row={}, batchsize={}, averageChildrenPerRow={}]", newChildArraySize, listColumnVector.childCount, row, averageChildrenPerRow);
+            }
+
+            // add the data to the child columnvector
+            ColumnVector childColumnVector = listColumnVector.child;
+            int childIndex;
+            int childCounter = 0;
+            for (Object rowElement : data) {
+                childIndex = offset + childCounter;
+                if (rowElement == null) {
+                    // the array element is null
+                    if (childColumnVector.noNulls) {
+                        childColumnVector.noNulls = false; // write only if the value is different from what we need it to be
+                    }
+                    childColumnVector.isNull[childIndex] = true;
+                } else {
+                    try {
+                        childWriteFunction.accept(childColumnVector, childIndex, rowElement);
+                    } catch (NumberFormatException | DateTimeParseException | PxfRuntimeException e) {
+                        String hint = orcUtilities.createErrorHintFromValue(StringUtils.startsWith(rowElement.toString(), "{"), val.toString());
+                        throw new PxfRuntimeException(String.format("Error parsing array element: %s was not of expected type %s", rowElement, underlyingChildCategory), hint, e);
+                    }
+                }
+                childCounter++;
+            }
         };
     }
 

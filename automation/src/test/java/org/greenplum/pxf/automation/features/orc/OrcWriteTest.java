@@ -3,6 +3,7 @@ package org.greenplum.pxf.automation.features.orc;
 import jsystem.framework.system.SystemManagerImpl;
 import org.greenplum.pxf.automation.components.hive.Hive;
 import org.greenplum.pxf.automation.features.BaseFeature;
+import org.greenplum.pxf.automation.structures.tables.basic.Table;
 import org.greenplum.pxf.automation.structures.tables.hive.HiveExternalTable;
 import org.greenplum.pxf.automation.structures.tables.hive.HiveTable;
 import org.greenplum.pxf.automation.structures.tables.pxf.ExternalTable;
@@ -19,72 +20,94 @@ import java.util.StringJoiner;
 public class OrcWriteTest extends BaseFeature {
 
     private static final String[] ORC_PRIMITIVE_TABLE_COLUMNS = {
-            "id integer"               ,
-            "c_bool boolean"           , // DataType.BOOLEAN
-            "c_bytea bytea"            , // DataType.BYTEA
-            "c_bigint bigint"          , // DataType.BIGINT
-            "c_small smallint"         , // DataType.SMALLINT
-            "c_int integer"            , // DataType.INTEGER
-            "c_text text"              , // DataType.TEXT
-            "c_real real"              , // DataType.REAL
-            "c_float float"            , // DataType.FLOAT8
-            "c_char char(4)"           , // DataType.BPCHAR
-            "c_varchar varchar(7)"     , // DataType.VARCHAR
-            "c_varchar_nolimit varchar", // DataType.VARCHAR with no length
-            "c_date date"              , // DataType.DATE
-            "c_time time"              , // DataType.TIME
-            "c_timestamp timestamp"    , // DataType.TIMESTAMP
-            "c_numeric numeric"        , // DataType.NUMERIC
-            "c_uuid uuid"                // DataType.UUID
+            "id                 integer"    ,
+            "c_bool             boolean"    , // DataType.BOOLEAN
+            "c_bytea            bytea"      , // DataType.BYTEA
+            "c_bigint           bigint"     , // DataType.BIGINT
+            "c_small            smallint"   , // DataType.SMALLINT
+            "c_int              integer"    , // DataType.INTEGER
+            "c_text             text"       , // DataType.TEXT
+            "c_real             real"       , // DataType.REAL
+            "c_float            float"      , // DataType.FLOAT8
+            "c_char             char(4)"    , // DataType.BPCHAR
+            "c_varchar          varchar(7)" , // DataType.VARCHAR
+            "c_varchar_nolimit  varchar"    , // DataType.VARCHAR with no length
+            "c_date             date"       , // DataType.DATE
+            "c_time             time"       , // DataType.TIME
+            "c_timestamp        timestamp"  , // DataType.TIMESTAMP
+            "c_numeric          numeric"    , // DataType.NUMERIC
+            "c_uuid             uuid"         // DataType.UUID
     };
 
     private static final String[] ORC_TIMESTAMP_TABLE_COLUMNS = {
-            "id integer"               ,
-            "c_date date"              , // DataType.DATE
-            "c_time time"              , // DataType.TIME
-            "c_timestamp timestamp"    , // DataType.TIMESTAMP
-            "c_timestamptz timestamptz", // DataType.TIMESTAMP_WITH_TIME_ZONE
+            "id             integer"    ,
+            "c_date         date"       , // DataType.DATE
+            "c_time         time"       , // DataType.TIME
+            "c_timestamp    timestamp"  , // DataType.TIMESTAMP
+            "c_timestamptz  timestamptz", // DataType.TIMESTAMP_WITH_TIME_ZONE
     };
 
     private static final String[] ORC_PRIMITIVE_TABLE_COLUMNS_HIVE = {
-            "id INT"                  ,
-            "c_bool BOOLEAN"          , // DataType.BOOLEAN
-            "c_bytea BINARY"          , // DataType.BYTEA
-            "c_bigint BIGINT"         , // DataType.BIGINT
-            "c_small SMALLINT"        , // DataType.SMALLINT
-            "c_int INT"               , // DataType.INTEGER
-            "c_text STRING"           , // DataType.TEXT
-            "c_real FLOAT"            , // DataType.REAL
-            "c_float DOUBLE"          , // DataType.FLOAT8
-            "c_char CHAR(4)"          , // DataType.BPCHAR
-            "c_varchar VARCHAR(7)"    , // DataType.VARCHAR
-            "c_varchar_nolimit STRING", // DataType.VARCHAR with no length
-            "c_date DATE"             , // DataType.DATE
-            "c_time STRING"           , // DataType.TIME (ORC stores TIME as string type)
-            "c_timestamp TIMESTAMP"   , // DataType.TIMESTAMP
-            "c_numeric DECIMAL(38,18)", // DataType.NUMERIC
-            "c_uuid STRING"             // DataType.UUID
+            "id                 INT"           ,
+            "c_bool             BOOLEAN"       , // DataType.BOOLEAN
+            "c_bytea            BINARY"        , // DataType.BYTEA
+            "c_bigint           BIGINT"        , // DataType.BIGINT
+            "c_small            SMALLINT"      , // DataType.SMALLINT
+            "c_int              INT"           , // DataType.INTEGER
+            "c_text             STRING"        , // DataType.TEXT
+            "c_real             FLOAT"         , // DataType.REAL
+            "c_float            DOUBLE"        , // DataType.FLOAT8
+            "c_char             CHAR(4)"       , // DataType.BPCHAR
+            "c_varchar          VARCHAR(7)"    , // DataType.VARCHAR
+            "c_varchar_nolimit  STRING"        , // DataType.VARCHAR with no length
+            "c_date             DATE"          , // DataType.DATE
+            "c_time             STRING"        , // DataType.TIME (ORC stores TIME as string type)
+            "c_timestamp        TIMESTAMP"     , // DataType.TIMESTAMP
+            "c_numeric          DECIMAL(38,18)", // DataType.NUMERIC
+            "c_uuid             STRING"          // DataType.UUID
     };
 
     private static final String[] ORC_PRIMITIVE_TABLE_COLUMNS_READ_FROM_HIVE = {
-            "id integer"               ,
-            "c_bool boolean"           , // DataType.BOOLEAN
-            "c_bytea text"             , // DataType.BYTEA
-            "c_bigint bigint"          , // DataType.BIGINT
-            "c_small smallint"         , // DataType.SMALLINT
-            "c_int integer"            , // DataType.INTEGER
-            "c_text text"              , // DataType.TEXT
-            "c_real real"              , // DataType.REAL
-            "c_float float"            , // DataType.FLOAT8
-            "c_char char(4)"           , // DataType.BPCHAR
-            "c_varchar varchar(7)"     , // DataType.VARCHAR
-            "c_varchar_nolimit varchar", // DataType.VARCHAR with no length
-            "c_date date"              , // DataType.DATE
-            "c_time text"              , // DataType.TIME
-            "c_timestamp timestamp"    , // DataType.TIMESTAMP
-            "c_numeric numeric"        , // DataType.NUMERIC
-            "c_uuid text"                // DataType.UUID
+            "id                 integer"    ,
+            "c_bool             boolean"    , // DataType.BOOLEAN
+            "c_bytea            text"       , // DataType.BYTEA
+            "c_bigint           bigint"     , // DataType.BIGINT
+            "c_small            smallint"   , // DataType.SMALLINT
+            "c_int              integer"    , // DataType.INTEGER
+            "c_text             text"       , // DataType.TEXT
+            "c_real             real"       , // DataType.REAL
+            "c_float            float"      , // DataType.FLOAT8
+            "c_char             char(4)"    , // DataType.BPCHAR
+            "c_varchar          varchar(7)" , // DataType.VARCHAR
+            "c_varchar_nolimit  varchar"    , // DataType.VARCHAR with no length
+            "c_date             date"       , // DataType.DATE
+            "c_time             text"       , // DataType.TIME
+            "c_timestamp        timestamp"  , // DataType.TIMESTAMP
+            "c_numeric          numeric"    , // DataType.NUMERIC
+            "c_uuid             text"         // DataType.UUID
     };
+
+    private static final String[] ORC_PRIMITIVE_ARRAYS_TABLE_COLUMNS = {
+            "id                   integer"      ,
+            "bool_arr             boolean[]"    , // DataType.BOOLARRAY
+            "bytea_arr            bytea[]"      , // DataType.BYTEAARRAY
+            "bigint_arr           bigint[]"     , // DataType.INT8ARRAY
+            "smallint_arr         smallint[]"   , // DataType.INT2ARRAY
+            "int_arr              integer[]"    , // DataType.INT4ARRAY
+            "text_arr             text[]"       , // DataType.TEXTARRAY
+            "real_arr             real[]"       , // DataType.FLOAT4ARRAY
+            "float_arr            float[]"      , // DataType.FLOAT8ARRAY
+            "char_arr             char(4)[]"    , // DataType.BPCHARARRAY
+            "varchar_arr          varchar(7)[]" , // DataType.VARCHARARRAY
+            "varchar_arr_nolimit  varchar[]"    , // DataType.VARCHARARRAY with no length
+            "date_arr             date[]"       , // DataType.DATEARRAY
+            "time_arr             time[]"       , // DataType.TIMEARRAY
+            "timestamp_arr        timestamp[]"  , // DataType.TIMESTAMPARRAY
+            "timestamptz_arr      timestamptz[]", // DataType.TIMESTAMP_WITH_TIME_ZONE_ARRAY
+            "numeric_arr          numeric[]"    , // DataType.NUMERICARRAY
+            "uuid_arr             uuid[]"         // DataType.UUIDARRAY
+    };
+
     private static final boolean[] NO_NULLS = new boolean[ORC_PRIMITIVE_TABLE_COLUMNS.length - 1]; // 16 main columns
     private static final boolean[] ALL_NULLS = new boolean[ORC_PRIMITIVE_TABLE_COLUMNS.length - 1]; // 16 main columns
     static {
@@ -226,6 +249,64 @@ public class OrcWriteTest extends BaseFeature {
         runTincTest("pxf.features.orc.write.timestamp_with_timezone_types.runTest");
     }
 
+    @Test(groups = {"features", "gpdb", "security", "hcfs"})
+    public void orcWritePrimitiveArraysWithNulls() throws Exception {
+        gpdbTableNamePrefix = "orc_primitive_arrays";
+        fullTestPath = hdfsPath + gpdbTableNamePrefix;
+
+        prepareWritableExternalTable(gpdbTableNamePrefix, ORC_PRIMITIVE_ARRAYS_TABLE_COLUMNS, fullTestPath);
+        prepareReadableExternalTable(gpdbTableNamePrefix, ORC_PRIMITIVE_ARRAYS_TABLE_COLUMNS, fullTestPath, false /*mapByPosition*/);
+
+        insertArrayDataWithNulls(gpdbTableNamePrefix, 33, 17); // > 30 to let the DATE field to repeat the value
+
+        // use PXF *:orc profile to read the data
+        runTincTest("pxf.features.orc.write.primitive_types_array_with_nulls.runTest");
+    }
+
+    @Test(groups = {"features", "gpdb", "security", "hcfs"})
+    public void orcWritePrimitiveArraysWithNullElements() throws Exception {
+        gpdbTableNamePrefix = "orc_primitive_arrays_null_elements";
+        fullTestPath = hdfsPath + gpdbTableNamePrefix;
+
+        prepareWritableExternalTable(gpdbTableNamePrefix, ORC_PRIMITIVE_ARRAYS_TABLE_COLUMNS, fullTestPath);
+        prepareReadableExternalTable(gpdbTableNamePrefix, ORC_PRIMITIVE_ARRAYS_TABLE_COLUMNS, fullTestPath, false /*mapByPosition*/);
+
+        insertArrayDataWithNullElements(gpdbTableNamePrefix, 33, 17); // > 30 to let the DATE field to repeat the value
+
+        // use PXF *:orc profile to read the data
+        runTincTest("pxf.features.orc.write.primitive_types_array_null_elements.runTest");
+    }
+
+    @Test(groups = {"features", "gpdb", "security", "hcfs"})
+    public void orcWritePrimitiveArraysMultidimensional() throws Exception {
+        gpdbTableNamePrefix = "orc_primitive_arrays_multi";
+        fullTestPath = hdfsPath + gpdbTableNamePrefix;
+        // create heap table containing all the data
+        Table heapTable = new Table(gpdbTableNamePrefix + "_heap", ORC_PRIMITIVE_ARRAYS_TABLE_COLUMNS);
+        heapTable.setDistributionFields(new String[]{"id"});
+        gpdb.createTableAndVerify(heapTable);
+        insertMultidimensionalArrayData(gpdbTableNamePrefix + "_heap", 33, 17); // > 30 to let the DATE field to repeat the value
+
+        prepareWritableExternalTable(gpdbTableNamePrefix + "_bool", new String[]{"id integer", "bool_arr bool[]"}, fullTestPath + "_bool");
+        prepareWritableExternalTable(gpdbTableNamePrefix + "_bytea", new String[]{"id integer", "bytea_arr bytea[]"}, fullTestPath + "_bytea");
+        prepareWritableExternalTable(gpdbTableNamePrefix + "_int", new String[]{"id integer", "int_arr int[]"}, fullTestPath + "_int");
+        prepareWritableExternalTable(gpdbTableNamePrefix + "_float", new String[]{"id integer", "float_arr float[]"}, fullTestPath + "_float");
+        prepareWritableExternalTable(gpdbTableNamePrefix + "_date", new String[]{"id integer", "date_arr date[]"}, fullTestPath + "_date");
+        prepareWritableExternalTable(gpdbTableNamePrefix + "_text", new String[]{"id integer", "text_arr text[]"}, fullTestPath + "_text");
+
+        // expected failures: bool, byte, int, floats, dates
+        prepareReadableExternalTable(gpdbTableNamePrefix + "_bool", new String[]{"id integer", "bool_arr bool[]"}, fullTestPath + "_bool", false);
+        prepareReadableExternalTable(gpdbTableNamePrefix + "_bytea", new String[]{"id integer", "bytea_arr bytea[]"}, fullTestPath + "_bytea", false);
+        prepareReadableExternalTable(gpdbTableNamePrefix + "_int", new String[]{"id integer", "int_arr int[]"}, fullTestPath + "_int", false);
+        prepareReadableExternalTable(gpdbTableNamePrefix + "_float", new String[]{"id integer", "float_arr float[]"}, fullTestPath + "_float", false);
+        prepareReadableExternalTable(gpdbTableNamePrefix + "_date", new String[]{"id integer", "date_arr date[]"}, fullTestPath + "_date", false);
+        // expected success with string values as the internal arrays
+        prepareReadableExternalTable(gpdbTableNamePrefix + "_text", new String[]{"id integer", "text_arr text[]"}, fullTestPath + "_text", false);
+
+        // use the heap table to insert data into the external tables
+        runTincTest("pxf.features.orc.write.primitive_types_array_multi.runTest");
+    }
+
     private void insertDataWithoutNulls(String exTable, int numRows) throws Exception {
         StringBuilder statementBuilder = new StringBuilder("INSERT INTO " + exTable + "_writable VALUES ");
         for (int i = 0; i < numRows; i++) {
@@ -252,39 +333,125 @@ public class OrcWriteTest extends BaseFeature {
     }
 
     private void insertDataWithTimestamps(String exTable, int numRows, int nullModulo) throws Exception {
-        StringBuilder statementBuilder = new StringBuilder("INSERT INTO " + exTable + "_writable VALUES ");
+        String insertStatement = "INSERT INTO " + exTable + "_writable VALUES ";
         for (int i = 0; i < numRows; i++) {
-            statementBuilder.append("(").append(i).append(",")
-                .append((i % nullModulo == 0) ? "NULL" : String.format("'2010-01-%02d'", (i % 30) + 1)).append(",")                // DataType.DATE
-                .append((i % nullModulo == 1) ? "NULL" : String.format("'10:11:%02d'", i % 60)).append(",")                        // DataType.TIME
-                .append((i % nullModulo == 2) ? "NULL" : String.format("'2013-07-13 21:00:05.%03d456'", i % 1000)).append(",")     // DataType.TIMESTAMP
-                .append((i % nullModulo == 3) ? "NULL" : String.format("'2013-07-13 21:00:05.987%03d-07'", i % 1000)).append(")"); // DataType.TIMESTAMP_WITH_TIME_ZONE
-            statementBuilder.append((i < (numRows - 1)) ? "," : ";");
+            StringJoiner statementBuilder = new StringJoiner(",", "(", ")")
+                .add(String.valueOf(i))
+                .add((i % nullModulo == 0) ? "NULL" : String.format("'2010-01-%02d'", (i % 30) + 1))                // DataType.DATE
+                .add((i % nullModulo == 1) ? "NULL" : String.format("'10:11:%02d'", i % 60))                        // DataType.TIME
+                .add((i % nullModulo == 2) ? "NULL" : String.format("'2013-07-13 21:00:05.%03d456'", i % 1000))     // DataType.TIMESTAMP
+                .add((i % nullModulo == 3) ? "NULL" : String.format("'2013-07-13 21:00:05.987%03d-07'", i % 1000))  // DataType.TIMESTAMP_WITH_TIME_ZONE
+            ;
+            insertStatement += statementBuilder.toString().concat((i < (numRows - 1)) ? "," : ";");
         }
-        gpdb.runQuery(statementBuilder.toString());
+        gpdb.runQuery(insertStatement);
+    }
+
+    private void insertArrayDataWithNulls(String exTable, int numRows, int nullModulo) throws Exception {
+        String insertStatement = "INSERT INTO " + exTable + "_writable VALUES ";
+        for (int i = 0; i < numRows; i++) {
+            StringJoiner statementBuilder = new StringJoiner(",", "(", ")")
+                .add(String.valueOf(i))    // always not-null row index, column index starts with 0 after it
+                .add((i % nullModulo == 0) ? "NULL" : String.format("'{\"%b\"}'", i % 2 != 0))                                   // DataType.BOOLEANARRAY
+                .add((i % nullModulo == 1) ? "NULL" : String.format("'{\\\\x%02d%02d}'::bytea[]", i % 100, (i + 1) % 100))       // DataType.BYTEAARRAY
+                .add((i % nullModulo == 2) ? "NULL" : String.format("'{%d}'", 123456789000000000L + i))                          // DataType.INT8ARRAY
+                .add((i % nullModulo == 3) ? "NULL" : String.format("'{%d}'",10L + i % 32000))                                   // DataType.INT2ARRAY
+                .add((i % nullModulo == 4) ? "NULL" : String.format("'{%d}'", 100L + i))                                         // DataType.INT4ARRAY
+                .add((i % nullModulo == 5) ? "NULL" : String.format("'{\"row-%02d\"}'", i))                                      // DataType.TEXTARRAY
+                .add((i % nullModulo == 6) ? "NULL" : String.format("'{%f}'", Float.valueOf(i + 0.00001f * i).doubleValue()))    // DataType.FLOAT4ARRAY
+                .add((i % nullModulo == 7) ? "NULL" : String.format("'{%f}'", i + Math.PI))                                      // DataType.FLOAT8ARRAY
+                .add((i % nullModulo == 8) ? "NULL" : String.format("'{\"%s\"}'", i))                                            // DataType.BPCHARARRAY
+                .add((i % nullModulo == 9) ? "NULL" : String.format("'{\"var%02d\"}'", i))                                       // DataType.VARCHARARRAY
+                .add((i % nullModulo == 10) ? "NULL" : String.format("'{\"longer string var%02d\"}'", i))                        // DataType.VARCHARARRAY no limit
+                .add((i % nullModulo == 11) ? "NULL" : String.format("'{\"2010-01-%02d\"}'", (i % 30) + 1))                      // DataType.DATEARRAY
+                .add((i % nullModulo == 12) ? "NULL" : String.format("'{\"10:11:%02d\"}'", i % 60))                              // DataType.TIMEARRAY
+                .add((i % nullModulo == 13) ? "NULL" : String.format("'{\"2013-07-13 21:00:05.%03d456\"}'", i % 1000))           // DataType.TIMESTAMPARRAY
+                .add((i % nullModulo == 14) ? "NULL" : String.format("'{\"2013-07-13 21:00:05.987%03d-07\"}'", i % 1000))        // DataType.TIMESTAMP_WITH_TIME_ZONE_ARRAY
+                .add((i % nullModulo == 15) ? "NULL" : String.format("'{12345678900000.00000%s}'", i))                           // DataType.NUMERICARRAY
+                .add((i % nullModulo == 16) ? "NULL" : String.format("'{\"476f35e4-da1a-43cf-8f7c-950a%08d\"}'", i % 100000000)) // DataType.UUIDARRAY
+                ;
+            insertStatement += statementBuilder.toString().concat((i < (numRows - 1)) ? "," : ";");
+        }
+        gpdb.runQuery(insertStatement);
+    }
+
+    private void insertArrayDataWithNullElements(String exTable, int numRows, int nullModulo) throws Exception {
+        String insertStatement = "INSERT INTO " + exTable + "_writable VALUES ";
+        for (int i = 0; i < numRows; i++) {
+            StringJoiner statementBuilder = new StringJoiner(",", "(", ")")
+                .add(String.valueOf(i))    // always not-null row index, column index starts with 0 after it
+                .add((i % nullModulo == 0) ? "'{NULL}'" : (i % nullModulo == 8) ? "'{}'" : String.format("'{\"%b\", \"%b\", NULL}'", i % 2 != 0, i % 3 != 0))                                                                          // DataType.BOOLEANARRAY
+                .add((i % nullModulo == 1) ? "'{NULL}'" : (i % nullModulo == 9) ? "'{}'" : String.format("'{\\\\x%02d%02d, NULL, \\\\x%02d%02d}'::bytea[]", i % 100, (i + 1) % 100,  (i + 2) % 100, (i + 3) % 100))                    // DataType.BYTEAARRAY
+                .add((i % nullModulo == 2) ? "'{NULL}'" : (i % nullModulo == 10) ? "'{}'" : String.format("'{NULL, %d}'", 123456789000000000L + i))                                                                                    // DataType.INT8ARRAY
+                .add((i % nullModulo == 3) ? "'{NULL}'" : (i % nullModulo == 11) ? "'{}'" : String.format("'{%d, NULL}'", 10L + i % 32000))                                                                                            // DataType.INT2ARRAY
+                .add((i % nullModulo == 4) ? "'{NULL}'" : (i % nullModulo == 12) ? "'{}'" : String.format("'{%d, %d, NULL}'", 100L + i, 200L + i))                                                                                     // DataType.INT4ARRAY
+                .add((i % nullModulo == 5) ? "'{NULL}'" : (i % nullModulo == 13) ? "'{}'" : String.format("'{\"row-%02d\", \"row-%02d\", NULL, \"\"}'", i, i * 2))                                                                     // DataType.TEXTARRAY
+                .add((i % nullModulo == 6) ? "'{NULL}'" : (i % nullModulo == 14) ? "'{}'" : String.format("'{NULL, %f}'", Float.valueOf(i + 0.00001f * i).doubleValue()))                                                              // DataType.FLOAT4ARRAY
+                .add((i % nullModulo == 7) ? "'{NULL}'" : (i % nullModulo == 15) ? "'{}'" : String.format("'{%f, NULL}'", i + Math.PI))                                                                                                // DataType.FLOAT8ARRAY
+                .add((i % nullModulo == 8) ? "'{NULL}'" : (i % nullModulo == 16) ? "'{}'" : String.format("'{\"%s\", \"%s\", \"%s\", NULL}'", i, i + 1, i + 2))                                                                        // DataType.BPCHARARRAY
+                .add((i % nullModulo == 9) ? "'{NULL}'" : (i % nullModulo == 0) ? "'{}'" : String.format("'{NULL, \"var%02d\", \"var%02d\"}'", i, i + 2))                                                                              // DataType.VARCHARARRAY
+                .add((i % nullModulo == 10) ? "'{NULL}'" : (i % nullModulo == 1) ? "'{}'" : String.format("'{\"longer string var%02d\", \"longer string var%02d\", NULL, \"longer string var%02d\"}'", i, i + 2, i + 3))               // DataType.VARCHARARRAY no limit
+                .add((i % nullModulo == 11) ? "'{NULL}'" : (i % nullModulo == 2) ? "'{}'" : String.format("'{\"2010-01-%02d\", NULL, \"2010-01-%02d\"}'", (i % 30) + 1, ((i * 2) % 30) + 1))                                           // DataType.DATEARRAY
+                .add((i % nullModulo == 12) ? "'{NULL}'" : (i % nullModulo == 3) ? "'{}'" : String.format("'{NULL, \"10:11:%02d\", \"10:11:%02d\"}'", i % 60, (i * 3) % 60))                                                           // DataType.TIMEARRAY
+                .add((i % nullModulo == 13) ? "'{NULL}'" : (i % nullModulo == 4) ? "'{}'" : String.format("'{\"2013-07-13 21:00:05.%03d456\", NULL}'", i % 1000))                                                                      // DataType.TIMESTAMPARRAY
+                .add((i % nullModulo == 14) ? "'{NULL}'" : (i % nullModulo == 5) ? "'{}'" : String.format("'{\"2013-07-13 21:00:05.987%03d-07\", \"2013-07-13 21:00:05.987%03d-07\", NULL}'", i % 1000, i % 999))                      // DataType.TIMESTAMP_WITH_TIME_ZONE_ARRAY
+                .add((i % nullModulo == 15) ? "'{NULL}'" : (i % nullModulo == 6) ? "'{}'" : String.format("'{NULL, 12345678900000.00000%s, 12345678900000.00000%s}'", i, i + 1))                                                       // DataType.NUMERICARRAY
+                .add((i % nullModulo == 16) ? "'{NULL}'" : (i % nullModulo == 7) ? "'{}'" : String.format("'{\"476f35e4-da1a-43cf-8f7c-950a%08d\", NULL, \"476f35e4-da1a-43cf-8f7c-950a%08d\"}'", i % 100000000,  (i+2) % 100000000))  // DataType.UUIDARRAY
+                ;
+            insertStatement += statementBuilder.toString().concat((i < (numRows - 1)) ? "," : ";");
+        }
+        gpdb.runQuery(insertStatement);
+    }
+
+    private void insertMultidimensionalArrayData(String exTable, int numRows, int nullModulo) throws Exception {
+        String insertStatement = "INSERT INTO " + exTable + " VALUES ";
+        for (int i = 0; i < numRows; i++) {
+            StringJoiner statementBuilder = new StringJoiner(",", "(", ")")
+                .add(String.valueOf(i))    // always not-null row index, column index starts with 0 after it
+                .add((i % nullModulo == 0) ? "'{NULL}'" : (i % nullModulo == 8) ? "'{}'" : String.format("'{{\"%b\", \"%b\"}, {NULL, \"%b\"}}'::bool[]", i % 2 != 0, i % 3 != 0, i % 7 != 0))                                                // DataType.BOOLEANARRAY
+                .add((i % nullModulo == 1) ? "'{NULL}'" : (i % nullModulo == 9) ? "'{}'" : String.format("'{{\\\\x%02d%02d}, {\\\\x%02d%02d}}'::bytea[]", i % 100, (i + 1) % 100,  (i + 2) % 100, (i + 3) % 100))                            // DataType.BYTEAARRAY
+                .add((i % nullModulo == 2) ? "'{NULL}'" : (i % nullModulo == 10) ? "'{}'" : String.format("'{{NULL, %d}}'", 123456789000000000L + i))                                                                                        // DataType.INT8ARRAY
+                .add((i % nullModulo == 3) ? "'{NULL}'" : (i % nullModulo == 11) ? "'{}'" : String.format("'{{%d, NULL}}'", 10L + i % 32000))                                                                                                // DataType.INT2ARRAY
+                .add((i % nullModulo == 4) ? "'{NULL}'" : (i % nullModulo == 12) ? "'{}'" : String.format("'{{%d}, {%d}}'", 100L + i, 200L + i))                                                                                             // DataType.INT4ARRAY
+                .add((i % nullModulo == 5) ? "'{NULL}'" : (i % nullModulo == 13) ? "'{}'" : String.format("'{{\"row-%02d\", \"row-%02d\"}, {NULL, \"\"}}'", i, i * 2))                                                                       // DataType.TEXTARRAY
+                .add((i % nullModulo == 6) ? "'{NULL}'" : (i % nullModulo == 14) ? "'{}'" : String.format("'{{NULL, %f}}'", Float.valueOf(i + 0.00001f * i).doubleValue()))                                                                  // DataType.FLOAT4ARRAY
+                .add((i % nullModulo == 7) ? "'{NULL}'" : (i % nullModulo == 15) ? "'{}'" : String.format("'{{%f, NULL}}'", i + Math.PI))                                                                                                    // DataType.FLOAT8ARRAY
+                .add((i % nullModulo == 8) ? "'{NULL}'" : (i % nullModulo == 16) ? "'{}'" : String.format("'{{\"%s\", \"%s\"}, {\"%s\", NULL}}'", i, i + 1, i + 2))                                                                          // DataType.BPCHARARRAY
+                .add((i % nullModulo == 9) ? "'{NULL}'" : (i % nullModulo == 0) ? "'{}'" : String.format("'{{\"var%02d\"}, {\"var%02d\"}}'", i, i + 2))                                                                                      // DataType.VARCHARARRAY
+                .add((i % nullModulo == 10) ? "'{NULL}'" : (i % nullModulo == 1) ? "'{}'" : String.format("'{{\"longer string var%02d\", \"longer string var%02d\"}, {NULL, \"longer string var%02d\"}}'", i, i + 2, i + 3))                 // DataType.VARCHARARRAY no limit
+                .add((i % nullModulo == 11) ? "'{NULL}'" : (i % nullModulo == 2) ? "'{}'" : String.format("'{{\"2010-01-%02d\", NULL, \"2010-01-%02d\"}}'", (i % 30) + 1, ((i * 2) % 30) + 1))                                               // DataType.DATEARRAY
+                .add((i % nullModulo == 12) ? "'{NULL}'" : (i % nullModulo == 3) ? "'{}'" : String.format("'{{NULL}, {\"10:11:%02d\"}, {\"10:11:%02d\"}}'", i % 60, (i * 3) % 60))                                                           // DataType.TIMEARRAY
+                .add((i % nullModulo == 13) ? "'{NULL}'" : (i % nullModulo == 4) ? "'{}'" : String.format("'{{\"2013-07-13 21:00:05.%03d456\"}, {NULL}}'", i % 1000))                                                                        // DataType.TIMESTAMPARRAY
+                .add((i % nullModulo == 14) ? "'{NULL}'" : (i % nullModulo == 5) ? "'{}'" : String.format("'{{\"2013-07-13 21:00:05.987%03d-07\", \"2013-07-13 21:00:05.987%03d-07\"}, {NULL, NULL}}'", i % 1000, i % 999))                  // DataType.TIMESTAMP_WITH_TIME_ZONE_ARRAY
+                .add((i % nullModulo == 15) ? "'{NULL}'" : (i % nullModulo == 6) ? "'{}'" : String.format("'{{NULL, 12345678900000.00000%s}, {12345678900000.00000%s, NULL}}'", i, i + 1))                                                   // DataType.NUMERICARRAY
+                .add((i % nullModulo == 16) ? "'{NULL}'" : (i % nullModulo == 7) ? "'{}'" : String.format("'{{\"476f35e4-da1a-43cf-8f7c-950a%08d\"}, {NULL}, {\"476f35e4-da1a-43cf-8f7c-950a%08d\"}}'", i % 100000000,  (i+2) % 100000000))  // DataType.UUIDARRAY
+                ;
+            insertStatement += statementBuilder.toString().concat((i < (numRows - 1)) ? "," : ";");
+        }
+        gpdb.runQuery(insertStatement);
     }
 
     private String getRecordCSV(int row, boolean[] isNull) {
         // refer to ORCVectorizedResolverWriteTest unit test where this data is used
-        StringBuilder rowBuilder = new StringBuilder("(")
-        .append(row).append(",")    // always not-null row index, column index starts with 0 after it
-        .append(isNull [0] ? "NULL" : row % 2 != 0).append(",")                                                  // DataType.BOOLEAN
-        .append(isNull [1] ? "NULL" : String.format("'\\x%02d%02d'::bytea", row%100, (row + 1) % 100)).append(",")   // DataType.BYTEA
-        .append(isNull [2] ? "NULL" : 123456789000000000L + row).append(",")                                     // DataType.BIGINT
-        .append(isNull [3] ? "NULL" : 10L + row % 32000).append(",")                                             // DataType.SMALLINT
-        .append(isNull [4] ? "NULL" : 100L + row).append(",")                                                    // DataType.INTEGER
-        .append(isNull [5] ? "NULL" : String.format("'row-%02d'", row)).append(",")                              // DataType.TEXT
-        .append(isNull [6] ? "NULL" : Float.valueOf(row + 0.00001f * row).doubleValue()).append(",")          // DataType.REAL
-        .append(isNull [7] ? "NULL" : row + Math.PI).append(",")                                                 // DataType.FLOAT8
-        .append(isNull [8] ? "NULL" : String.format("'%s'", row)).append(",")                                    // DataType.BPCHAR
-        .append(isNull [9] ? "NULL" : String.format("'var%02d'", row)).append(",")                               // DataType.VARCHAR
-        .append(isNull[10] ? "NULL" : String.format("'var-no-length-%02d'", row)).append(",")                    // DataType.VARCHAR no length
-        .append(isNull[11] ? "NULL" : String.format("'2010-01-%02d'", (row % 30) + 1)).append(",")               // DataType.DATE
-        .append(isNull[12] ? "NULL" : String.format("'10:11:%02d'", row % 60)).append(",")                       // DataType.TIME
-        .append(isNull[13] ? "NULL" : String.format("'2013-07-13 21:00:05.%03d456'", row % 1000)).append(",")    // DataType.TIMESTAMP
-        .append(isNull[14] ? "NULL" : String.format("'12345678900000.00000%s'", row)).append(",")                // DataType.NUMERIC
-        .append(isNull[15] ? "NULL" : String.format("'476f35e4-da1a-43cf-8f7c-950a%08d'", row % 100000000))      // DataType.UUID
-        .append(")");
+        StringJoiner rowBuilder = new StringJoiner(",", "(", ")")
+            .add(String.valueOf(row))    // always not-null row index, column index starts with 0 after it
+            .add(isNull [0] ? "NULL" : String.valueOf(row % 2 != 0))                                         // DataType.BOOLEAN
+            .add(isNull [1] ? "NULL" : String.format("'\\x%02d%02d'::bytea", row%100, (row + 1) % 100))      // DataType.BYTEA
+            .add(isNull [2] ? "NULL" : String.valueOf(123456789000000000L + row))                            // DataType.BIGINT
+            .add(isNull [3] ? "NULL" : String.valueOf(10L + row % 32000))                                    // DataType.SMALLINT
+            .add(isNull [4] ? "NULL" : String.valueOf(100L + row))                                           // DataType.INTEGER
+            .add(isNull [5] ? "NULL" : String.format("'row-%02d'", row))                                     // DataType.TEXT
+            .add(isNull [6] ? "NULL" : Float.valueOf(row + 0.00001f * row).toString())                       // DataType.REAL
+            .add(isNull [7] ? "NULL" : String.valueOf(row + Math.PI))                                        // DataType.FLOAT8
+            .add(isNull [8] ? "NULL" : String.format("'%s'", row))                                           // DataType.BPCHAR
+            .add(isNull [9] ? "NULL" : String.format("'var%02d'", row))                                      // DataType.VARCHAR
+            .add(isNull[10] ? "NULL" : String.format("'var-no-length-%02d'", row))                           // DataType.VARCHAR no length
+            .add(isNull[11] ? "NULL" : String.format("'2010-01-%02d'", (row % 30) + 1))                      // DataType.DATE
+            .add(isNull[12] ? "NULL" : String.format("'10:11:%02d'", row % 60))                              // DataType.TIME
+            .add(isNull[13] ? "NULL" : String.format("'2013-07-13 21:00:05.%03d456'", row % 1000))           // DataType.TIMESTAMP
+            .add(isNull[14] ? "NULL" : String.format("'12345678900000.00000%s'", row))                       // DataType.NUMERIC
+            .add(isNull[15] ? "NULL" : String.format("'476f35e4-da1a-43cf-8f7c-950a%08d'", row % 100000000)) // DataType.UUID
+            ;
         return rowBuilder.toString();
     }
 
