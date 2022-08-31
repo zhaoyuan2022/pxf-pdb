@@ -1,5 +1,6 @@
 package org.greenplum.pxf.plugins.hdfs.orc;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatch;
@@ -21,11 +22,8 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.sql.Date;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -41,8 +39,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ORCVectorizedResolverReadTest extends ORCVectorizedBaseTest {
 
     private static final String ORC_TYPES_SCHEMA = "struct<t1:string,t2:string,num1:int,dub1:double,dec1:decimal(38,18),tm:timestamp,tmtz:timestamp with local time zone,r:float,bg:bigint,b:boolean,tn:tinyint,sml:smallint,dt:date,vc1:varchar(5),c1:char(3),bin:binary>";
-    private static final String ORC_TYPES_SCHEMA_COMPOUND = "struct<id:int,bool_arr:array<boolean>,int2_arr:array<smallint>,int_arr:array<int>,int8_arr:array<bigint>,float_arr:array<float>,float8_arr:array<double>,text_arr:array<string>,bytea_arr:array<binary>,char_arr:array<char(15)>,varchar_arr:array<varchar(15)>>";
-    private static final String ORC_TYPES_SCHEMA_COMPOUND_MULTI = "struct<id:int,bool_arr:array<array<boolean>>,int2_arr:array<array<smallint>>,int_arr:array<array<int>>,int8_arr:array<array<bigint>>,float_arr:array<array<float>>,float8_arr:array<array<double>>,text_arr:array<array<string>>,bytea_arr:array<array<binary>>,char_arr:array<array<char(15)>>,varchar_arr:array<array<varchar(15)>>>";
+    private static final String ORC_TYPES_SCHEMA_COMPOUND = "struct<id:int,bool_arr:array<boolean>,int2_arr:array<smallint>,int_arr:array<int>,int8_arr:array<bigint>,float_arr:array<float>,float8_arr:array<double>,text_arr:array<string>,bytea_arr:array<binary>,char_arr:array<char(15)>,varchar_arr:array<varchar(15)>,date_arr:array<date>,timestamp_arr:array<timestamp>,tmtz_arr:array<timestamp with local time zone>>";
+    private static final String ORC_TYPES_SCHEMA_COMPOUND_MULTI = "struct<id:int,bool_arr:array<array<boolean>>,int2_arr:array<array<smallint>>,int_arr:array<array<int>>,int8_arr:array<array<bigint>>,float_arr:array<array<float>>,float8_arr:array<array<double>>,text_arr:array<array<string>>,bytea_arr:array<array<binary>>,char_arr:array<array<char(15)>>,varchar_arr:array<array<varchar(15)>>,date_arr:array<array<date>>,timestamp_arr:array<array<timestamp>>,tmtz_arr:array<array<timestamp with local time zone>>>";
     private ORCVectorizedResolver resolver;
     private RequestContext context;
 
@@ -387,9 +385,35 @@ class ORCVectorizedResolverReadTest extends ORCVectorizedBaseTest {
                 Object value = row.get(colNum).val;
                 if (columnDescriptor.isProjected()) {
                     Object expectedValue = expected[colNum][rowNum];
-                    assertEquals(expectedValue, value, "Row " + rowNum + ", COL" + (colNum + 1));
+                    if (colNum == 13 && expectedValue != null) {
+                        checkListTimestampwithTimezoneReturned(expectedValue, value, rowNum, colNum);
+                    } else {
+                        assertEquals(expectedValue, value, "Row " + rowNum + ", COL" + (colNum + 1));
+                    }
                 } else {
                     assertNull(value);
+                }
+            }
+        }
+    }
+
+    private void checkListTimestampwithTimezoneReturned(Object expectedValue, Object value, int rowNum, int colNum) {
+        // expect empty arrays to be empty
+        if (StringUtils.equalsIgnoreCase("{}", expectedValue.toString()) || StringUtils.equalsIgnoreCase("{{}}", expectedValue.toString())) {
+            assertEquals(expectedValue, value, "Row " + rowNum + ", COL" + (colNum + 1));
+        } else {
+            // check each element in the array
+            String[] expected_timestamps = expectedValue.toString().replace("{", "").replace("}", "").split(",");
+            String[] actual_timestamps = value.toString().replace("{", "").replace("}", "").split(",");
+            for (int i = 0; i < expected_timestamps.length; i++) {
+                String expected = expected_timestamps[i];
+                String actual = actual_timestamps[i];
+                if (StringUtils.equalsIgnoreCase("NULL", expected)) {
+                    assertEquals("NULL", actual);
+                } else {
+                    Object expectedTimestamp = ZonedDateTime.parse(expected.substring(1, expected_timestamps[i].length() - 1), GreenplumDateTime.DATETIME_WITH_TIMEZONE_FORMATTER).withZoneSameInstant(ZoneOffset.UTC);
+                    Object actualTimestamp = ZonedDateTime.parse(actual.substring(1, actual_timestamps[i].length() - 1), GreenplumDateTime.DATETIME_WITH_TIMEZONE_FORMATTER).withZoneSameInstant(ZoneOffset.UTC);
+                    assertEquals(expectedTimestamp, actualTimestamp, "Row " + rowNum + ", COL" + (colNum + 1));
                 }
             }
         }
