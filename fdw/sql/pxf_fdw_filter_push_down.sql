@@ -22,24 +22,6 @@ CREATE FOREIGN TABLE test_filter (t0 text, a1 integer, b2 boolean, filterValue t
     SERVER pxf_filter_push_down_server
     OPTIONS ( resource 'dummy_path', delimiter ',');
 
-SET optimizer = off;
-
-SELECT * FROM test_filter WHERE  t0 = 'A' and a1 = 0 ORDER BY t0, a1;
-
-SELECT * FROM test_filter WHERE  t0 = 'B' AND a1 <= 1 ORDER BY t0, a1;
-
-SELECT * FROM test_filter WHERE  t0 = 'B' AND (a1 = 1 OR a1 = 10) ORDER BY t0, a1;
-
-SELECT * FROM test_filter WHERE  t0 = 'B' OR (a1 >= 0 AND a1 <= 2) ORDER BY t0, a1;
-
-SELECT * FROM test_filter WHERE  b2 = false ORDER BY t0, a1;
-
-SELECT * FROM test_filter WHERE  b2 = false AND (a1 = 1 OR a1 = 10) ORDER BY t0, a1;
-
-SELECT * FROM test_filter WHERE  b2 = false OR (a1 >= 0 AND a1 <= 2) ORDER BY t0, a1;
-
-SET optimizer = on;
-
 SELECT * FROM test_filter WHERE  t0 = 'A' and a1 = 0 ORDER BY t0, a1;
 
 SELECT * FROM test_filter WHERE  t0 = 'B' AND a1 <= 1 ORDER BY t0, a1;
@@ -80,24 +62,6 @@ CREATE FOREIGN TABLE test_filter (t0 varchar(1), a1 integer, b2 boolean, filterV
     SERVER pxf_filter_push_down_server
     OPTIONS ( resource 'dummy_path', delimiter ',');
 
-SET optimizer = off;
-
-SELECT * FROM test_filter WHERE  t0 = 'A' and a1 = 0 ORDER BY t0, a1;
-
-SELECT * FROM test_filter WHERE  t0 = 'B' AND a1 <= 1 ORDER BY t0, a1;
-
-SELECT * FROM test_filter WHERE  t0 = 'B' AND (a1 = 1 OR a1 = 10) ORDER BY t0, a1;
-
-SELECT * FROM test_filter WHERE  t0 = 'B' OR (a1 >= 0 AND a1 <= 2) ORDER BY t0, a1;
-
-SELECT * FROM test_filter WHERE  b2 = false ORDER BY t0, a1;
-
-SELECT * FROM test_filter WHERE  b2 = false AND (a1 = 1 OR a1 = 10) ORDER BY t0, a1;
-
-SELECT * FROM test_filter WHERE  b2 = false OR (a1 >= 0 AND a1 <= 2) ORDER BY t0, a1;
-
-SET optimizer = on;
-
 SELECT * FROM test_filter WHERE  t0 = 'A' and a1 = 0 ORDER BY t0, a1;
 
 SELECT * FROM test_filter WHERE  t0 = 'B' AND a1 <= 1 ORDER BY t0, a1;
@@ -130,12 +94,6 @@ CREATE FOREIGN TABLE test_filter (t0 text, a1 integer, b2 boolean, filterValue t
     SERVER pxf_filter_push_down_server
     OPTIONS ( resource 'dummy_path', delimiter E'\x01');
 
-SET optimizer = off;
-
-SELECT * FROM test_filter WHERE t0 = 'J' and a1 = 9 ORDER BY t0, a1;
-
-SET optimizer = on;
-
 SELECT * FROM test_filter WHERE t0 = 'J' and a1 = 9 ORDER BY t0, a1;
 
 -- Recreate the same table as above and make sure that varchar is also being
@@ -147,18 +105,12 @@ CREATE FOREIGN TABLE test_filter (t0 varchar(1), a1 integer, b2 boolean, filterV
     SERVER pxf_filter_push_down_server
     OPTIONS ( resource 'dummy_path', delimiter E'\x01');
 
-SET optimizer = off;
-
 SELECT * FROM test_filter WHERE t0 = 'J' and a1 = 9 ORDER BY t0, a1;
 
-SET optimizer = on;
-
-SELECT * FROM test_filter WHERE t0 = 'J' and a1 = 9 ORDER BY t0, a1;
-
--- start_ignore
-{{ CLEAN_UP }}-- clean up resources
-{{ CLEAN_UP }} DROP FOREIGN TABLE IF EXISTS test_filter CASCADE;
-{{ CLEAN_UP }} DROP USER MAPPING IF EXISTS FOR CURRENT_USER SERVER pxf_filter_push_down_server;
-{{ CLEAN_UP }} DROP SERVER IF EXISTS pxf_filter_push_down_server CASCADE;
-{{ CLEAN_UP }} DROP FOREIGN DATA WRAPPER IF EXISTS pxf_filter_push_down_fdw;
+-- start_ignore						      
+-- clean up resources					      
+ DROP FOREIGN TABLE IF EXISTS test_filter CASCADE;	      
+ DROP USER MAPPING IF EXISTS FOR CURRENT_USER SERVER pxf_filter_push_down_server CASCADE;
+ DROP SERVER IF EXISTS pxf_filter_push_down_server CASCADE;   
+ DROP FOREIGN DATA WRAPPER IF EXISTS pxf_filter_push_down_fdw CASCADE;
 -- end_ignore
